@@ -219,3 +219,10 @@ __marimo__/
 
 # Node
 node_modules/
+
+# Playwright test artifacts
+frontend/test-results/
+frontend/playwright-report/
+
+# macOS
+.DS_Store
