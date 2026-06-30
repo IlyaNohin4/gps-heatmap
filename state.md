@@ -43,6 +43,33 @@
 }
 ```
 
+```json
+{
+  "phase": 4,
+  "status": "done",
+  "notes": "React frontend core complete. Design system (CSS vars, glass islands, dark mode), 3 Zustand stores (auth/app/map), axios client with auth interceptor, full API layer (auth + tracks), AuthModal (login/register/forgot-password), UploadZone (window drag-and-drop, 20MB, multi-file, polling), TrackCard with units-aware display, four island components (Top/Left/Right/Bottom), MapContainer placeholder, BrowserRouter with public track route.",
+  "files": [
+    "frontend/src/styles/globals.css",
+    "frontend/src/store/authStore.js",
+    "frontend/src/store/appStore.js",
+    "frontend/src/store/mapStore.js",
+    "frontend/src/api/client.js",
+    "frontend/src/api/auth.js",
+    "frontend/src/api/tracks.js",
+    "frontend/src/components/auth/AuthModal.jsx",
+    "frontend/src/components/upload/UploadZone.jsx",
+    "frontend/src/components/tracks/TrackCard.jsx",
+    "frontend/src/components/islands/TopIsland.jsx",
+    "frontend/src/components/islands/LeftIsland.jsx",
+    "frontend/src/components/islands/RightIsland.jsx",
+    "frontend/src/components/islands/BottomIsland.jsx",
+    "frontend/src/components/MapContainer.jsx",
+    "frontend/src/App.jsx",
+    "frontend/src/main.jsx"
+  ]
+}
+```
+
 ## Next
 
-Фаза 4 — Frontend Core: React app, design system, auth, islands layout.
+Фаза 5 — Карта и визуализация: Leaflet, тайловые слои, SpeedLayer, VisitLayer (heatmap), POI, TrackCreator, публичная страница трека.
