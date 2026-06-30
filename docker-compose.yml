@@ -60,5 +60,26 @@ services:
       - /app/node_modules
     command: npm run dev -- --host 0.0.0.0
 
+  playwright:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.playwright
+    profiles:
+      - test
+    depends_on:
+      - frontend
+      - backend
+    environment:
+      # Override baseURL so Playwright hits the Docker-network frontend service
+      - PLAYWRIGHT_BASE_URL=http://frontend:5173
+    volumes:
+      # Mount source and tests; use the image's own node_modules (not host's)
+      - ./frontend/src:/app/src
+      - ./frontend/tests:/app/tests
+      - ./frontend/playwright.config.ts:/app/playwright.config.ts
+      - ./frontend/index.html:/app/index.html
+    command: npx playwright test --reporter=list
+    working_dir: /app
+
 volumes:
   postgres_data:

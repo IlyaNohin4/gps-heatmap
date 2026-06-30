@@ -1,0 +1,11 @@
+FROM mcr.microsoft.com/playwright:v1.61.1-noble
+
+WORKDIR /app
+
+# Install dependencies (node_modules from the host are NOT used —
+# we install fresh inside the image so native binaries match the OS).
+COPY package.json ./
+RUN npm install
+
+# Source files are bind-mounted at runtime (see docker-compose.yml),
+# so we don't COPY them here. This keeps the image cacheable.

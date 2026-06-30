@@ -131,6 +131,53 @@
 }
 ```
 
+```json
+{
+  "phase": 6,
+  "status": "done",
+  "results": {
+    "backend_pytest": "107/107 passed",
+    "frontend_playwright": "33/33 passed",
+    "suites": ["test_auth.py", "test_tracks.py", "test_parser.py", "test_security.py", "auth.spec.ts", "upload.spec.ts", "map.spec.ts", "sidebar.spec.ts"]
+  },
+  "bugs_fixed": [
+    "HTTPBearer auto_error=True → 403 instead of 401 on missing auth header; fixed with auto_error=False + explicit 401 raise",
+    "SQLite in-memory without StaticPool: each connection sees a different empty DB (no tables); fixed by poolclass=StaticPool",
+    "app.main import triggers Base.metadata.create_all → connects to PostgreSQL during test collection; patched with unittest.mock.patch.object",
+    "MagicMock track tests: get_current_user uses db.get() not db.query(), so mock chain must use separate .get.return_value for user vs .query().filter().first() for track",
+    "Vite 5.x allowedHosts: requests with Host: frontend:5173 blocked by DNS rebinding protection; fixed allowedHosts: ['localhost', 'frontend'] in vite.config.js",
+    "axios baseURL='http://localhost:8000': inside Playwright Docker container, localhost:8000 is the container itself; fixed with baseURL='' (empty string) so all /api/* calls go through Vite proxy → backend:8000",
+    "401 interceptor redirect on login failures: any 401 triggered window.location.href='/' including wrong-password responses, preventing error toast from appearing; fixed to redirect only when localStorage has an existing token (expired session case)",
+    "localStorage SecurityError: page.evaluate() called on about:blank before page.goto(); fixed in clearAuth() and registerAndInjectToken() helpers by checking page.url().startsWith('http') first",
+    "Leaflet zoomControl={false}: test looked for .leaflet-control-zoom which doesn't exist; fixed to check custom RightIsland buttons by title attribute",
+    "Format filter chips hidden by default: LeftIsland filterOpen=false on mount, chips inside collapsed panel; fixed tests to click button[title='Filters'] first"
+  ],
+  "docker": {
+    "playwright_service": "docker-compose run --rm playwright npx playwright test",
+    "dockerfile": "frontend/Dockerfile.playwright (mcr.microsoft.com/playwright:v1.61.1-noble)"
+  },
+  "files": [
+    "backend/pytest.ini",
+    "backend/requirements-test.txt",
+    "backend/tests/__init__.py",
+    "backend/tests/conftest.py",
+    "backend/tests/test_auth.py",
+    "backend/tests/test_parser.py",
+    "backend/tests/test_tracks.py",
+    "backend/tests/test_security.py",
+    "frontend/playwright.config.ts",
+    "frontend/tests/helpers.ts",
+    "frontend/tests/auth.spec.ts",
+    "frontend/tests/upload.spec.ts",
+    "frontend/tests/map.spec.ts",
+    "frontend/tests/sidebar.spec.ts",
+    "frontend/Dockerfile.playwright"
+  ],
+  "run_backend": "cd backend && pip install -r requirements-test.txt && pytest tests/ -v",
+  "run_frontend_docker": "docker-compose run --rm playwright npx playwright test"
+}
+```
+
 ## Next
 
-Фаза 6 — Тесты: pytest (backend) + Playwright E2E (frontend).
+Фаза 7 — GitHub: коммиты и git push. ✅ (выполнено)
