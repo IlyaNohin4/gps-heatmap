@@ -2,11 +2,14 @@ import re
 import secrets
 from datetime import datetime, timedelta, timezone
 
+from typing import Literal, Optional
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, EmailStr, field_validator
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
+from app.core.deps import get_current_user
 from app.core.security import create_access_token, hash_password, verify_password
 from app.models.password_reset import PasswordReset
 from app.models.user import User
@@ -114,4 +117,102 @@ def reset_password(token: str, body: ResetPasswordRequest, db: Session = Depends
 
     user.password_hash = hash_password(body.password)
     reset.used = True
+    db.commit()
+
+
+# ── User profile / preferences ─────────────────────────────────────────────────
+
+VALID_LANGUAGES = {"en", "es", "de", "fr", "it", "nl", "pl", "ru", "uk", "zh"}
+VALID_THEMES = {"light", "dark"}
+VALID_UNIT_DISTANCE = {"km", "mi"}
+VALID_UNIT_SPEED = {"kmh", "mph", "ms"}
+
+
+class UserOut(BaseModel):
+    id: int
+    email: str
+    language: str
+    theme: str
+    unit_distance: str
+    unit_speed: str
+
+    model_config = {"from_attributes": True}
+
+
+class UpdatePrefsRequest(BaseModel):
+    email: Optional[EmailStr] = None
+    language: Optional[str] = None
+    theme: Optional[str] = None
+    unit_distance: Optional[str] = None
+    unit_speed: Optional[str] = None
+
+
+class ChangePasswordRequest(BaseModel):
+    old_password: str
+    new_password: str
+
+    @field_validator("new_password")
+    @classmethod
+    def strong_password(cls, v: str) -> str:
+        if len(v) < 8:
+            raise ValueError("Password must be at least 8 characters")
+        return v
+
+
+@router.get("/me", response_model=UserOut)
+def get_me(current_user: User = Depends(get_current_user)):
+    return current_user
+
+
+@router.patch("/me", response_model=UserOut)
+def update_me(
+    body: UpdatePrefsRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    if body.email is not None:
+        normalized = body.email.lower().strip()
+        if normalized != current_user.email:
+            if db.query(User).filter(User.email == normalized, User.id != current_user.id).first():
+                raise HTTPException(status_code=409, detail="Email already in use")
+            current_user.email = normalized
+    if body.language is not None:
+        if body.language not in VALID_LANGUAGES:
+            raise HTTPException(status_code=400, detail="Invalid language")
+        current_user.language = body.language
+    if body.theme is not None:
+        if body.theme not in VALID_THEMES:
+            raise HTTPException(status_code=400, detail="Invalid theme")
+        current_user.theme = body.theme
+    if body.unit_distance is not None:
+        if body.unit_distance not in VALID_UNIT_DISTANCE:
+            raise HTTPException(status_code=400, detail="Invalid unit_distance")
+        current_user.unit_distance = body.unit_distance
+    if body.unit_speed is not None:
+        if body.unit_speed not in VALID_UNIT_SPEED:
+            raise HTTPException(status_code=400, detail="Invalid unit_speed")
+        current_user.unit_speed = body.unit_speed
+    db.commit()
+    db.refresh(current_user)
+    return current_user
+
+
+@router.post("/change-password", status_code=status.HTTP_204_NO_CONTENT)
+def change_password(
+    body: ChangePasswordRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    if not verify_password(body.old_password, current_user.password_hash):
+        raise HTTPException(status_code=400, detail="Current password is incorrect")
+    current_user.password_hash = hash_password(body.new_password)
+    db.commit()
+
+
+@router.delete("/account", status_code=status.HTTP_204_NO_CONTENT)
+def delete_account(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    db.delete(current_user)
     db.commit()

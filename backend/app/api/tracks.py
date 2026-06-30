@@ -1,6 +1,7 @@
 from typing import List, Optional
 
-from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
+from fastapi import APIRouter, Depends, File, HTTPException, Query, Response, UploadFile, status
+from fastapi.responses import StreamingResponse
 from geoalchemy2.functions import ST_Intersects, ST_MakeEnvelope
 from pydantic import BaseModel
 from sqlalchemy import cast, func
@@ -61,6 +62,8 @@ class TrackOut(BaseModel):
     speed_avg: Optional[float]
     speed_max: Optional[float]
     speed_min: Optional[float]
+    elevation_gain: Optional[float]
+    elevation_loss: Optional[float]
     regions: Optional[List[str]]
     is_public: bool
     public_token: str
@@ -80,6 +83,8 @@ class TrackOut(BaseModel):
             speed_avg=t.speed_avg,
             speed_max=t.speed_max,
             speed_min=t.speed_min,
+            elevation_gain=t.elevation_gain,
+            elevation_loss=t.elevation_loss,
             regions=t.regions,
             is_public=t.is_public,
             public_token=t.public_token,
@@ -211,6 +216,51 @@ def delete_track(
         raise HTTPException(status_code=404, detail="Track not found")
     db.delete(track)
     db.commit()
+
+
+class RenameBody(BaseModel):
+    name: str
+
+
+@router.patch("/{track_id}/rename", response_model=TrackOut)
+def rename_track(
+    track_id: int,
+    body: RenameBody,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    name = body.name.strip()
+    if not name:
+        raise HTTPException(status_code=400, detail="Name cannot be empty")
+    track = db.query(Track).filter(Track.id == track_id, Track.user_id == current_user.id).first()
+    if not track:
+        raise HTTPException(status_code=404, detail="Track not found")
+    track.name = name
+    db.commit()
+    db.refresh(track)
+    return TrackOut.from_orm_dt(track)
+
+
+@router.get("/{track_id}/download")
+def download_track(
+    track_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    track = db.query(Track).filter(Track.id == track_id, Track.user_id == current_user.id).first()
+    if not track:
+        raise HTTPException(status_code=404, detail="Track not found")
+    if not track.raw_points:
+        raise HTTPException(status_code=404, detail="No file data available")
+
+    import io, json
+    content = json.dumps({"type": "FeatureCollection", "features": [{"type": "Feature", "geometry": {"type": "LineString", "coordinates": [[p["lon"], p["lat"]] + ([p["elevation"]] if p.get("elevation") is not None else []) for p in track.raw_points]}, "properties": {"name": track.name}}]})
+    filename = f"{track.name}.geojson"
+    return Response(
+        content=content.encode(),
+        media_type="application/geo+json",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
 
 
 @router.patch("/{track_id}/publish", response_model=TrackOut)

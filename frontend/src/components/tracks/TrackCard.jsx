@@ -1,11 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { toast } from 'react-toastify';
+import { useTranslation } from 'react-i18next';
 import {
   ChevronDown, ChevronUp, Trash2, Globe, Lock, MapPin, Calendar,
-  Gauge, Route, Clock, TrendingUp, TrendingDown,
+  Gauge, Route, Download, Pencil, Check, X,
 } from 'lucide-react';
 import useAppStore from '../../store/appStore.js';
-import { deleteTrack, togglePublish } from '../../api/tracks.js';
+import { deleteTrack, togglePublish, renameTrack, getTrackDownloadUrl } from '../../api/tracks.js';
 
 function formatDate(iso) {
   if (!iso) return '—';
@@ -21,7 +22,7 @@ function distanceLabel(km, units) {
 function speedLabel(mps, units) {
   if (mps === null || mps === undefined) return '—';
   if (units.speed === 'kmh') return `${(mps * 3.6).toFixed(1)} km/h`;
-  if (units.speed === 'knots') return `${(mps * 1.94384).toFixed(1)} kn`;
+  if (units.speed === 'mph') return `${(mps * 2.23694).toFixed(1)} mph`;
   return `${mps.toFixed(2)} m/s`;
 }
 
@@ -34,11 +35,15 @@ const FORMAT_COLORS = {
 };
 
 export default function TrackCard({ track, isSelected, onClick }) {
-  const { units, removeTrack, setSelectedTrack } = useAppStore();
+  const { t } = useTranslation();
+  const { units, removeTrack, updateTrack } = useAppStore();
   const [expanded, setExpanded] = useState(false);
   const [published, setPublished] = useState(track.is_public || false);
   const [deleting, setDeleting] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [renaming, setRenaming] = useState(false);
+  const [nameValue, setNameValue] = useState(track.name || '');
+  const nameInputRef = useRef(null);
 
   async function handleDelete(e) {
     e.stopPropagation();
@@ -51,9 +56,9 @@ export default function TrackCard({ track, isSelected, onClick }) {
     try {
       await deleteTrack(track.id);
       removeTrack(track.id);
-      toast.success('Track deleted');
+      toast.success(t('toast.deleted'));
     } catch {
-      toast.error('Delete failed');
+      toast.error(t('toast.delete_failed'));
       setDeleting(false);
     }
   }
@@ -63,10 +68,39 @@ export default function TrackCard({ track, isSelected, onClick }) {
     try {
       const result = await togglePublish(track.id);
       setPublished(result.is_public);
-      toast.success(result.is_public ? 'Track published' : 'Track unpublished');
+      toast.success(result.is_public ? t('toast.published') : t('toast.unpublished'));
     } catch {
-      toast.error('Could not update publish status');
+      toast.error(t('toast.publish_failed'));
     }
+  }
+
+  function startRename(e) {
+    e.stopPropagation();
+    setNameValue(track.name || '');
+    setRenaming(true);
+    setTimeout(() => nameInputRef.current?.focus(), 0);
+  }
+
+  async function commitRename(e) {
+    e?.stopPropagation();
+    const trimmed = nameValue.trim();
+    if (!trimmed || trimmed === track.name) {
+      setRenaming(false);
+      return;
+    }
+    try {
+      const updated = await renameTrack(track.id, trimmed);
+      updateTrack(updated);
+      toast.success(t('toast.renamed'));
+    } catch {
+      toast.error(t('toast.rename_failed'));
+    }
+    setRenaming(false);
+  }
+
+  function cancelRename(e) {
+    e.stopPropagation();
+    setRenaming(false);
   }
 
   const fmt = track.file_format?.toLowerCase();
@@ -75,7 +109,7 @@ export default function TrackCard({ track, isSelected, onClick }) {
     <div
       style={{
         borderRadius: 12,
-        padding: '12px 14px',
+        padding: '8px 14px',
         background: isSelected ? 'rgba(0,122,255,0.08)' : 'var(--surface)',
         border: `1px solid ${isSelected ? 'rgba(0,122,255,0.3)' : 'var(--border)'}`,
         cursor: 'pointer',
@@ -84,73 +118,115 @@ export default function TrackCard({ track, isSelected, onClick }) {
       }}
       onClick={onClick}
     >
-      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
-            <span style={{
-              fontSize: 11,
-              fontWeight: 700,
-              padding: '2px 6px',
-              borderRadius: 5,
-              background: FORMAT_COLORS[fmt] || '#8e8e93',
-              color: '#fff',
-              textTransform: 'uppercase',
-              letterSpacing: '0.03em',
-            }}>
-              {fmt || '?'}
-            </span>
-            <span style={{
-              fontSize: 14,
-              fontWeight: 600,
-              color: 'var(--text)',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap',
-            }}>
-              {track.name || 'Unnamed track'}
-            </span>
+      {/* Row 1: format badge + name + publish + expand */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+        <span style={{
+          fontSize: 11,
+          fontWeight: 700,
+          padding: '2px 6px',
+          borderRadius: 5,
+          background: FORMAT_COLORS[fmt] || '#8e8e93',
+          color: '#fff',
+          textTransform: 'uppercase',
+          letterSpacing: '0.03em',
+          flexShrink: 0,
+        }}>
+          {fmt || '?'}
+        </span>
+
+        {renaming ? (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 4, flex: 1, minWidth: 0 }} onClick={(e) => e.stopPropagation()}>
+            <input
+              ref={nameInputRef}
+              value={nameValue}
+              onChange={(e) => setNameValue(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') commitRename(); if (e.key === 'Escape') cancelRename(e); }}
+              style={{ flex: 1, fontSize: 13, padding: '2px 6px', borderRadius: 6 }}
+            />
+            <button onClick={commitRename} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--accent)', display: 'flex', flexShrink: 0 }}>
+              <Check size={13} />
+            </button>
+            <button onClick={cancelRename} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)', display: 'flex', flexShrink: 0 }}>
+              <X size={13} />
+            </button>
           </div>
-          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-            {track.recorded_at && (
-              <span style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 12, color: 'var(--text-secondary)' }}>
-                <Calendar size={11} /> {formatDate(track.recorded_at)}
-              </span>
-            )}
-            {track.distance_km !== undefined && (
-              <span style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 12, color: 'var(--text-secondary)' }}>
-                <Route size={11} /> {distanceLabel(track.distance_km, units)}
-              </span>
-            )}
-            {track.speed_avg !== undefined && (
-              <span style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 12, color: 'var(--text-secondary)' }}>
-                <Gauge size={11} /> {speedLabel(track.speed_avg, units)}
-              </span>
-            )}
-          </div>
-        </div>
-        <div style={{ display: 'flex', gap: 4, alignItems: 'center', flexShrink: 0 }}>
+        ) : (
+          <span style={{
+            flex: 1,
+            minWidth: 0,
+            fontSize: 14,
+            fontWeight: 600,
+            color: 'var(--text)',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+          }}>
+            {track.name || t('card.unnamed')}
+          </span>
+        )}
+
+        {/* Publish + expand always visible, compact */}
+        <div style={{ display: 'flex', gap: 2, flexShrink: 0 }}>
           <button
             className="icon-btn"
             onClick={(e) => { e.stopPropagation(); handlePublish(e); }}
-            title={published ? 'Unpublish' : 'Publish'}
+            title={published ? t('card.unpublish') : t('card.publish')}
           >
-            {published ? <Globe size={15} color="var(--accent)" /> : <Lock size={15} />}
+            {published ? <Globe size={14} color="var(--accent)" /> : <Lock size={14} />}
           </button>
           <button
             className="icon-btn"
             onClick={(e) => { e.stopPropagation(); setExpanded(!expanded); }}
-            title="Details"
+            title={t('card.details')}
           >
-            {expanded ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
+            {expanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
           </button>
+        </div>
+      </div>
+
+      {/* Row 2: meta chips + action buttons */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', minWidth: 0 }}>
+          {track.recorded_at && (
+            <span style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 12, color: 'var(--text-secondary)' }}>
+              <Calendar size={11} /> {formatDate(track.recorded_at)}
+            </span>
+          )}
+          {track.distance_km !== undefined && (
+            <span style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 12, color: 'var(--text-secondary)' }}>
+              <Route size={11} /> {distanceLabel(track.distance_km, units)}
+            </span>
+          )}
+          {track.speed_avg !== undefined && (
+            <span style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 12, color: 'var(--text-secondary)' }}>
+              <Gauge size={11} /> {speedLabel(track.speed_avg, units)}
+            </span>
+          )}
+        </div>
+
+        {/* Action buttons: rename, download, delete */}
+        <div style={{ display: 'flex', gap: 2, flexShrink: 0 }}>
+          <button className="icon-btn" onClick={startRename} title={t('card.rename')}>
+            <Pencil size={13} />
+          </button>
+          <a
+            href={getTrackDownloadUrl(track.id)}
+            download
+            onClick={(e) => e.stopPropagation()}
+            className="icon-btn"
+            title={t('card.download')}
+            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', textDecoration: 'none', color: 'var(--text)' }}
+          >
+            <Download size={13} />
+          </a>
           <button
             className="icon-btn"
             onClick={handleDelete}
             disabled={deleting}
-            title={confirmDelete ? 'Click again to confirm' : 'Delete'}
+            title={confirmDelete ? t('card.confirm_delete') : t('card.delete')}
             style={{ color: confirmDelete ? '#ff3b30' : undefined }}
           >
-            <Trash2 size={15} />
+            <Trash2 size={13} />
           </button>
         </div>
       </div>
@@ -166,26 +242,38 @@ export default function TrackCard({ track, isSelected, onClick }) {
         }}>
           {track.uploaded_at && (
             <div>
-              <div style={{ fontSize: 10, color: 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: 600 }}>Uploaded</div>
+              <div style={{ fontSize: 10, color: 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: 600 }}>{t('card.uploaded')}</div>
               <div style={{ fontSize: 12 }}>{formatDate(track.uploaded_at)}</div>
             </div>
           )}
-          {track.speed_max !== undefined && (
+          {track.duration_sec != null && (
             <div>
-              <div style={{ fontSize: 10, color: 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 3 }}><TrendingUp size={10} /> Max speed</div>
-              <div style={{ fontSize: 12 }}>{speedLabel(track.speed_max, units)}</div>
+              <div style={{ fontSize: 10, color: 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: 600 }}>{t('card.duration')}</div>
+              <div style={{ fontSize: 12 }}>
+                {(() => {
+                  const h = Math.floor(track.duration_sec / 3600);
+                  const m = Math.floor((track.duration_sec % 3600) / 60);
+                  return h > 0 ? `${h}h ${m}m` : `${m}m`;
+                })()}
+              </div>
             </div>
           )}
-          {track.speed_min !== undefined && (
+          {track.elevation_gain != null && (
             <div>
-              <div style={{ fontSize: 10, color: 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 3 }}><TrendingDown size={10} /> Min speed</div>
-              <div style={{ fontSize: 12 }}>{speedLabel(track.speed_min, units)}</div>
+              <div style={{ fontSize: 10, color: 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: 600 }}>{t('card.elev_gain')}</div>
+              <div style={{ fontSize: 12 }}>{Math.round(track.elevation_gain)} m</div>
+            </div>
+          )}
+          {track.elevation_loss != null && (
+            <div>
+              <div style={{ fontSize: 10, color: 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: 600 }}>{t('card.elev_loss')}</div>
+              <div style={{ fontSize: 12 }}>{Math.round(track.elevation_loss)} m</div>
             </div>
           )}
           {track.regions?.length > 0 && (
             <div style={{ gridColumn: '1/-1' }}>
               <div style={{ fontSize: 10, color: 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: 600, marginBottom: 4, display: 'flex', alignItems: 'center', gap: 3 }}>
-                <MapPin size={10} /> Regions
+                <MapPin size={10} /> {t('card.regions')}
               </div>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
                 {track.regions.map((r, i) => (

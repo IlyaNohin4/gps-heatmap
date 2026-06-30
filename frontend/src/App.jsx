@@ -1,7 +1,8 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { BrowserRouter, Routes, Route, useParams } from 'react-router-dom';
+import React, { lazy, Suspense, useEffect, useRef, useState } from 'react';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+import { useTranslation } from 'react-i18next';
 
 import './styles/globals.css';
 
@@ -16,29 +17,57 @@ import LeftIsland from './components/islands/LeftIsland.jsx';
 import RightIsland from './components/islands/RightIsland.jsx';
 import BottomIsland from './components/islands/BottomIsland.jsx';
 
-import { fetchTracks, getPublicTrack } from './api/tracks.js';
+import { fetchTracks } from './api/tracks.js';
+import { getMe } from './api/auth.js';
+
+// Lazy-load the public track page so it doesn't pull leaflet into the main bundle
+const PublicTrackPage = lazy(() => import('./pages/PublicTrackPage.jsx'));
 
 // ---- Main App Page ----
 function MainPage() {
-  const { isAuthenticated } = useAuthStore();
-  const { theme, setTracks } = useAppStore();
+  const { isAuthenticated, setUser } = useAuthStore();
+  const { theme, setTracks, setTheme, setUnits, setLanguage } = useAppStore();
+  const { i18n } = useTranslation();
   const [tracksLoading, setTracksLoading] = useState(false);
   const uploadInputRef = useRef(null);
 
-  // Apply theme to <html>
+  // On auth change: fetch user profile and apply server preferences
   useEffect(() => {
-    document.documentElement.dataset.theme = theme;
-  }, [theme]);
+    if (!isAuthenticated) {
+      setTracks([]);
+      return;
+    }
+    getMe()
+      .then((user) => {
+        setUser(user);
+        setTheme(user.theme);
+        setLanguage(user.language);
+        setUnits({ distance: user.unit_distance, speed: user.unit_speed });
+        i18n.changeLanguage(user.language);
+        // Apply theme to DOM and keep fast-load cache in sync
+        document.documentElement.dataset.theme = user.theme;
+        try { localStorage.setItem('gps_theme', user.theme); } catch (_) {}
+      })
+      .catch(() => {});
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAuthenticated]);
 
-  // Load tracks on mount / auth change
+  // Load tracks whenever auth state changes
   useEffect(() => {
-    if (!isAuthenticated) { setTracks([]); return; }
+    if (!isAuthenticated) {
+      setTracks([]);
+      return;
+    }
+    let cancelled = false;
     setTracksLoading(true);
     fetchTracks()
-      .then((data) => setTracks(data.tracks || data))
+      .then((data) => {
+        if (!cancelled) setTracks(Array.isArray(data) ? data : (data.tracks || []));
+      })
       .catch(() => {})
-      .finally(() => setTracksLoading(false));
-  }, [isAuthenticated]);
+      .finally(() => { if (!cancelled) setTracksLoading(false); });
+    return () => { cancelled = true; };
+  }, [isAuthenticated, setTracks]);
 
   function handleUploadClick() {
     uploadInputRef.current?.click();
@@ -47,7 +76,7 @@ function MainPage() {
   return (
     <>
       <MapContainer />
-      <TopIsland onUploadClick={handleUploadClick} />
+      <TopIsland />
       <LeftIsland onUploadClick={handleUploadClick} loading={tracksLoading} />
       <RightIsland />
       <BottomIsland />
@@ -67,54 +96,20 @@ function MainPage() {
   );
 }
 
-// ---- Public Track Page ----
-function PublicTrackPage() {
-  const { token } = useParams();
-  const [track, setTrack] = useState(null);
-  const [error, setError] = useState(null);
-
-  useEffect(() => {
-    getPublicTrack(token)
-      .then(setTrack)
-      .catch(() => setError('Track not found or not public'));
-  }, [token]);
-
-  return (
-    <div style={{ padding: 32, maxWidth: 600, margin: '0 auto' }}>
-      <h1 style={{ fontSize: 24, fontWeight: 700, marginBottom: 8 }}>GPS Heatmap</h1>
-      {error && <div style={{ color: '#ff3b30' }}>{error}</div>}
-      {track && (
-        <div className="island" style={{ padding: 20 }}>
-          <h2 style={{ fontSize: 18, fontWeight: 700, marginBottom: 12 }}>{track.name || 'Track'}</h2>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px 20px' }}>
-            {track.distance_km && <div><strong>Distance:</strong> {track.distance_km.toFixed(2)} km</div>}
-            {track.duration_seconds && <div><strong>Duration:</strong> {Math.round(track.duration_seconds / 60)} min</div>}
-            {track.speed_avg && <div><strong>Avg speed:</strong> {(track.speed_avg * 3.6).toFixed(1)} km/h</div>}
-            {track.speed_max && <div><strong>Max speed:</strong> {(track.speed_max * 3.6).toFixed(1)} km/h</div>}
-            {track.elevation_gain && <div><strong>Elev gain:</strong> {Math.round(track.elevation_gain)} m</div>}
-            {track.recorded_at && <div><strong>Date:</strong> {new Date(track.recorded_at).toLocaleDateString()}</div>}
-          </div>
-        </div>
-      )}
-      {!track && !error && <div style={{ color: 'var(--text-secondary)' }}>Loading…</div>}
-    </div>
-  );
-}
-
 // ---- Root App ----
 export default function App() {
-  const { theme } = useAppStore();
-
-  // Sync theme on initial load
-  useEffect(() => {
-    document.documentElement.dataset.theme = theme;
-  }, []);
-
   return (
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<MainPage />} />
-        <Route path="/track/:token" element={<PublicTrackPage />} />
+        <Route
+          path="/track/:token"
+          element={
+            <Suspense fallback={<div style={{ padding: 32, textAlign: 'center' }}>Loading…</div>}>
+              <PublicTrackPage />
+            </Suspense>
+          }
+        />
       </Routes>
     </BrowserRouter>
   );

@@ -34,6 +34,16 @@ export async function togglePublish(id) {
   return data;
 }
 
+export async function renameTrack(id, name) {
+  const { data } = await client.patch(`/api/tracks/${id}/rename`, { name });
+  return data;
+}
+
+export function getTrackDownloadUrl(id) {
+  const base = import.meta.env.VITE_API_URL || '';
+  return `${base}/api/tracks/${id}/download`;
+}
+
 export async function getPublicTrack(token) {
   const { data } = await client.get(`/api/tracks/public/${token}`);
   return data;

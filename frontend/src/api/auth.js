@@ -19,3 +19,13 @@ export async function resetPassword(token, password) {
   const { data } = await client.post('/api/auth/reset-password', { token, password });
   return data;
 }
+
+export async function getMe() {
+  const { data } = await client.get('/api/auth/me');
+  return data;
+}
+
+export async function updatePrefs(prefs) {
+  const { data } = await client.patch('/api/auth/me', prefs);
+  return data;
+}

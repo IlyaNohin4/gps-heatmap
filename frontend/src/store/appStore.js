@@ -19,6 +19,8 @@ const useAppStore = create(
       addTrack: (track) => set((s) => ({ tracks: [track, ...s.tracks] })),
       removeTrack: (id) =>
         set((s) => ({ tracks: s.tracks.filter((t) => t.id !== id) })),
+      updateTrack: (updated) =>
+        set((s) => ({ tracks: s.tracks.map((t) => (t.id === updated.id ? { ...t, ...updated } : t)) })),
       addUploadingId: (taskId) =>
         set((s) => {
           const next = new Set(s.isUploadingIds);
@@ -34,11 +36,8 @@ const useAppStore = create(
     }),
     {
       name: 'gps_app',
-      partialize: (state) => ({
-        theme: state.theme,
-        units: state.units,
-        language: state.language,
-      }),
+      // Only persist selectedTrackId — theme/units/language come from server via getMe()
+      partialize: () => ({}),
     }
   )
 );

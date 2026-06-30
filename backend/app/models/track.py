@@ -35,6 +35,9 @@ class Track(Base):
     speed_max = Column(Float)
     speed_min = Column(Float)
 
+    elevation_gain = Column(Float)
+    elevation_loss = Column(Float)
+
     regions = Column(ARRAY(Text), default=list)
     geom = Column(Geometry("LINESTRING", srid=4326))
     raw_points = Column(JSON)

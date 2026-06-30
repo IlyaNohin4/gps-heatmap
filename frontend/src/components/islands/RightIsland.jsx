@@ -1,39 +1,52 @@
 import React, { useState, useRef } from 'react';
 import {
-  Plus, Minus, Compass, Search, Navigation, Layers, Info, X
+  Plus, Minus, Compass, Search, Navigation, Layers, Info, X,
+  Flame, Gauge, MapPin, PenLine, ChevronRight,
 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import useMapStore from '../../store/mapStore.js';
+import useAppStore from '../../store/appStore.js';
+import { LAYER_OPTIONS } from '../../map/MapLayers.js';
+import { POI_CATEGORIES } from '../../map/POILayer.jsx';
 
-const LAYER_OPTIONS = [
-  { id: 'osm', label: 'OpenStreetMap' },
-  { id: 'satellite', label: 'Satellite' },
-  { id: 'topo', label: 'Topographic' },
-  { id: 'dark', label: 'Dark' },
-];
+const GROUPS = [...new Set(LAYER_OPTIONS.map((l) => l.group))];
 
 export default function RightIsland() {
-  const { mapInstance, activeLayer, setActiveLayer } = useMapStore();
+  const { t } = useTranslation();
+  const {
+    mapInstance, activeLayer, setActiveLayer,
+    showHeatmap, toggleHeatmap,
+    showSpeed, toggleSpeed,
+    showPOI, togglePOI, poiCategories, togglePOICategory,
+    showTrackCreator, toggleTrackCreator,
+  } = useMapStore();
+  const { theme } = useAppStore();
+
+  // Single activePanel state — toggling the same panel closes it
+  const [activePanel, setActivePanel] = useState(null); // 'city' | 'layers' | 'attr' | 'poi'
+  const cityOpen   = activePanel === 'city';
+  const layersOpen = activePanel === 'layers';
+  const attrOpen   = activePanel === 'attr';
+  const poiOpen    = activePanel === 'poi';
+
+  function togglePanel(name) {
+    setActivePanel((prev) => (prev === name ? null : name));
+  }
+
   const [citySearch, setCitySearch] = useState('');
   const [cityResults, setCityResults] = useState([]);
-  const [cityOpen, setCityOpen] = useState(false);
-  const [layersOpen, setLayersOpen] = useState(false);
-  const [attrOpen, setAttrOpen] = useState(false);
   const [searching, setSearching] = useState(false);
   const searchTimeout = useRef(null);
 
   function zoomIn() { mapInstance?.zoomIn(); }
   function zoomOut() { mapInstance?.zoomOut(); }
-  function resetBearing() {
-    if (mapInstance?.setBearing) mapInstance.setBearing(0);
-  }
+  function resetBearing() { if (mapInstance?.setBearing) mapInstance.setBearing(0); }
 
   function geolocate() {
     if (!navigator.geolocation) return;
     navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        mapInstance?.flyTo([pos.coords.latitude, pos.coords.longitude], 14);
-      },
-      () => { import('react-toastify').then(m => m.toast.error('Geolocation denied')); }
+      (pos) => mapInstance?.flyTo([pos.coords.latitude, pos.coords.longitude], 14),
+      () => import('react-toastify').then((m) => m.toast.error('Geolocation denied'))
     );
   }
 
@@ -45,8 +58,7 @@ export default function RightIsland() {
         `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=5`,
         { headers: { 'Accept-Language': 'en' } }
       );
-      const data = await resp.json();
-      setCityResults(data);
+      setCityResults(await resp.json());
     } catch {
       setCityResults([]);
     } finally {
@@ -63,7 +75,7 @@ export default function RightIsland() {
 
   function flyToResult(r) {
     mapInstance?.flyTo([parseFloat(r.lat), parseFloat(r.lon)], 13);
-    setCityOpen(false);
+    setActivePanel(null);
     setCitySearch('');
     setCityResults([]);
   }
@@ -82,74 +94,73 @@ export default function RightIsland() {
     transition: 'background 0.15s',
   });
 
+  const divider = <div style={{ height: 1, background: 'var(--border)', margin: '4px 2px' }} />;
+
   return (
-    <div style={{
-      position: 'fixed',
-      right: 16,
-      top: '50%',
-      transform: 'translateY(-50%)',
-      zIndex: 1000,
-    }}>
+    <div style={{ position: 'fixed', right: 16, top: '50%', transform: 'translateY(-50%)', zIndex: 1000 }}>
       <div className="island" style={{ padding: '6px', display: 'flex', flexDirection: 'column', gap: 2 }}>
-        <button style={iconBtn()} onClick={zoomIn} title="Zoom in"><Plus size={16} /></button>
-        <button style={iconBtn()} onClick={zoomOut} title="Zoom out"><Minus size={16} /></button>
-        <div style={{ height: 1, background: 'var(--border)', margin: '4px 2px' }} />
-        <button style={iconBtn()} onClick={resetBearing} title="Reset bearing"><Compass size={16} /></button>
-        <div style={{ height: 1, background: 'var(--border)', margin: '4px 2px' }} />
-        <button style={iconBtn(cityOpen)} onClick={() => { setCityOpen(!cityOpen); setLayersOpen(false); setAttrOpen(false); }} title="City search">
+        <button style={iconBtn()} onClick={zoomIn} title={t('map.zoom_in')}><Plus size={16} /></button>
+        <button style={iconBtn()} onClick={zoomOut} title={t('map.zoom_out')}><Minus size={16} /></button>
+        {divider}
+        <button style={iconBtn()} onClick={resetBearing} title={t('map.reset_bearing')}><Compass size={16} /></button>
+        {divider}
+        <button style={iconBtn(cityOpen)} onClick={() => togglePanel('city')} title={t('map.city_search')}>
           <Search size={16} />
         </button>
-        <button style={iconBtn()} onClick={geolocate} title="My location"><Navigation size={16} /></button>
-        <div style={{ height: 1, background: 'var(--border)', margin: '4px 2px' }} />
-        <button style={iconBtn(layersOpen)} onClick={() => { setLayersOpen(!layersOpen); setCityOpen(false); setAttrOpen(false); }} title="Layers">
+        <button style={iconBtn()} onClick={geolocate} title={t('map.my_location')}><Navigation size={16} /></button>
+        {divider}
+        <button style={iconBtn(layersOpen)} onClick={() => togglePanel('layers')} title={t('map.map_layers')}>
           <Layers size={16} />
         </button>
-        <button style={iconBtn(attrOpen)} onClick={() => { setAttrOpen(!attrOpen); setCityOpen(false); setLayersOpen(false); }} title="Attribution">
+        {divider}
+        <button style={iconBtn(showSpeed)} onClick={toggleSpeed} title={t('map.speed_mode')}>
+          <Gauge size={16} />
+        </button>
+        <button style={iconBtn(showHeatmap)} onClick={toggleHeatmap} title={t('map.visit_heatmap')}>
+          <Flame size={16} />
+        </button>
+        {divider}
+        <button
+          style={iconBtn(poiOpen || showPOI)}
+          onClick={() => togglePanel('poi')}
+          title={t('map.poi')}
+        >
+          <MapPin size={16} />
+        </button>
+        {divider}
+        <button style={iconBtn(showTrackCreator)} onClick={toggleTrackCreator} title={t('map.create_track')}>
+          <PenLine size={16} />
+        </button>
+        {divider}
+        <button style={iconBtn(attrOpen)} onClick={() => togglePanel('attr')} title={t('map.attribution')}>
           <Info size={16} />
         </button>
       </div>
 
       {/* City search popover */}
       {cityOpen && (
-        <div className="island" style={{
-          position: 'absolute',
-          right: 52,
-          top: '50%',
-          transform: 'translateY(-50%)',
-          width: 260,
-          padding: 10,
-        }}>
+        <div className="island" style={{ position: 'absolute', right: 52, top: '50%', transform: 'translateY(-50%)', width: 260, padding: 10 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             <input
               value={citySearch}
               onChange={handleCityInput}
-              placeholder="Search city or place…"
+              placeholder={t('map.search_city')}
               autoFocus
               style={{ flex: 1 }}
             />
-            <button onClick={() => { setCityOpen(false); setCitySearch(''); setCityResults([]); }} style={{ color: 'var(--text-secondary)', display: 'flex' }}>
+            <button onClick={() => { setActivePanel(null); setCitySearch(''); setCityResults([]); }} style={{ color: 'var(--text-secondary)', display: 'flex', background: 'none', border: 'none', cursor: 'pointer' }}>
               <X size={14} />
             </button>
           </div>
+          {searching && <div style={{ textAlign: 'center', padding: '8px', fontSize: 12, color: 'var(--text-secondary)' }}>{t('map.searching')}</div>}
           {cityResults.length > 0 && (
             <div style={{ marginTop: 8 }}>
               {cityResults.map((r) => (
-                <button
-                  key={r.place_id}
-                  onClick={() => flyToResult(r)}
-                  style={{
-                    display: 'block',
-                    width: '100%',
-                    textAlign: 'left',
-                    padding: '7px 8px',
-                    borderRadius: 8,
-                    border: 'none',
-                    background: 'none',
-                    cursor: 'pointer',
-                    fontSize: 12,
-                    color: 'var(--text)',
-                    lineHeight: 1.3,
-                  }}
+                <button key={r.place_id} onClick={() => flyToResult(r)} style={{
+                  display: 'block', width: '100%', textAlign: 'left',
+                  padding: '7px 8px', borderRadius: 8, border: 'none',
+                  background: 'none', cursor: 'pointer', fontSize: 12, color: 'var(--text)', lineHeight: 1.3,
+                }}
                   onMouseEnter={(e) => e.currentTarget.style.background = 'var(--bg)'}
                   onMouseLeave={(e) => e.currentTarget.style.background = 'none'}
                 >
@@ -158,62 +169,128 @@ export default function RightIsland() {
               ))}
             </div>
           )}
-          {searching && (
-            <div style={{ textAlign: 'center', padding: '8px', fontSize: 12, color: 'var(--text-secondary)' }}>Searching…</div>
-          )}
         </div>
       )}
 
       {/* Layers popover */}
       {layersOpen && (
-        <div className="island" style={{
-          position: 'absolute',
-          right: 52,
-          top: '50%',
-          transform: 'translateY(-50%)',
-          width: 180,
-          padding: 10,
-        }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: 8 }}>Map layers</div>
-          {LAYER_OPTIONS.map((l) => (
-            <button
-              key={l.id}
-              onClick={() => setActiveLayer(l.id)}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 8,
-                width: '100%',
-                padding: '7px 8px',
-                borderRadius: 8,
-                border: 'none',
-                background: activeLayer === l.id ? 'rgba(0,122,255,0.1)' : 'none',
-                color: activeLayer === l.id ? 'var(--accent)' : 'var(--text)',
-                cursor: 'pointer',
-                fontSize: 13,
-                fontWeight: activeLayer === l.id ? 600 : 400,
-              }}
-            >
-              {l.label}
-            </button>
+        <div className="island" style={{ position: 'absolute', right: 52, top: '50%', transform: 'translateY(-50%)', width: 200, padding: 10, maxHeight: '70vh', overflowY: 'auto' }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: 8 }}>{t('map.map_layers')}</div>
+          {GROUPS.map((group) => (
+            <div key={group}>
+              <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', padding: '6px 8px 2px', letterSpacing: '0.05em' }}>{group}</div>
+              {LAYER_OPTIONS.filter((l) => l.group === group).map((l) => (
+                <button
+                  key={l.id}
+                  onClick={() => setActiveLayer(l.id)}
+                  style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                    width: '100%', padding: '7px 8px', borderRadius: 8, border: 'none',
+                    background: activeLayer === l.id ? 'rgba(0,122,255,0.1)' : 'none',
+                    color: activeLayer === l.id ? 'var(--accent)' : 'var(--text)',
+                    cursor: 'pointer', fontSize: 13,
+                    fontWeight: activeLayer === l.id ? 600 : 400,
+                  }}
+                >
+                  {l.label}
+                  {activeLayer === l.id && <ChevronRight size={12} />}
+                </button>
+              ))}
+            </div>
           ))}
+
+          <div style={{ height: 1, background: 'var(--border)', margin: '8px 0' }} />
+          <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: 6 }}>{t('map.visualization')}</div>
+          <button
+            onClick={toggleSpeed}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 8, width: '100%',
+              padding: '7px 8px', borderRadius: 8, border: 'none',
+              background: showSpeed ? 'rgba(0,122,255,0.1)' : 'none',
+              color: showSpeed ? 'var(--accent)' : 'var(--text)',
+              cursor: 'pointer', fontSize: 13, fontWeight: showSpeed ? 600 : 400,
+            }}
+          >
+            <Gauge size={13} /> {t('map.speed_mode')}
+          </button>
+          <button
+            onClick={toggleHeatmap}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 8, width: '100%',
+              padding: '7px 8px', borderRadius: 8, border: 'none',
+              background: showHeatmap ? 'rgba(0,122,255,0.1)' : 'none',
+              color: showHeatmap ? 'var(--accent)' : 'var(--text)',
+              cursor: 'pointer', fontSize: 13, fontWeight: showHeatmap ? 600 : 400,
+            }}
+          >
+            <Flame size={13} /> {t('map.visit_heatmap')}
+          </button>
+        </div>
+      )}
+
+      {/* POI categories popover */}
+      {poiOpen && (
+        <div className="island" style={{ position: 'absolute', right: 52, top: '50%', transform: 'translateY(-50%)', width: 220, padding: 10 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase' }}>{t('map.poi')}</div>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, cursor: 'pointer' }}>
+              <input type="checkbox" checked={showPOI} onChange={togglePOI} style={{ width: 14, height: 14, accentColor: 'var(--accent)' }} />
+              {showPOI ? t('map.on') : t('map.off')}
+            </label>
+          </div>
+          {POI_CATEGORIES.map((cat) => {
+            const active = poiCategories.includes(cat.id);
+            return (
+              <button
+                key={cat.id}
+                onClick={() => { togglePOICategory(cat.id); if (!showPOI) togglePOI(); }}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 8, width: '100%',
+                  padding: '7px 8px', borderRadius: 8, border: 'none',
+                  background: active ? `${cat.color}18` : 'none',
+                  color: active ? cat.color : 'var(--text)',
+                  cursor: 'pointer', fontSize: 13, fontWeight: active ? 600 : 400,
+                }}
+              >
+                <span>{cat.icon}</span> {cat.label}
+              </button>
+            );
+          })}
         </div>
       )}
 
       {/* Attribution popover */}
       {attrOpen && (
-        <div className="island" style={{
-          position: 'absolute',
-          right: 52,
-          top: '50%',
-          transform: 'translateY(-50%)',
-          width: 220,
-          padding: '12px 14px',
-        }}>
-          <div style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.6 }}>
+        <div className="island" style={{ position: 'absolute', right: 52, top: '50%', transform: 'translateY(-50%)', width: 240, padding: '12px 14px' }}>
+          <div style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.7 }}>
             Map data © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent)' }}>OpenStreetMap</a> contributors.<br />
-            Geocoding by <a href="https://nominatim.org" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent)' }}>Nominatim</a>.
+            Geocoding by <a href="https://nominatim.org" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent)' }}>Nominatim</a>.<br />
+            POI via <a href="https://overpass-api.de" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent)' }}>Overpass API</a>.<br />
+            Routing by <a href="https://openrouteservice.org" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent)' }}>OpenRouteService</a>.
           </div>
+        </div>
+      )}
+
+      {/* Speed mode legend */}
+      {showSpeed && (
+        <div className="island" style={{
+          position: 'absolute', right: 52, bottom: 0,
+          padding: '8px 12px', minWidth: 120,
+        }}>
+          <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: 6 }}>{t('map.speed_legend')}</div>
+          {[
+            { label: '0–10 km/h',   color: 'rgb(155,155,155)' },
+            { label: '10–30 km/h',  color: 'rgb(0,122,255)' },
+            { label: '30–60 km/h',  color: 'rgb(52,199,89)' },
+            { label: '60–90 km/h',  color: 'rgb(255,204,0)' },
+            { label: '90–120 km/h', color: 'rgb(255,149,0)' },
+            { label: '120+ km/h',   color: 'rgb(255,59,48)' },
+          ].map(({ label, color }) => (
+            <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}>
+              <div style={{ width: 20, height: 4, borderRadius: 2, background: color, flexShrink: 0 }} />
+              <span style={{ fontSize: 11, color: 'var(--text-secondary)' }}>{label}</span>
+            </div>
+          ))}
         </div>
       )}
     </div>

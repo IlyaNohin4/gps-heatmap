@@ -67,6 +67,17 @@ def process_track(self, track_id: int, file_bytes: bytes) -> dict:
             geom = WKTElement(wkt, srid=4326)
 
         # 5. Persist
+        # Compute elevation gain/loss from normalized points
+        elev_gain = 0.0
+        elev_loss = 0.0
+        elevations = [p.get("elevation") for p in norm_points if p.get("elevation") is not None]
+        for i in range(1, len(elevations)):
+            diff = elevations[i] - elevations[i - 1]
+            if diff > 0:
+                elev_gain += diff
+            else:
+                elev_loss += abs(diff)
+
         track.raw_points = raw_serializable
         track.normalized_points = norm_serializable
         track.speed_segments = clean_segs
@@ -75,6 +86,8 @@ def process_track(self, track_id: int, file_bytes: bytes) -> dict:
         track.speed_avg = result["speed_avg"]
         track.speed_max = result["speed_max"]
         track.speed_min = result["speed_min"]
+        track.elevation_gain = elev_gain if elevations else None
+        track.elevation_loss = elev_loss if elevations else None
         track.recorded_at = result["recorded_at"]
         track.regions = regions or []
         track.geom = geom

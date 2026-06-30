@@ -1,18 +1,19 @@
 import React, { useState, useMemo } from 'react';
 import { Search, Filter, Plus, X, ChevronDown, ChevronUp, Loader2 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import TrackCard from '../tracks/TrackCard.jsx';
 import useAppStore from '../../store/appStore.js';
 import useMapStore from '../../store/mapStore.js';
 import { fetchTracks } from '../../api/tracks.js';
 
-const SORT_OPTIONS = [
-  { value: 'newest', label: 'Newest first' },
-  { value: 'oldest', label: 'Oldest first' },
-  { value: 'longest', label: 'Longest first' },
-  { value: 'fastest', label: 'Fastest first' },
+const FORMAT_OPTIONS = [
+  { value: 'all',     label: 'All' },
+  { value: 'gpx',     label: 'GPX' },
+  { value: 'kml',     label: 'KML' },
+  { value: 'tcx',     label: 'TCX' },
+  { value: 'fit',     label: 'FIT' },
+  { value: 'geojson', label: 'GeoJSON' },
 ];
-
-const FORMAT_OPTIONS = ['all', 'gpx', 'kml', 'tcx', 'fit', 'geojson'];
 
 function SkeletonCard() {
   return (
@@ -38,6 +39,7 @@ function SkeletonCard() {
 }
 
 export default function LeftIsland({ onUploadClick, loading }) {
+  const { t } = useTranslation();
   const { tracks, selectedTrackId, setSelectedTrack, isUploadingIds } = useAppStore();
   const { mapInstance } = useMapStore();
   const [open, setOpen] = useState(true);
@@ -120,7 +122,7 @@ export default function LeftIsland({ onUploadClick, loading }) {
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search tracks…"
+              placeholder={t('tracks.search')}
               style={{ borderRadius: 'var(--radius-search)', paddingLeft: 30, paddingRight: search ? 30 : 12 }}
             />
             {search && (
@@ -142,32 +144,25 @@ export default function LeftIsland({ onUploadClick, loading }) {
         {/* Filter panel */}
         {filterOpen && (
           <div style={{ padding: '10px 12px', borderBottom: '1px solid var(--border)' }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-secondary)', marginBottom: 6, textTransform: 'uppercase' }}>Sort</div>
+            <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-secondary)', marginBottom: 6, textTransform: 'uppercase' }}>{t('tracks.sort')}</div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 10 }}>
-              {SORT_OPTIONS.map((o) => (
-                <button key={o.value} style={chip(sort === o.value)} onClick={() => setSort(o.value)}>{o.label}</button>
+              {(['newest', 'oldest', 'longest', 'fastest']).map((v) => (
+                <button key={v} style={chip(sort === v)} onClick={() => setSort(v)}>{t(`sort.${v}`)}</button>
               ))}
             </div>
-            <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-secondary)', marginBottom: 6, textTransform: 'uppercase' }}>Format</div>
+            <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-secondary)', marginBottom: 6, textTransform: 'uppercase' }}>{t('tracks.format')}</div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 10 }}>
               {FORMAT_OPTIONS.map((f) => (
-                <button key={f} style={chip(formatFilter === f)} onClick={() => setFormatFilter(f)}>{f}</button>
+                <button key={f.value} style={chip(formatFilter === f.value)} onClick={() => setFormatFilter(f.value)}>{f.label}</button>
               ))}
             </div>
             <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-secondary)', marginBottom: 6, textTransform: 'uppercase' }}>
-              Avg speed (km/h): {speedRange[0]}–{speedRange[1]}
+              {t('tracks.avg_speed')}: {speedRange[0]}–{speedRange[1]}
             </div>
             <div style={{ display: 'flex', gap: 8 }}>
               <input type="range" min={0} max={100} value={speedRange[0]} onChange={(e) => setSpeedRange([+e.target.value, speedRange[1]])} style={{ flex: 1, padding: 0, border: 'none', background: 'transparent' }} />
               <input type="range" min={0} max={100} value={speedRange[1]} onChange={(e) => setSpeedRange([speedRange[0], +e.target.value])} style={{ flex: 1, padding: 0, border: 'none', background: 'transparent' }} />
             </div>
-            <button
-              className="btn-secondary"
-              style={{ width: '100%', marginTop: 10, padding: '7px', fontSize: 12 }}
-              onClick={handleFindInArea}
-            >
-              Find in this area
-            </button>
           </div>
         )}
 
@@ -177,7 +172,7 @@ export default function LeftIsland({ onUploadClick, loading }) {
             [1, 2, 3].map((i) => <SkeletonCard key={i} />)
           ) : filtered.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '24px 0', color: 'var(--text-secondary)', fontSize: 13 }}>
-              {tracks.length === 0 ? 'No tracks yet' : 'No results'}
+              {tracks.length === 0 ? t('tracks.no_tracks') : t('tracks.no_results')}
             </div>
           ) : (
             filtered.map((track) => (
@@ -192,19 +187,27 @@ export default function LeftIsland({ onUploadClick, loading }) {
           {isUploadingIds.size > 0 && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 4px', color: 'var(--text-secondary)', fontSize: 12 }}>
               <Loader2 size={13} style={{ animation: 'spin 1s linear infinite' }} />
-              Processing {isUploadingIds.size} track{isUploadingIds.size > 1 ? 's' : ''}…
+              {t('tracks.processing', { count: isUploadingIds.size })}
             </div>
           )}
         </div>
 
-        {/* Add button */}
-        <div style={{ padding: '8px 10px 10px', borderTop: '1px solid var(--border)' }}>
+        {/* Bottom actions */}
+        <div style={{ padding: '8px 10px 10px', borderTop: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <button
+            className="btn-secondary"
+            style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '7px', fontSize: 12 }}
+            onClick={handleFindInArea}
+            title="Reload track list filtered to current map area"
+          >
+            <Search size={13} /> {t('tracks.find_in_area')}
+          </button>
           <button
             className="btn-secondary"
             style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '8px' }}
             onClick={onUploadClick}
           >
-            <Plus size={14} /> Add track
+            <Plus size={14} /> {t('tracks.add_track')}
           </button>
         </div>
       </div>

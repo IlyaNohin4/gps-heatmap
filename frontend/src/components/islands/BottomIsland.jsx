@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { X, TrendingUp, Gauge, Route, Clock, Mountain, ChevronDown } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts';
@@ -17,7 +18,7 @@ function fmtDist(km, units) {
 function fmtSpeed(mps, units) {
   if (mps === null || mps === undefined) return '—';
   if (units.speed === 'kmh') return `${(mps * 3.6).toFixed(1)} km/h`;
-  if (units.speed === 'knots') return `${(mps * 1.94384).toFixed(1)} kn`;
+  if (units.speed === 'mph') return `${(mps * 2.23694).toFixed(1)} mph`;
   return `${mps.toFixed(2)} m/s`;
 }
 
@@ -57,6 +58,7 @@ function CustomTooltip({ active, payload, label, tab, units }) {
 }
 
 export default function BottomIsland() {
+  const { t } = useTranslation();
   const { selectedTrackId, setSelectedTrack, units } = useAppStore();
   const [trackData, setTrackData] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -77,21 +79,46 @@ export default function BottomIsland() {
 
   // Build chart data from track points if available
   const chartData = (() => {
-    const points = track?.points || track?.track_points || [];
+    const points = track?.normalized_points || track?.raw_points || [];
     if (!points.length) return [];
+
+    // Build per-point speed (m/s) from speed_segments [{from:[lat,lon], to:[lat,lon], speed_kmh}]
+    // Build a coord→index lookup for O(n) matching
+    const speedByIdx = new Array(points.length).fill(null);
+    const coordKey = (lat, lon) => `${lat},${lon}`;
+    const ptIndex = new Map(points.map((p, i) => [coordKey(p.lat, p.lon), i]));
+    for (const seg of track?.speed_segments || []) {
+      const fromIdx = ptIndex.get(coordKey(seg.from[0], seg.from[1]));
+      const toIdx   = ptIndex.get(coordKey(seg.to[0],   seg.to[1]));
+      if (fromIdx == null || toIdx == null) continue;
+      const mps = seg.speed_kmh / 3.6;
+      for (let j = fromIdx; j <= toIdx; j++) speedByIdx[j] = mps;
+    }
+
     let cumDist = 0;
     return points.map((pt, i) => {
+      let segDistKm = 0;
       if (i > 0) {
         const prev = points[i - 1];
         const dLat = (pt.lat - prev.lat) * 111139;
         const dLon = (pt.lon - prev.lon) * 111139 * Math.cos((pt.lat * Math.PI) / 180);
-        cumDist += Math.sqrt(dLat * dLat + dLon * dLon) / 1000;
+        segDistKm = Math.sqrt(dLat * dLat + dLon * dLon) / 1000;
+        cumDist += segDistKm;
+      }
+      const elev = pt.elevation ?? pt.ele ?? null;
+      const prevElev = i > 0 ? (points[i - 1].elevation ?? points[i - 1].ele ?? null) : null;
+      let slope = null;
+      if (i > 0 && elev !== null && prevElev !== null && segDistKm > 0) {
+        slope = parseFloat(((elev - prevElev) / (segDistKm * 1000) * 100).toFixed(1));
+        // Clamp unrealistic values (GPS noise)
+        if (slope > 80) slope = 80;
+        if (slope < -80) slope = -80;
       }
       return {
         dist: parseFloat(cumDist.toFixed(3)),
-        elevation: pt.elevation ?? pt.ele ?? null,
-        speed: pt.speed ?? null,
-        slope: pt.slope ?? null,
+        elevation: elev,
+        speed: speedByIdx[i],
+        slope,
       };
     });
   })();
@@ -133,8 +160,8 @@ export default function BottomIsland() {
       <div className="island" style={{ padding: '14px 16px' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
           <div style={{ display: 'flex', gap: 4 }}>
-            {TABS.map((t) => (
-              <button key={t} style={tabStyle(activeTab === t)} onClick={() => setActiveTab(t)}>{t}</button>
+            {TABS.map((tab) => (
+              <button key={tab} style={tabStyle(activeTab === tab)} onClick={() => setActiveTab(tab)}>{t(`chart.${tab.toLowerCase()}`)}</button>
             ))}
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -153,7 +180,7 @@ export default function BottomIsland() {
 
         {loading ? (
           <div style={{ height: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-secondary)', fontSize: 13 }}>
-            Loading…
+            {t('chart.loading')}
           </div>
         ) : chartData.length > 0 ? (
           <ResponsiveContainer width="100%" height={100}>
@@ -192,7 +219,7 @@ export default function BottomIsland() {
           </ResponsiveContainer>
         ) : (
           <div style={{ height: 80, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-secondary)', fontSize: 13 }}>
-            No chart data available
+            {t('chart.no_data')}
           </div>
         )}
 
@@ -206,12 +233,12 @@ export default function BottomIsland() {
             flexWrap: 'wrap',
             gap: 8,
           }}>
-            {stat('Distance', fmtDist(track.distance_km, units), <Route size={11} />)}
-            {stat('Duration', fmtDuration(track.duration_seconds), <Clock size={11} />)}
-            {stat('Avg speed', fmtSpeed(track.speed_avg, units), <Gauge size={11} />)}
-            {stat('Max speed', fmtSpeed(track.speed_max, units), <TrendingUp size={11} />)}
-            {stat('Elev gain', fmtElevation(track.elevation_gain), <Mountain size={11} />)}
-            {stat('Elev loss', fmtElevation(track.elevation_loss), <ChevronDown size={11} />)}
+            {stat(t('chart.distance'), fmtDist(track.distance_km, units), <Route size={11} />)}
+            {stat(t('chart.duration'), fmtDuration(track.duration_sec), <Clock size={11} />)}
+            {stat(t('chart.avg_speed'), fmtSpeed(track.speed_avg, units), <Gauge size={11} />)}
+            {stat(t('chart.max_speed'), fmtSpeed(track.speed_max, units), <TrendingUp size={11} />)}
+            {stat(t('chart.elev_gain'), fmtElevation(track.elevation_gain), <Mountain size={11} />)}
+            {stat(t('chart.elev_loss'), fmtElevation(track.elevation_loss), <ChevronDown size={11} />)}
           </div>
         )}
       </div>

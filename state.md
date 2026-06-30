@@ -70,6 +70,54 @@
 }
 ```
 
+```json
+{
+  "phase": 5,
+  "status": "done",
+  "notes": "Full Leaflet map via react-leaflet. Tile layers: OSM, OpenTopoMap, CyclOSM, Waymarked Hiking, CartoDB Light/Dark, Google Street, Google Satellite, Esri Satellite. SpeedLayer: per-segment colored polylines with smooth gradient (gray→blue→green→yellow→orange→red) from speed_segments. VisitLayer: leaflet.heat heatmap across all tracks. POILayer: Overpass API with 6 categories (Food, Amenities, Medical, Tourism, Bicycle, Transport), fetches on map move. TrackCreator: manual click-to-place mode + auto ORS routing with 5 profiles. mapStore extended: showPOI, poiCategories, showTrackCreator, trackDetailCache with lazy-loading. RightIsland: all tile layers grouped, speed/heatmap toggles, POI category checkboxes, speed legend, attribution popover. PublicTrackPage: full-page view with Leaflet mini-map, stats grid, and download link.",
+  "files": [
+    "frontend/src/map/MapLayers.js",
+    "frontend/src/map/TrackLayer.jsx",
+    "frontend/src/map/SpeedLayer.jsx",
+    "frontend/src/map/VisitLayer.jsx",
+    "frontend/src/map/POILayer.jsx",
+    "frontend/src/map/TrackCreator.jsx",
+    "frontend/src/store/mapStore.js",
+    "frontend/src/components/MapContainer.jsx",
+    "frontend/src/components/islands/RightIsland.jsx",
+    "frontend/src/App.jsx"
+  ]
+}
+```
+
+```json
+{
+  "phase": "5-polish",
+  "status": "done",
+  "notes": "Post-phase-5 polish: TrackCard 2-row layout (rename/download/delete in row 2), elevation gain/loss added to DB + Celery task, rename + download endpoints, i18n via react-i18next (10 languages: en/es/de/fr/it/nl/pl/ru/uk/zh), all UI strings translated across TopIsland/LeftIsland/RightIsland/BottomIsland/TrackCard. User preferences (language/theme/unit_distance/unit_speed) stored in DB, synced on login via GET /api/auth/me, PATCH /api/auth/me. Email change endpoint with uniqueness check. Speed units: kmh/mph/ms (knots removed). Zero-flash theme via gps_theme localStorage key + inline script in index.html. BottomIsland: Speed tab fixed (speed_segments are [{from:[lat,lon], to:[lat,lon], speed_kmh}], matched by coord lookup); Slope tab computed on-the-fly (elev diff / dist * 100, clamped ±80%). Format filter buttons: All/GPX/KML/TCX/FIT/GeoJSON. Speed unit buttons: KPH/MPH/MPS. Distance buttons: KM/MI.",
+  "files": [
+    "backend/app/models/user.py",
+    "backend/app/models/track.py",
+    "backend/app/api/auth.py",
+    "backend/app/api/tracks.py",
+    "backend/app/tasks/process_track.py",
+    "backend/alembic/versions/0002_add_elevation_columns.py",
+    "backend/alembic/versions/0003_add_user_preferences.py",
+    "frontend/src/i18n/index.js",
+    "frontend/src/i18n/translations.js",
+    "frontend/src/store/appStore.js",
+    "frontend/src/api/auth.js",
+    "frontend/src/api/tracks.js",
+    "frontend/src/components/islands/TopIsland.jsx",
+    "frontend/src/components/islands/LeftIsland.jsx",
+    "frontend/src/components/islands/BottomIsland.jsx",
+    "frontend/src/components/tracks/TrackCard.jsx",
+    "frontend/src/App.jsx",
+    "frontend/index.html"
+  ]
+}
+```
+
 ## Next
 
-Фаза 5 — Карта и визуализация: Leaflet, тайловые слои, SpeedLayer, VisitLayer (heatmap), POI, TrackCreator, публичная страница трека.
+Фаза 6 — Тесты: pytest (backend) + Playwright E2E (frontend).

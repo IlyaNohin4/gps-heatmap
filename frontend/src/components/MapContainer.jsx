@@ -1,47 +1,183 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useState } from 'react';
+import {
+  MapContainer as LeafletMap,
+  TileLayer,
+  useMap,
+} from 'react-leaflet';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
+import 'leaflet.heat';
+
 import useMapStore from '../store/mapStore.js';
+import useAppStore from '../store/appStore.js';
 
-export default function MapContainer() {
+import { TILE_LAYERS } from '../map/MapLayers.js';
+import TrackLayer from '../map/TrackLayer.jsx';
+import SpeedLayer from '../map/SpeedLayer.jsx';
+import VisitLayer from '../map/VisitLayer.jsx';
+import POILayer from '../map/POILayer.jsx';
+import TrackCreator, { TrackCreatorPanel } from '../map/TrackCreator.jsx';
+
+delete L.Icon.Default.prototype._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+  iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+  shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+});
+
+// Wires the real Leaflet map instance into our Zustand store
+function MapController() {
   const { setMapInstance } = useMapStore();
-  const mapRef = useRef(null);
-
-  // Phase 5 will initialize the actual Leaflet map here.
-  // For now we just expose a mock map instance so islands can wire up.
+  const map = useMap();
   useEffect(() => {
-    const mockMap = {
-      zoomIn: () => console.log('[map] zoomIn'),
-      zoomOut: () => console.log('[map] zoomOut'),
-      flyTo: (latlng, zoom) => console.log('[map] flyTo', latlng, zoom),
-      setBearing: (b) => console.log('[map] setBearing', b),
-      getBounds: () => ({
-        getWest: () => -180,
-        getSouth: () => -90,
-        getEast: () => 180,
-        getNorth: () => 90,
-      }),
-    };
-    setMapInstance(mockMap);
+    setMapInstance(map);
     return () => setMapInstance(null);
-  }, [setMapInstance]);
+  }, [map, setMapInstance]);
+  return null;
+}
+
+function ActiveTileLayer() {
+  const { activeLayer } = useMapStore();
+  const { theme } = useAppStore();
+  let layerId = activeLayer;
+  if (layerId === 'carto-auto') layerId = theme === 'dark' ? 'carto-dark' : 'carto-light';
+  const cfg = TILE_LAYERS[layerId] || TILE_LAYERS.osm;
+  return (
+    <TileLayer
+      key={layerId}
+      url={cfg.url}
+      attribution={cfg.attribution}
+      maxZoom={cfg.maxZoom || 19}
+      subdomains={cfg.subdomains !== undefined ? cfg.subdomains : ['a', 'b', 'c']}
+    />
+  );
+}
+
+/**
+ * Resolves which tracks to render on the map.
+ * Merges visibleTrackIds + selectedTrackId so that clicking a card
+ * immediately shows the track without the user having to toggle visibility.
+ * Uses trackDetailCache (with speed_segments / normalized_points) when available,
+ * falling back to summary data from the track list.
+ */
+function useVisibleTracks() {
+  const { visibleTrackIds, trackDetailCache, ensureTrackDetail } = useMapStore();
+  const { tracks, selectedTrackId } = useAppStore();
+
+  // Always include the selected track in the rendered set
+  const effectiveIds = new Set(visibleTrackIds);
+  if (selectedTrackId) effectiveIds.add(selectedTrackId);
+
+  // Lazy-load full detail for selected track (needs normalized_points / speed_segments)
+  useEffect(() => {
+    if (selectedTrackId) ensureTrackDetail(selectedTrackId);
+  }, [selectedTrackId, ensureTrackDetail]);
+
+  const visibleTracks = [];
+  effectiveIds.forEach((id) => {
+    const detail = trackDetailCache[id];
+    const summary = tracks.find((t) => t.id === id);
+    if (detail) visibleTracks.push(detail);
+    else if (summary) visibleTracks.push(summary);
+  });
+
+  return { visibleTracks, selectedTrackId };
+}
+
+function MapLayers() {
+  const { showSpeed, showHeatmap, showPOI, showTrackCreator, poiCategories } = useMapStore();
+  const { tracks } = useAppStore();
+  const { visibleTracks, selectedTrackId } = useVisibleTracks();
+
+  const [creatorMode, setCreatorMode] = useState('manual');
+  const [creatorProfile, setCreatorProfile] = useState('foot-walking');
+  const [creatorWaypoints, setCreatorWaypoints] = useState([]);
+  const [creatorRoutePoints, setCreatorRoutePoints] = useState([]);
+  const [creatorRouting, setCreatorRouting] = useState(false);
+  const [creatorError, setCreatorError] = useState(null);
+
+  const orsApiKey = import.meta.env.VITE_ORS_API_KEY || '';
+
+  function handleCreatorSave(pts) {
+    console.log('[TrackCreator] saved', pts.length, 'points');
+    useMapStore.getState().toggleTrackCreator();
+    setCreatorWaypoints([]);
+    setCreatorRoutePoints([]);
+  }
+
+  function handleCreatorCancel() {
+    useMapStore.getState().toggleTrackCreator();
+    setCreatorWaypoints([]);
+    setCreatorRoutePoints([]);
+  }
 
   return (
-    <div
-      id="map"
-      ref={mapRef}
-      style={{
-        position: 'fixed',
-        inset: 0,
-        background: 'var(--bg)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-      }}
+    <>
+      <ActiveTileLayer />
+      <MapController />
+
+      {/* Plain coloured polylines (default) */}
+      {!showSpeed && (
+        <TrackLayer tracks={visibleTracks} selectedTrackId={selectedTrackId} />
+      )}
+
+      {/* Speed gradient segments */}
+      {showSpeed && (
+        <SpeedLayer tracks={visibleTracks} />
+      )}
+
+      {/* Heatmap across all loaded tracks */}
+      {showHeatmap && (
+        <VisitLayer tracks={tracks} />
+      )}
+
+      {/* POI markers */}
+      {showPOI && (
+        <POILayer activeCategories={poiCategories} />
+      )}
+
+      {/* Track creator (map click handler) */}
+      {showTrackCreator && (
+        <TrackCreator
+          mode={creatorMode}
+          profile={creatorProfile}
+          orsApiKey={orsApiKey}
+          onSave={handleCreatorSave}
+          onCancel={handleCreatorCancel}
+        />
+      )}
+
+      {/* Track creator control panel (fixed overlay, rendered via MapLayers so it's inside
+          the same component tree but uses fixed positioning to float above the map) */}
+      {showTrackCreator && (
+        <TrackCreatorPanel
+          mode={creatorMode}
+          setMode={setCreatorMode}
+          profile={creatorProfile}
+          setProfile={setCreatorProfile}
+          routing={creatorRouting}
+          error={creatorError}
+          waypointCount={creatorWaypoints.length}
+          onUndo={() => setCreatorWaypoints((p) => p.slice(0, -1))}
+          onClear={() => { setCreatorWaypoints([]); setCreatorRoutePoints([]); }}
+          onSave={() => handleCreatorSave(creatorMode === 'auto' ? creatorRoutePoints : creatorWaypoints)}
+          onCancel={handleCreatorCancel}
+        />
+      )}
+    </>
+  );
+}
+
+export default function MapContainer() {
+  return (
+    <LeafletMap
+      center={[48.8566, 2.3522]}
+      zoom={4}
+      style={{ position: 'fixed', inset: 0, zIndex: 0 }}
+      zoomControl={false}
+      attributionControl={false}
     >
-      <div style={{ textAlign: 'center', color: 'var(--text-secondary)' }}>
-        <div style={{ fontSize: 48, marginBottom: 12 }}>🗺️</div>
-        <div style={{ fontSize: 16, fontWeight: 600, color: 'var(--text)' }}>Map coming in Phase 5</div>
-        <div style={{ fontSize: 13, marginTop: 4 }}>Leaflet integration will render here</div>
-      </div>
-    </div>
+      <MapLayers />
+    </LeafletMap>
   );
 }
