@@ -1,10 +1,8 @@
 import React, { useState, useMemo } from 'react';
-import { Search, Filter, Plus, X, ChevronDown, ChevronUp, Loader2 } from 'lucide-react';
+import { Search, Filter, Plus, X, Loader2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import TrackCard from '../tracks/TrackCard.jsx';
 import useAppStore from '../../store/appStore.js';
-import useMapStore from '../../store/mapStore.js';
-import { fetchTracks } from '../../api/tracks.js';
 
 const FORMAT_OPTIONS = [
   { value: 'all',     label: 'All' },
@@ -41,7 +39,6 @@ function SkeletonCard() {
 export default function LeftIsland({ onUploadClick, loading }) {
   const { t } = useTranslation();
   const { tracks, selectedTrackId, setSelectedTrack, isUploadingIds } = useAppStore();
-  const { mapInstance } = useMapStore();
   const [open, setOpen] = useState(true);
   const [search, setSearch] = useState('');
   const [filterOpen, setFilterOpen] = useState(false);
@@ -71,20 +68,6 @@ export default function LeftIsland({ onUploadClick, loading }) {
     }
     return list;
   }, [tracks, search, formatFilter, sort, speedRange]);
-
-  async function handleFindInArea() {
-    if (!mapInstance) return;
-    const bounds = mapInstance.getBounds();
-    const params = {
-      bbox: `${bounds.getWest()},${bounds.getSouth()},${bounds.getEast()},${bounds.getNorth()}`,
-    };
-    try {
-      const data = await fetchTracks(params);
-      useAppStore.getState().setTracks(data.tracks || data);
-    } catch {
-      // ignore
-    }
-  }
 
   const chip = (active) => ({
     padding: '4px 10px',
@@ -193,15 +176,7 @@ export default function LeftIsland({ onUploadClick, loading }) {
         </div>
 
         {/* Bottom actions */}
-        <div style={{ padding: '8px 10px 10px', borderTop: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 6 }}>
-          <button
-            className="btn-secondary"
-            style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '7px', fontSize: 12 }}
-            onClick={handleFindInArea}
-            title="Reload track list filtered to current map area"
-          >
-            <Search size={13} /> {t('tracks.find_in_area')}
-          </button>
+        <div style={{ padding: '8px 10px 10px', borderTop: '1px solid var(--border)' }}>
           <button
             className="btn-secondary"
             style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '8px' }}

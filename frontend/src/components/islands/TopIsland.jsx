@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import {
-  Settings, ChevronDown, ChevronUp, Sun, Moon,
+  ChevronDown, ChevronUp, Sun, Moon,
   LogOut, User, Key, AlertTriangle, Map, Mail,
 } from 'lucide-react';
 import { toast } from 'react-toastify';
@@ -126,14 +126,7 @@ export default function TopIsland() {
   });
 
   return (
-    <div style={{
-      position: 'fixed',
-      top: 16,
-      left: '50%',
-      transform: 'translateX(-50%)',
-      zIndex: 1000,
-      minWidth: 260,
-    }}>
+    <div style={{ minWidth: 260 }}>
       <div className="island" style={{ padding: 0, overflow: 'hidden' }}>
         <button
           onClick={() => setOpen(!open)}
@@ -150,7 +143,6 @@ export default function TopIsland() {
         >
           <Map size={18} color="var(--accent)" />
           <span style={{ fontWeight: 700, fontSize: 15, color: 'var(--text)', flex: 1, textAlign: 'left' }}>GPS Heatmap</span>
-          <Settings size={15} color="var(--text-secondary)" />
           {open ? <ChevronUp size={14} color="var(--text-secondary)" /> : <ChevronDown size={14} color="var(--text-secondary)" />}
         </button>
 

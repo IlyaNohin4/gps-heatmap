@@ -118,6 +118,19 @@
 }
 ```
 
+```json
+{
+  "phase": "5-polish-2",
+  "status": "done",
+  "notes": "Additional fixes after phase 5-polish commit: (1) 'Find in this area' button moved from LeftIsland bottom to center-top below TopIsland; TopIsland no longer self-positions, wrapper in App.jsx holds fixed position with ref; ResizeObserver tracks TopIsland height and dynamically offsets button so it never overlaps the expanded settings panel. (2) Duplicate Settings gear icon removed from TopIsland header button.",
+  "files": [
+    "frontend/src/App.jsx",
+    "frontend/src/components/islands/TopIsland.jsx",
+    "frontend/src/components/islands/LeftIsland.jsx"
+  ]
+}
+```
+
 ## Next
 
 Фаза 6 — Тесты: pytest (backend) + Playwright E2E (frontend).
