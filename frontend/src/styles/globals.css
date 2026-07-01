@@ -138,38 +138,3 @@ input:focus, select:focus, textarea:focus {
   background: var(--border);
   border-radius: 4px;
 }
-
-/* rc-slider custom styling */
-.rc-slider {
-  background: var(--border);
-  border-radius: 4px;
-  height: 4px;
-}
-
-.rc-slider-rail {
-  background: var(--border);
-  border-radius: 4px;
-}
-
-.rc-slider-track {
-  background: var(--accent);
-  border-radius: 4px;
-}
-
-.rc-slider-handle {
-  width: 16px;
-  height: 16px;
-  background: var(--accent);
-  border: 2px solid var(--surface);
-  box-shadow: 0 2px 8px rgba(0, 122, 255, 0.3);
-  border-radius: 50%;
-  margin-top: -6px;
-}
-
-.rc-slider-handle:hover {
-  box-shadow: 0 2px 12px rgba(0, 122, 255, 0.5);
-}
-
-.rc-slider-handle-dragging {
-  box-shadow: 0 4px 16px rgba(0, 122, 255, 0.6);
-}
