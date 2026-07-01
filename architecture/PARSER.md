@@ -120,12 +120,12 @@ def _collapse_drift(points: List[Dict], distance_threshold: float = 3.0, time_th
             # Replace cluster with centroid
             avg_lat = sum(p['lat'] for p in cluster) / len(cluster)
             avg_lon = sum(p['lon'] for p in cluster) / len(cluster)
-            avg_ele = sum(p.get('ele', 0) for p in cluster) / len(cluster) if cluster[0].get('ele') else None
+            avg_elevation = sum(p.get('elevation', 0) for p in cluster) / len(cluster) if cluster[0].get('elevation') else None
             
             result.append({
                 'lat': avg_lat,
                 'lon': avg_lon,
-                'ele': avg_ele,
+                'elevation': avg_elevation,
                 'time': cluster[0]['time']  # время первой точки
             })
             i = j
@@ -195,14 +195,14 @@ def _remove_speed_outliers(points: List[Dict]) -> List[Dict]:
 def calculate_elevation_gain_loss(points: List[Dict]) -> Tuple[float, float]:
     """
     Calculate total elevation gain and loss.
-    Points must have 'ele' field.
+    Points must have 'elevation' field.
     """
     gain = 0.0
     loss = 0.0
     
     for i in range(len(points) - 1):
-        ele_current = points[i].get('ele')
-        ele_next = points[i + 1].get('ele')
+        ele_current = points[i].get('elevation')
+        ele_next = points[i + 1].get('elevation')
         
         if ele_current is not None and ele_next is not None:
             delta = ele_next - ele_current
@@ -223,31 +223,24 @@ def calculate_elevation_gain_loss(points: List[Dict]) -> Tuple[float, float]:
 
 ```python
 ParseResult = {
-    "raw_points": List[{
+    "points": List[{
         "lat": float,
         "lon": float,
-        "ele": float | None,  # elevation in meters
+        "elevation": float | None,  # elevation in meters
         "time": datetime | None
     }],
     
-    "normalized_points": List[{
-        "lat": float,
-        "lon": float,
-        "ele": float | None,
-        "time": datetime | None
-    }],
-    
-    "distance_km": float,           # haversine(normalized_points)
+    "distance_km": float,           # haversine(points)
     "duration_sec": int | None,     # last.time - first.time
     "recorded_at": datetime | None, # first.time
     
-    "speed_avg": float | None,      # km/h, from normalized
-    "speed_max": float | None,      # km/h, from normalized
-    "speed_min": float | None,      # km/h, from normalized, > 0 only
+    "speed_avg": float | None,      # km/h
+    "speed_max": float | None,      # km/h
+    "speed_min": float | None,      # km/h, > 0 only
     
     "speed_segments": List[{
-        "from_idx": int,            # index in normalized_points
-        "to_idx": int,
+        "from": [lat, lon],         # coordinate array
+        "to": [lat, lon],           # coordinate array
         "speed_kmh": float
     }],
     
@@ -256,16 +249,19 @@ ParseResult = {
 }
 ```
 
+**Note:** Celery task `process_track()` renames `points` → `raw_points`/`normalized_points` after normalization before saving to DB.
+
 ---
 
 ## Speed Segments
 
-**Вычисляется для каждой пары консеквентных точек в normalized_points:**
+**Вычисляется для каждой пары консеквентных точек:**
 
 ```python
 def calculate_speed_segments(points: List[Dict]) -> List[Dict]:
     """
     Create speed_segments: one segment per pair of consecutive points.
+    Uses coordinate arrays (from/to) not indices.
     """
     segments = []
     
@@ -280,8 +276,8 @@ def calculate_speed_segments(points: List[Dict]) -> List[Dict]:
             speed_kmh = (dist / 1000) / (time_diff / 3600)
             
             segments.append({
-                'from_idx': i,
-                'to_idx': i + 1,
+                'from': [points[i]['lat'], points[i]['lon']],
+                'to': [points[i+1]['lat'], points[i+1]['lon']],
                 'speed_kmh': speed_kmh
             })
     
@@ -289,7 +285,7 @@ def calculate_speed_segments(points: List[Dict]) -> List[Dict]:
 ```
 
 **Используется для:**
-- SpeedLayer на карте (градиент цветов)
+- SpeedLayer на карте (градиент цветов, рисует линии от/до координат)
 - Расчёта `speed_avg`, `speed_max`, `speed_min`
 - Analytics в графиках (BottomIsland)
 
@@ -301,7 +297,7 @@ def calculate_speed_segments(points: List[Dict]) -> List[Dict]:
 async def process_track(file_data: bytes, file_name: str, user_id: int, track_id: int):
     """
     1. Determine format by magic bytes
-    2. Parse track
+    2. Parse track (returns 'points' key)
     3. Normalize points
     4. Calculate elevation, speed
     5. Geocode regions (Nominatim + Redis cache)
@@ -310,13 +306,17 @@ async def process_track(file_data: bytes, file_name: str, user_id: int, track_id
     """
     try:
         format = detect_format(file_data)
-        result = parse(file_data, format)
+        result = parse(file_data, format)  # returns 'points' key
+        
+        # Separate raw and normalized points
+        raw_points = result['points']
+        normalized_points = normalize(raw_points)
         
         # Determine regions via Nominatim (3 points: start, end, middle)
         regions = await geocode_regions([
-            result['normalized_points'][0],
-            result['normalized_points'][len(result['normalized_points']) // 2],
-            result['normalized_points'][-1]
+            normalized_points[0],
+            normalized_points[len(normalized_points) // 2],
+            normalized_points[-1]
         ])
         
         # Save to DB
@@ -328,11 +328,11 @@ async def process_track(file_data: bytes, file_name: str, user_id: int, track_id
         track.speed_min = result['speed_min']
         track.elevation_gain = result['elevation_gain']
         track.elevation_loss = result['elevation_loss']
-        track.raw_points = result['raw_points']
-        track.normalized_points = result['normalized_points']
+        track.raw_points = raw_points
+        track.normalized_points = normalized_points
         track.speed_segments = result['speed_segments']
         track.regions = regions
-        track.geom = create_linestring(result['normalized_points'])
+        track.geom = create_linestring(normalized_points)
         
         db.commit()
         return {'state': 'SUCCESS', 'track_id': track_id}

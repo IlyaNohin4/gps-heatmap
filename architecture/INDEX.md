@@ -79,11 +79,13 @@ id, user_id, token, expires_at, used
 - `GET /api/tracks/{id}` — детали трека
 - `DELETE /api/tracks/{id}`
 - `PATCH /api/tracks/{id}/publish` — toggle is_public, generate public_token
+- `PATCH /api/tracks/{id}/rename` — переименование трека
+- `GET /api/tracks/{id}/download` — скачивание файла трека
 - `GET /api/tracks/public/{public_token}` — просмотр без авторизации + скачивание
 
 ### Tasks
 - `GET /api/tasks/{task_id}/status` — polling upload статуса
-  - `{state: "PENDING"|"SUCCESS"|"FAILURE", track_id?: int, error?: string}`
+  - `{task_id: str, state: "PENDING"|"SUCCESS"|"FAILURE", step?: str, result?: object, detail?: string}`
 
 ---
 
