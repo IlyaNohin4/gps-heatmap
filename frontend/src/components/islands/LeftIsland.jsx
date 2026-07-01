@@ -1,6 +1,8 @@
 import React, { useState, useMemo } from 'react';
 import { Search, Filter, Plus, X, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import Slider from 'rc-slider';
+import 'rc-slider/assets/index.css';
 import TrackCard from '../tracks/TrackCard.jsx';
 import useAppStore from '../../store/appStore.js';
 
@@ -160,12 +162,9 @@ export default function LeftIsland({ onUploadClick, loading }) {
               ))}
             </div>
             <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-secondary)', marginBottom: 6, textTransform: 'uppercase' }}>
-              {t('tracks.avg_speed')}: {speedRange[0]}–{speedRange[1]}
+              {t('tracks.avg_speed')}: {speedRange[0]}–{speedRange[1]} km/h
             </div>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <input type="range" min={0} max={100} value={speedRange[0]} onChange={(e) => setSpeedRange([+e.target.value, speedRange[1]])} style={{ flex: 1, padding: 0, border: 'none', background: 'transparent' }} />
-              <input type="range" min={0} max={100} value={speedRange[1]} onChange={(e) => setSpeedRange([speedRange[0], +e.target.value])} style={{ flex: 1, padding: 0, border: 'none', background: 'transparent' }} />
-            </div>
+            <Slider range min={0} max={100} value={speedRange} onChange={setSpeedRange} style={{ marginBottom: 8 }} />
           </div>
         )}
 
