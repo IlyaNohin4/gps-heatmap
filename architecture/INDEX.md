@@ -218,6 +218,33 @@ font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif
 
 ---
 
+## Development Workflow (Hot Reload)
+
+**Goal:** Code changes visible instantly without container rebuild.
+
+**Frontend (Vite + HMR):**
+- vite.config.js: `hmr: { protocol: 'ws', host: 'localhost', port: 5173 }`
+- Changes to `src/` → browser auto-updates (~100ms)
+- Component state preserved where possible
+
+**Backend (uvicorn + reload):**
+- docker-compose.yml: `command: uvicorn app.main:app --reload`
+- Changes to `app/api/`, `app/models/` → server auto-restarts (~1-2s)
+
+**Celery Worker (watchdog + auto-restart):**
+- requirements.txt: `watchdog[watchmedo]==4.0.0`
+- docker-compose.yml: `command: watchmedo auto-restart -d /app -p '*.py' --recursive -- celery ...`
+- Changes to `app/tasks/` → worker auto-restarts (~2-3s)
+
+**Development Flow:**
+```
+Edit code → Save → See changes instantly
+No docker-compose build needed during development
+No manual restarts needed
+```
+
+---
+
 ## Docker & Infrastructure
 
 **Services:**
