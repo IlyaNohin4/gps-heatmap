@@ -162,11 +162,11 @@ id, user_id, token, expires_at, used
 - Атрибуции
 
 ### BottomIsland
+- Скрывается (возвращает null) если трек не выбран — нет пустого header
 - Появляется при выборе трека
 - Графики: Elevation, Speed, Slope (recharts)
 - При наведении → маркер на карте
 - Состояние: локальный useState (развёрнут/свёрнут)
-- Без трека: placeholder "Select a track to view charts"
 - С треком: автоматически разворачивается
 
 ---

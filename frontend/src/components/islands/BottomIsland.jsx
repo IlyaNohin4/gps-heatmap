@@ -58,6 +58,9 @@ function CustomTooltip({ active, payload, label, tab, unitSystem }) {
 export default function BottomIsland() {
   const { t } = useTranslation();
   const { selectedTrackId, unitSystem } = useAppStore();
+
+  if (!selectedTrackId) return null;
+
   const [trackData, setTrackData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('Elevation');
