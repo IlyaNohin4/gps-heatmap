@@ -198,14 +198,21 @@ font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif
 
 ---
 
-## File Upload
+## File Upload & Filtering
 
+### Upload
 - **Flow:** Sequential queue (один файл за одним)
 - **Polling:** `GET /api/tasks/{task_id}/status`
 - **Completion:** Backend возвращает `{state: "SUCCESS"|"FAILURE"}` → `fetchTracks()`
 - **Limit:** 20MB
 - **Formats:** .gpx, .kml, .tcx, .fit, .geojson
 - **Validation:** magic bytes (не расширение)
+
+### Speed Filter
+- **Component:** rc-slider (dual-range)
+- **Range:** 0–200 km/h
+- **Type:** Dropdown filter in LeftIsland
+- **Behavior:** Realtime filtering of track list
 
 ---
 
