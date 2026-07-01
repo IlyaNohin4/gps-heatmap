@@ -28,7 +28,7 @@ const PublicTrackPage = lazy(() => import('./pages/PublicTrackPage.jsx'));
 // ---- Main App Page ----
 function MainPage() {
   const { isAuthenticated, setUser } = useAuthStore();
-  const { theme, setTracks, setTheme, setUnitSystem, setLanguage } = useAppStore();
+  const { theme, setTracks, setTheme, setUnitSystem, setLanguage, selectedTrackId } = useAppStore();
   const { mapInstance } = useMapStore();
   const { t, i18n } = useTranslation();
   const [tracksLoading, setTracksLoading] = useState(false);
@@ -122,7 +122,7 @@ function MainPage() {
       </div>
       <LeftIsland onUploadClick={handleUploadClick} loading={tracksLoading} />
       <RightIsland />
-      <BottomIsland />
+      {selectedTrackId && <BottomIsland />}
       <AuthModal />
       <UploadZone inputRef={uploadInputRef} />
       <ToastContainer
