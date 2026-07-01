@@ -252,24 +252,6 @@ export default function RightIsland() {
         </div>
       )}
 
-      {/* Speed mode legend — moved to left bottom corner */}
-      {showSpeed && (
-        <div className="island" style={{
-          position: 'fixed', left: 16, bottom: 16,
-          padding: '8px 12px', minWidth: 120,
-          zIndex: 900,
-        }}>
-          <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: 6 }}>{t('map.speed_legend')}</div>
-          {SPEED_LEGEND.map(({ labelKm, labelMi, color }) => (
-            <div key={labelKm} style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}>
-              <div style={{ width: 20, height: 4, borderRadius: 2, background: color, flexShrink: 0 }} />
-              <span style={{ fontSize: 11, color: 'var(--text-secondary)' }}>
-                {unitSystem === 'imperial' ? labelMi : labelKm}
-              </span>
-            </div>
-          ))}
-        </div>
-      )}
     </div>
   );
 }

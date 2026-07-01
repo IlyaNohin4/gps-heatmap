@@ -25,11 +25,21 @@ import useMapStore from './store/mapStore.js';
 // Lazy-load the public track page so it doesn't pull leaflet into the main bundle
 const PublicTrackPage = lazy(() => import('./pages/PublicTrackPage.jsx'));
 
+// Speed legend colors
+const SPEED_LEGEND = [
+  { maxKmh: 10,  labelKm: '0–10 km/h',   labelMi: '0–6 mph',   color: 'rgb(155,155,155)' },
+  { maxKmh: 30,  labelKm: '10–30 km/h',  labelMi: '6–19 mph',  color: 'rgb(0,122,255)' },
+  { maxKmh: 60,  labelKm: '30–60 km/h',  labelMi: '19–37 mph', color: 'rgb(52,199,89)' },
+  { maxKmh: 90,  labelKm: '60–90 km/h',  labelMi: '37–56 mph', color: 'rgb(255,204,0)' },
+  { maxKmh: 120, labelKm: '90–120 km/h', labelMi: '56–75 mph', color: 'rgb(255,149,0)' },
+  { maxKmh: Infinity, labelKm: '120+ km/h', labelMi: '75+ mph', color: 'rgb(255,59,48)' },
+];
+
 // ---- Main App Page ----
 function MainPage() {
   const { isAuthenticated, setUser } = useAuthStore();
-  const { theme, setTracks, setTheme, setUnitSystem, setLanguage, selectedTrackId } = useAppStore();
-  const { mapInstance } = useMapStore();
+  const { theme, setTracks, setTheme, setUnitSystem, setLanguage, selectedTrackId, unitSystem } = useAppStore();
+  const { mapInstance, showSpeed } = useMapStore();
   const { t, i18n } = useTranslation();
   const [tracksLoading, setTracksLoading] = useState(false);
   const [topIslandBottom, setTopIslandBottom] = useState(64);
@@ -123,6 +133,20 @@ function MainPage() {
       <LeftIsland onUploadClick={handleUploadClick} loading={tracksLoading} />
       <RightIsland />
       {selectedTrackId && <BottomIsland />}
+      {/* Speed legend — left bottom corner */}
+      {showSpeed && (
+        <div className="island" style={{ position: 'fixed', left: 16, bottom: 16, padding: '8px 12px', minWidth: 120, zIndex: 900 }}>
+          <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: 6 }}>{t('map.speed_legend')}</div>
+          {SPEED_LEGEND.map(({ labelKm, labelMi, color }) => (
+            <div key={labelKm} style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}>
+              <div style={{ width: 20, height: 4, borderRadius: 2, background: color, flexShrink: 0 }} />
+              <span style={{ fontSize: 11, color: 'var(--text-secondary)' }}>
+                {unitSystem === 'imperial' ? labelMi : labelKm}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
       <AuthModal />
       <UploadZone inputRef={uploadInputRef} />
       <ToastContainer
