@@ -206,15 +206,21 @@ font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif
 ## Celery & Background Processing
 
 - **Broker:** Redis
-- **Task:** `process_track`
+- **Sequential Processing:** Redis lock (`process_track_lock`) ограничивает до 1 параллельной задачи
+  - Фронтенд отправляет файлы по одному
+  - Celery очередь обрабатывает их последовательно
+  - Status "queued" — трек ждет обработки
+  - Status "parsing/normalizing/geocoding/saving" — активная обработка
+  
+- **Task:** `process_track` (разблокируется после завершения предыдущего)
   1. Определить формат по magic bytes
   2. Парсить (см. PARSER.md)
   3. Нормализовать (см. PARSER.md)
   4. Определить регионы (Nominatim + Redis кэш 30 дней)
   5. Сохранить в БД
-  6. Обновить статус
+  6. Освободить lock — следующий трек начинает обработку
 
-- **Nominatim:** User-Agent: `gps-heatmap/1.0 (email)` в `.env`
+- **Nominatim:** User-Agent: `gps-heatmap/1.0 (email)` в `.env` (настроен на 3 точки, Redis кэш 30 дней)
 
 ---
 
