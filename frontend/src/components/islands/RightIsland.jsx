@@ -206,33 +206,6 @@ export default function RightIsland() {
               ))}
             </div>
           ))}
-
-          <div style={{ height: 1, background: 'var(--border)', margin: '8px 0' }} />
-          <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: 6 }}>{t('map.visualization')}</div>
-          <button
-            onClick={toggleSpeed}
-            style={{
-              display: 'flex', alignItems: 'center', gap: 8, width: '100%',
-              padding: '7px 8px', borderRadius: 8, border: 'none',
-              background: showSpeed ? 'rgba(0,122,255,0.1)' : 'none',
-              color: showSpeed ? 'var(--accent)' : 'var(--text)',
-              cursor: 'pointer', fontSize: 13, fontWeight: showSpeed ? 600 : 400,
-            }}
-          >
-            <Gauge size={13} /> {t('map.speed_mode')}
-          </button>
-          <button
-            onClick={toggleHeatmap}
-            style={{
-              display: 'flex', alignItems: 'center', gap: 8, width: '100%',
-              padding: '7px 8px', borderRadius: 8, border: 'none',
-              background: showHeatmap ? 'rgba(0,122,255,0.1)' : 'none',
-              color: showHeatmap ? 'var(--accent)' : 'var(--text)',
-              cursor: 'pointer', fontSize: 13, fontWeight: showHeatmap ? 600 : 400,
-            }}
-          >
-            <Flame size={13} /> {t('map.visit_heatmap')}
-          </button>
         </div>
       )}
 
