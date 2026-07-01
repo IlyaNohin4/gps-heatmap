@@ -252,11 +252,12 @@ export default function RightIsland() {
         </div>
       )}
 
-      {/* Speed mode legend */}
+      {/* Speed mode legend — moved to left bottom corner */}
       {showSpeed && (
         <div className="island" style={{
-          position: 'absolute', right: 52, bottom: 0,
+          position: 'fixed', left: 16, bottom: 16,
           padding: '8px 12px', minWidth: 120,
+          zIndex: 900,
         }}>
           <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: 6 }}>{t('map.speed_legend')}</div>
           {SPEED_LEGEND.map(({ labelKm, labelMi, color }) => (

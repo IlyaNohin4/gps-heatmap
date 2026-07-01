@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Search, Filter, Plus, X, Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Search, Filter, Plus, X, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import TrackCard from '../tracks/TrackCard.jsx';
 import useAppStore from '../../store/appStore.js';
@@ -186,12 +186,6 @@ export default function LeftIsland({ onUploadClick, loading }) {
                 onClick={() => setSelectedTrack(track.id === selectedTrackId ? null : track.id)}
               />
             ))
-          )}
-          {isUploadingIds.size > 0 && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 4px', color: 'var(--text-secondary)', fontSize: 12 }}>
-              <Loader2 size={13} style={{ animation: 'spin 1s linear infinite' }} />
-              {t('tracks.processing', { count: isUploadingIds.size })}
-            </div>
           )}
         </div>
 
