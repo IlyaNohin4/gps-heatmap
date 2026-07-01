@@ -164,7 +164,16 @@ export default function LeftIsland({ onUploadClick, loading }) {
             <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-secondary)', marginBottom: 6, textTransform: 'uppercase' }}>
               {t('tracks.avg_speed')}: {speedRange[0]}–{speedRange[1]} km/h
             </div>
-            <Slider range min={0} max={100} value={speedRange} onChange={setSpeedRange} style={{ marginBottom: 8 }} />
+            <div style={{
+              '--slider-track-background-color': 'var(--border)',
+              '--slider-track-background-size': '0%',
+              '--slider-handle-color': 'var(--accent)',
+              '--slider-handle-border-color': 'var(--accent)',
+              '--slider-rail-background-color': 'var(--border)',
+              '--slider-rail-border-color': 'var(--border)'
+            }}>
+              <Slider range min={0} max={200} value={speedRange} onChange={setSpeedRange} style={{ marginBottom: 8 }} />
+            </div>
           </div>
         )}
 
