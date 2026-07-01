@@ -3,6 +3,7 @@ import {
   MapContainer as LeafletMap,
   TileLayer,
   useMap,
+  useMapEvents,
 } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -36,6 +37,13 @@ function MapController() {
   return null;
 }
 
+// Clears the global active panel when user clicks on the map
+function MapClickHandler() {
+  const setActivePanel = useAppStore((s) => s.setActivePanel);
+  useMapEvents({ click: () => setActivePanel(null) });
+  return null;
+}
+
 function ActiveTileLayer() {
   const { activeLayer } = useMapStore();
   const { theme } = useAppStore();
@@ -62,7 +70,8 @@ function ActiveTileLayer() {
  */
 function useVisibleTracks() {
   const { visibleTrackIds, trackDetailCache, ensureTrackDetail } = useMapStore();
-  const { tracks, selectedTrackId } = useAppStore();
+  const tracks = useAppStore((s) => s.tracks);
+  const selectedTrackId = useAppStore((s) => s.selectedTrackId);
 
   // Always include the selected track in the rendered set
   const effectiveIds = new Set(visibleTrackIds);
@@ -86,7 +95,7 @@ function useVisibleTracks() {
 
 function MapLayers() {
   const { showSpeed, showHeatmap, showPOI, showTrackCreator, poiCategories } = useMapStore();
-  const { tracks } = useAppStore();
+  const tracks = useAppStore((s) => s.tracks);
   const { visibleTracks, selectedTrackId } = useVisibleTracks();
 
   const [creatorMode, setCreatorMode] = useState('manual');
@@ -115,6 +124,7 @@ function MapLayers() {
     <>
       <ActiveTileLayer />
       <MapController />
+      <MapClickHandler />
 
       {/* Plain coloured polylines (default) */}
       {!showSpeed && (

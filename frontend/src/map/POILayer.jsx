@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback } from 'react';
+import { useEffect, useRef, useCallback, useMemo } from 'react';
 import { useMap, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 
@@ -39,10 +39,12 @@ export default function POILayer({ activeCategories }) {
   const groupRef = useRef(null);
   const abortRef = useRef(null);
   const lastBoundsRef = useRef(null);
+  const debounceRef = useRef(null);
 
-  const enabledCats = (activeCategories || [])
-    .map((id) => POI_CATEGORIES.find((c) => c.id === id))
-    .filter(Boolean);
+  const enabledCats = useMemo(
+    () => (activeCategories || []).map((id) => POI_CATEGORIES.find((c) => c.id === id)).filter(Boolean),
+    [activeCategories]
+  );
 
   useEffect(() => {
     const group = L.layerGroup().addTo(map);
@@ -50,6 +52,7 @@ export default function POILayer({ activeCategories }) {
     return () => {
       group.remove();
       abortRef.current?.abort();
+      clearTimeout(debounceRef.current);
     };
   }, [map]);
 
@@ -89,7 +92,6 @@ export default function POILayer({ activeCategories }) {
 
       data.elements?.forEach((el) => {
         if (!el.lat || !el.lon) return;
-        // Match element to category
         const cat = enabledCats.find((c) => {
           const [key, pattern] = c.query.split('~');
           const k = key.replace('[', '');
@@ -108,13 +110,18 @@ export default function POILayer({ activeCategories }) {
     }
   }, [map, enabledCats]);
 
-  // Fetch on move/zoom end
+  const debouncedFetch = useCallback(() => {
+    clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(fetchPOI, 350);
+  }, [fetchPOI]);
+
+  // Debounced fetch on move/zoom end
   useMapEvents({
-    moveend: fetchPOI,
-    zoomend: fetchPOI,
+    moveend: debouncedFetch,
+    zoomend: debouncedFetch,
   });
 
-  // Fetch when categories change
+  // Immediate fetch when categories change (user action, not map movement)
   useEffect(() => {
     lastBoundsRef.current = null;
     fetchPOI();

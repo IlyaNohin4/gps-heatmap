@@ -13,17 +13,16 @@ function formatDate(iso) {
   return new Date(iso).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
 }
 
-function distanceLabel(km, units) {
+function distanceLabel(km, unitSystem) {
   if (!km && km !== 0) return '—';
-  if (units.distance === 'mi') return `${(km * 0.621371).toFixed(2)} mi`;
+  if (unitSystem === 'imperial') return `${(km * 0.621371).toFixed(2)} mi`;
   return `${km.toFixed(2)} km`;
 }
 
-function speedLabel(mps, units) {
-  if (mps === null || mps === undefined) return '—';
-  if (units.speed === 'kmh') return `${(mps * 3.6).toFixed(1)} km/h`;
-  if (units.speed === 'mph') return `${(mps * 2.23694).toFixed(1)} mph`;
-  return `${mps.toFixed(2)} m/s`;
+function speedLabel(kmh, unitSystem) {
+  if (kmh === null || kmh === undefined) return '—';
+  if (unitSystem === 'imperial') return `${(kmh * 0.621371).toFixed(1)} mph`;
+  return `${kmh.toFixed(1)} km/h`;
 }
 
 const FORMAT_COLORS = {
@@ -36,7 +35,7 @@ const FORMAT_COLORS = {
 
 export default function TrackCard({ track, isSelected, onClick }) {
   const { t } = useTranslation();
-  const { units, removeTrack, updateTrack } = useAppStore();
+  const { unitSystem, removeTrack, updateTrack } = useAppStore();
   const [expanded, setExpanded] = useState(false);
   const [published, setPublished] = useState(track.is_public || false);
   const [deleting, setDeleting] = useState(false);
@@ -194,12 +193,12 @@ export default function TrackCard({ track, isSelected, onClick }) {
           )}
           {track.distance_km !== undefined && (
             <span style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 12, color: 'var(--text-secondary)' }}>
-              <Route size={11} /> {distanceLabel(track.distance_km, units)}
+              <Route size={11} /> {distanceLabel(track.distance_km, unitSystem)}
             </span>
           )}
           {track.speed_avg !== undefined && (
             <span style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 12, color: 'var(--text-secondary)' }}>
-              <Gauge size={11} /> {speedLabel(track.speed_avg, units)}
+              <Gauge size={11} /> {speedLabel(track.speed_avg, unitSystem)}
             </span>
           )}
         </div>

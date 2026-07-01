@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   ChevronDown, ChevronUp, Sun, Moon,
   LogOut, User, Key, AlertTriangle, Map, Mail,
@@ -14,20 +14,16 @@ const LANGUAGES = [
   { code: 'en', label: 'English' },
   { code: 'es', label: 'Español' },
   { code: 'de', label: 'Deutsch' },
-  { code: 'fr', label: 'Français' },
-  { code: 'it', label: 'Italiano' },
-  { code: 'nl', label: 'Nederlands' },
-  { code: 'pl', label: 'Polski' },
   { code: 'ru', label: 'Русский' },
   { code: 'uk', label: 'Українська' },
-  { code: 'zh', label: '中文' },
 ];
 
 export default function TopIsland() {
-  const { theme, units, language, setTheme, setUnits, setLanguage } = useAppStore();
+  const { theme, unitSystem, language, setTheme, setUnitSystem, setLanguage, activePanel, setActivePanel } = useAppStore();
   const { isAuthenticated, user, logout, setUser } = useAuthStore();
   const { t, i18n } = useTranslation();
-  const [open, setOpen] = useState(false);
+  const open = activePanel === 'top';
+  const langSaveTimer = useRef(null);
   const [changePassOpen, setChangePassOpen] = useState(false);
   const [oldPass, setOldPass] = useState('');
   const [newPass, setNewPass] = useState('');
@@ -52,20 +48,27 @@ export default function TopIsland() {
     if (isAuthenticated) savePref({ theme: next });
   }
 
-  function handleDistanceUnit(val) {
-    setUnits({ distance: val });
-    if (isAuthenticated) savePref({ unit_distance: val });
+  function handleUnitSystem(system) {
+    setUnitSystem(system);
+    if (isAuthenticated) savePref({
+      unit_distance: system === 'imperial' ? 'mi' : 'km',
+      unit_speed: system === 'imperial' ? 'mph' : 'kmh',
+    });
   }
 
-  function handleSpeedUnit(val) {
-    setUnits({ speed: val });
-    if (isAuthenticated) savePref({ unit_speed: val });
-  }
-
-  function handleLanguage(code) {
+  async function handleLanguage(code) {
     setLanguage(code);
-    i18n.changeLanguage(code);
-    if (isAuthenticated) savePref({ language: code });
+    try {
+      await i18n.changeLanguage(code);
+    } catch (err) {
+      console.error('[i18n] changeLanguage failed', code, err);
+    }
+    // Debounce the server save to prevent race conditions when the user
+    // rapidly switches languages (the last selection wins)
+    if (isAuthenticated) {
+      clearTimeout(langSaveTimer.current);
+      langSaveTimer.current = setTimeout(() => savePref({ language: code }), 300);
+    }
   }
 
   async function handleChangePassword(e) {
@@ -103,10 +106,15 @@ export default function TopIsland() {
     }
     try {
       await client.delete('/api/auth/account');
+      // Clear token from localStorage immediately so that any in-flight
+      // polling requests returning 401 (user no longer exists) don't
+      // trigger the interceptor's page-reload before logout() runs.
+      try { localStorage.removeItem('gps_auth'); } catch (_) {}
       logout();
       toast.success(t('toast.account_deleted'));
     } catch (err) {
-      toast.error(err.response?.data?.detail || 'Failed to delete account');
+      console.error('[delete account]', err.response?.status, err.response?.data, err);
+      toast.error(err.response?.data?.detail || err.message || 'Failed to delete account');
     }
   }
 
@@ -126,10 +134,10 @@ export default function TopIsland() {
   });
 
   return (
-    <div style={{ minWidth: 260 }}>
+    <div style={{ minWidth: 260 }} onClick={(e) => e.stopPropagation()}>
       <div className="island" style={{ padding: 0, overflow: 'hidden' }}>
         <button
-          onClick={() => setOpen(!open)}
+          onClick={() => setActivePanel(open ? null : 'top')}
           style={{
             display: 'flex',
             alignItems: 'center',
@@ -151,19 +159,10 @@ export default function TopIsland() {
             <div style={sectionLabel}>{t('settings.display')}</div>
 
             <div style={row}>
-              <span style={{ fontSize: 13, color: 'var(--text)' }}>{t('settings.distance')}</span>
+              <span style={{ fontSize: 13, color: 'var(--text)' }}>{t('settings.units')}</span>
               <div style={chipGroup}>
-                <button style={chip(units.distance === 'km')} onClick={() => handleDistanceUnit('km')}>KM</button>
-                <button style={chip(units.distance === 'mi')} onClick={() => handleDistanceUnit('mi')}>MI</button>
-              </div>
-            </div>
-
-            <div style={row}>
-              <span style={{ fontSize: 13, color: 'var(--text)' }}>{t('settings.speed')}</span>
-              <div style={chipGroup}>
-                <button style={chip(units.speed === 'kmh')} onClick={() => handleSpeedUnit('kmh')}>KPH</button>
-                <button style={chip(units.speed === 'mph')} onClick={() => handleSpeedUnit('mph')}>MPH</button>
-                <button style={chip(units.speed === 'ms')} onClick={() => handleSpeedUnit('ms')}>MPS</button>
+                <button style={chip(unitSystem === 'metric')} onClick={() => handleUnitSystem('metric')}>{t('settings.metric')}</button>
+                <button style={chip(unitSystem === 'imperial')} onClick={() => handleUnitSystem('imperial')}>{t('settings.imperial')}</button>
               </div>
             </div>
 

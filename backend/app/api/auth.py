@@ -122,7 +122,7 @@ def reset_password(token: str, body: ResetPasswordRequest, db: Session = Depends
 
 # ── User profile / preferences ─────────────────────────────────────────────────
 
-VALID_LANGUAGES = {"en", "es", "de", "fr", "it", "nl", "pl", "ru", "uk", "zh"}
+VALID_LANGUAGES = {"en", "es", "de", "ru", "uk"}
 VALID_THEMES = {"light", "dark"}
 VALID_UNIT_DISTANCE = {"km", "mi"}
 VALID_UNIT_SPEED = {"kmh", "mph", "ms"}

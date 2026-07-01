@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, memo } from 'react';
 import { useMap } from 'react-leaflet';
 import L from 'leaflet';
 
@@ -11,7 +11,7 @@ function colorForIndex(i) {
   return TRACK_COLORS[i % TRACK_COLORS.length];
 }
 
-export default function TrackLayer({ tracks, selectedTrackId }) {
+const TrackLayer = memo(function TrackLayer({ tracks, selectedTrackId }) {
   const map = useMap();
   const groupRef = useRef(null);
 
@@ -45,10 +45,12 @@ export default function TrackLayer({ tracks, selectedTrackId }) {
 
       // Fit map to selected track
       if (isSelected && latlngs.length > 0) {
-        map.fitBounds(line.getBounds(), { padding: [40, 40], maxZoom: 16 });
+        map.flyToBounds(line.getBounds(), { padding: [40, 40], maxZoom: 16, animate: true, duration: 2.5 });
       }
     });
   }, [tracks, selectedTrackId, map]);
 
   return null;
-}
+});
+
+export default TrackLayer;

@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Search, Filter, Plus, X, Loader2 } from 'lucide-react';
+import { Search, Filter, Plus, X, Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import TrackCard from '../tracks/TrackCard.jsx';
 import useAppStore from '../../store/appStore.js';
@@ -38,10 +38,11 @@ function SkeletonCard() {
 
 export default function LeftIsland({ onUploadClick, loading }) {
   const { t } = useTranslation();
-  const { tracks, selectedTrackId, setSelectedTrack, isUploadingIds } = useAppStore();
+  const { tracks, selectedTrackId, setSelectedTrack, isUploadingIds, activePanel, setActivePanel } = useAppStore();
   const [open, setOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
   const [search, setSearch] = useState('');
-  const [filterOpen, setFilterOpen] = useState(false);
+  const filterOpen = activePanel === 'left:filter';
   const [sort, setSort] = useState('newest');
   const [formatFilter, setFormatFilter] = useState('all');
   const [speedRange, setSpeedRange] = useState([0, 100]);
@@ -56,8 +57,7 @@ export default function LeftIsland({ onUploadClick, loading }) {
       list = list.filter((t) => t.file_format?.toLowerCase() === formatFilter);
     }
     list = list.filter((t) => {
-      const mps = t.speed_avg ?? 0;
-      const kmh = mps * 3.6;
+      const kmh = t.speed_avg ?? 0;
       return kmh >= speedRange[0] && kmh <= speedRange[1];
     });
     switch (sort) {
@@ -81,18 +81,31 @@ export default function LeftIsland({ onUploadClick, loading }) {
   });
 
   return (
-    <div style={{
+    <div onClick={(e) => e.stopPropagation()} style={{
       position: 'fixed',
       left: 16,
       top: '50%',
       transform: 'translateY(-50%)',
       zIndex: 1000,
-      width: 300,
+      width: sidebarOpen ? 300 : 'auto',
       maxHeight: 'calc(100vh - 120px)',
       display: 'flex',
       flexDirection: 'column',
     }}>
-      <div className="island" style={{
+      {/* Collapsed state: just a toggle button */}
+      {!sidebarOpen && (
+        <div className="island" style={{ padding: '6px' }}>
+          <button
+            className="icon-btn"
+            onClick={() => setSidebarOpen(true)}
+            title={t('tracks.show_sidebar')}
+          >
+            <ChevronRight size={16} />
+          </button>
+        </div>
+      )}
+
+      {sidebarOpen && <div className="island" style={{
         display: 'flex',
         flexDirection: 'column',
         overflow: 'hidden',
@@ -116,11 +129,18 @@ export default function LeftIsland({ onUploadClick, loading }) {
           </div>
           <button
             className="icon-btn"
-            onClick={() => setFilterOpen(!filterOpen)}
+            onClick={() => setActivePanel(filterOpen ? null : 'left:filter')}
             title="Filters"
             style={{ background: filterOpen ? 'rgba(0,122,255,0.1)' : undefined, color: filterOpen ? 'var(--accent)' : undefined }}
           >
             <Filter size={15} />
+          </button>
+          <button
+            className="icon-btn"
+            onClick={() => setSidebarOpen(false)}
+            title={t('chart.collapse')}
+          >
+            <ChevronLeft size={15} />
           </button>
         </div>
 
@@ -185,7 +205,7 @@ export default function LeftIsland({ onUploadClick, loading }) {
             <Plus size={14} /> {t('tracks.add_track')}
           </button>
         </div>
-      </div>
+      </div>}
     </div>
   );
 }

@@ -5,16 +5,18 @@ const useAppStore = create(
   persist(
     (set, get) => ({
       theme: 'light',
-      units: { distance: 'km', speed: 'kmh' },
+      unitSystem: 'metric', // 'metric' (km + km/h) | 'imperial' (mi + mph)
       language: 'en',
       selectedTrackId: null,
+      activePanel: null,
       tracks: [],
       isUploadingIds: new Set(),
 
       setTheme: (theme) => set({ theme }),
-      setUnits: (units) => set((s) => ({ units: { ...s.units, ...units } })),
+      setUnitSystem: (system) => set({ unitSystem: system }),
       setLanguage: (language) => set({ language }),
-      setSelectedTrack: (id) => set({ selectedTrackId: id }),
+      setSelectedTrack: (id) => set({ selectedTrackId: id, activePanel: null }),
+      setActivePanel: (panel) => set({ activePanel: panel }),
       setTracks: (tracks) => set({ tracks }),
       addTrack: (track) => set((s) => ({ tracks: [track, ...s.tracks] })),
       removeTrack: (id) =>

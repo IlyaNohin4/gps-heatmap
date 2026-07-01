@@ -15,8 +15,13 @@ function getExt(filename) {
 export default function UploadZone({ inputRef: externalInputRef }) {
   const { addTrack, addUploadingId, removeUploadingId } = useAppStore();
   const [dragging, setDragging] = useState(false);
+  // Queue progress: { current, total } | null
+  const [queueProgress, setQueueProgress] = useState(null);
   const inputRef = useRef(null);
   const dragCounter = useRef(0);
+  // Serialise calls: track whether the queue is already running
+  const queueRunning = useRef(false);
+  const pendingQueue = useRef([]);
 
   // Expose input ref to parent if needed
   useEffect(() => {
@@ -41,9 +46,28 @@ export default function UploadZone({ inputRef: externalInputRef }) {
     }
     if (!validFiles.length) return;
 
-    for (const file of validFiles) {
-      processFile(file);
+    // Append to the shared queue
+    pendingQueue.current.push(...validFiles);
+
+    // Only start the runner once; subsequent calls just enqueue
+    if (!queueRunning.current) {
+      queueRunning.current = true;
+      await runQueue();
+      queueRunning.current = false;
     }
+  }
+
+  async function runQueue() {
+    // Snapshot total at queue start (more files may arrive during processing)
+    let processed = 0;
+    while (pendingQueue.current.length > 0) {
+      const total = processed + pendingQueue.current.length;
+      const file = pendingQueue.current.shift();
+      processed++;
+      setQueueProgress({ current: processed, total });
+      await processFile(file);
+    }
+    setQueueProgress(null);
   }
 
   async function processFile(file) {
@@ -53,7 +77,6 @@ export default function UploadZone({ inputRef: externalInputRef }) {
       taskId = result.task_id;
       if (taskId) {
         addUploadingId(taskId);
-        toast.info(`Processing ${file.name}…`);
         await pollUntilDone(taskId, file.name);
       } else if (result.track) {
         addTrack(result.track);
@@ -62,6 +85,7 @@ export default function UploadZone({ inputRef: externalInputRef }) {
     } catch (err) {
       toast.error(`Upload failed: ${file.name} — ${err.response?.data?.detail || err.message}`);
       if (taskId) removeUploadingId(taskId);
+      // Continue to next file — don't rethrow
     }
   }
 
@@ -111,9 +135,7 @@ export default function UploadZone({ inputRef: externalInputRef }) {
         setDragging(false);
       }
     }
-    function onDragOver(e) {
-      e.preventDefault();
-    }
+    function onDragOver(e) { e.preventDefault(); }
     function onDrop(e) {
       e.preventDefault();
       dragCounter.current = 0;
@@ -150,6 +172,33 @@ export default function UploadZone({ inputRef: externalInputRef }) {
         style={{ display: 'none' }}
         onChange={handleInputChange}
       />
+
+      {/* Queue progress indicator */}
+      {queueProgress && (
+        <div style={{
+          position: 'fixed',
+          bottom: 80,
+          left: '50%',
+          transform: 'translateX(-50%)',
+          zIndex: 10001,
+        }}>
+          <div className="island" style={{
+            padding: '10px 20px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 10,
+            fontSize: 13,
+            fontWeight: 600,
+            color: 'var(--text)',
+            whiteSpace: 'nowrap',
+          }}>
+            <Upload size={14} color="var(--accent)" style={{ animation: 'pulse 1s ease-in-out infinite' }} />
+            Uploading {queueProgress.current} of {queueProgress.total}…
+          </div>
+        </div>
+      )}
+
+      {/* Drag-and-drop overlay */}
       {dragging && (
         <div style={{
           position: 'fixed',

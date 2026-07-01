@@ -6,6 +6,7 @@ import pytest
 
 from app.services.parser_factory import (
     _build_segments,
+    _detect_osmand,
     _haversine,
     _parse_geojson,
     _parse_gpx,
@@ -202,6 +203,80 @@ class TestParseGPX:
 </gpx>"""
         result = _parse_gpx(gpx_with_ext)
         assert len(result["points"]) == 2
+
+    def test_gpx_extensions_with_namespace_attributes_and_xml_decl(self):
+        gpx = b"""\
+<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.1" creator="OsmAnd" xmlns="http://www.topografix.com/GPX/1/1"
+     xmlns:osmand="https://osmand.net">
+  <trk><trkseg>
+    <trkpt lat="55.751244" lon="37.618423">
+      <time>2024-03-15T09:00:00Z</time>
+      <ele>144</ele>
+      <extensions>
+        <osmand:speed>8.3</osmand:speed>
+        <osmand:hdop>2.1</osmand:hdop>
+      </extensions>
+    </trkpt>
+    <trkpt lat="55.752000" lon="37.619000">
+      <time>2024-03-15T09:01:00Z</time>
+      <ele>146</ele>
+    </trkpt>
+  </trkseg></trk>
+</gpx>"""
+        result = _parse_gpx(gpx)
+        assert len(result["points"]) == 2
+        assert result["distance_km"] > 0
+        assert result["recorded_at"] is not None
+        # OsmAnd 3.x: speed 8.3 m/s → 29.88 km/h; should appear in segments
+        assert result["speed_avg"] is not None
+        assert 25 < result["speed_avg"] < 35  # 8.3 m/s * 3.6 ≈ 29.88 km/h
+
+    def test_osmand_v3_speed_converted_from_ms(self):
+        # xmlns:osmand short URL → v3 → speed in m/s, must multiply by 3.6
+        gpx = b"""\
+<?xml version="1.0"?>
+<gpx version="1.1" xmlns="http://www.topografix.com/GPX/1/1"
+     xmlns:osmand="https://osmand.net">
+  <trk><trkseg>
+    <trkpt lat="0.0" lon="0.0">
+      <time>2021-01-01T00:00:00Z</time>
+      <extensions><osmand:speed>10.0</osmand:speed></extensions>
+    </trkpt>
+    <trkpt lat="0.01" lon="0.0">
+      <time>2021-01-01T00:01:00Z</time>
+      <extensions><osmand:speed>10.0</osmand:speed></extensions>
+    </trkpt>
+  </trkseg></trk>
+</gpx>"""
+        assert _detect_osmand(gpx[:2048]) == ("https://osmand.net", False)
+        result = _parse_gpx(gpx)
+        # 10.0 m/s * 3.6 = 36.0 km/h
+        assert abs(result["speed_avg"] - 36.0) < 0.5
+
+    def test_osmand_v4_speed_used_directly(self):
+        # xmlns:osmand long URL → v4 → speed already in km/h
+        gpx = b"""\
+<?xml version="1.0"?>
+<gpx version="1.1" xmlns="http://www.topografix.com/GPX/1/1"
+     xmlns:osmand="https://osmand.net/docs/technical/osmand-file-formats/osmand-gpx">
+  <trk><trkseg>
+    <trkpt lat="0.0" lon="0.0">
+      <time>2024-01-01T00:00:00Z</time>
+      <extensions><osmand:speed>50.0</osmand:speed></extensions>
+    </trkpt>
+    <trkpt lat="0.01" lon="0.0">
+      <time>2024-01-01T00:01:00Z</time>
+      <extensions><osmand:speed>50.0</osmand:speed></extensions>
+    </trkpt>
+  </trkseg></trk>
+</gpx>"""
+        assert _detect_osmand(gpx[:2048]) == (
+            "https://osmand.net/docs/technical/osmand-file-formats/osmand-gpx", True
+        )
+        result = _parse_gpx(gpx)
+        # 50.0 km/h used directly
+        assert abs(result["speed_avg"] - 50.0) < 0.5
 
 
 # ── KML parser ─────────────────────────────────────────────────────────────────

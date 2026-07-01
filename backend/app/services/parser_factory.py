@@ -1,7 +1,8 @@
 """Parse GPS track files into a unified list of point dicts.
 
 Each point: {"lat": float, "lon": float, "elevation": float|None, "time": datetime|None}
-Returns also speed_segments computed via Haversine between consecutive timed points.
+Returns also speed_segments computed from osmand:speed extensions when available
+(with automatic m/s→km/h conversion for OsmAnd 3.x), falling back to Haversine.
 """
 
 import json
@@ -9,7 +10,6 @@ import math
 from datetime import datetime, timezone
 from typing import Any, Optional
 
-import gpxpy
 from lxml import etree
 
 # ── Haversine ─────────────────────────────────────────────────────────────────
@@ -26,7 +26,11 @@ def _haversine(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
 
 
 def _build_segments(points: list[dict]) -> tuple[list[dict], float, float, float, float, Optional[int]]:
-    """Compute speed_segments, distance_km, speed stats, duration from point list."""
+    """Compute speed_segments, distance_km, speed stats, duration.
+
+    Uses osmand_speed_kmh from each point when available; falls back to Haversine
+    for points that carry no recorded speed.
+    """
     segments: list[dict] = []
     total_km = 0.0
     speeds: list[float] = []
@@ -35,16 +39,27 @@ def _build_segments(points: list[dict]) -> tuple[list[dict], float, float, float
         p0, p1 = points[i - 1], points[i]
         dist = _haversine(p0["lat"], p0["lon"], p1["lat"], p1["lon"])
         total_km += dist
-        if p0["time"] and p1["time"]:
+
+        # Prefer the speed recorded at the destination point, then origin.
+        recorded = p1.get("osmand_speed_kmh")
+        if recorded is None:
+            recorded = p0.get("osmand_speed_kmh")
+
+        if recorded is not None and recorded >= 0:
+            spd = recorded
+        elif p0["time"] and p1["time"]:
             dt = (p1["time"] - p0["time"]).total_seconds()
-            if dt > 0:
-                spd = dist / dt * 3600  # km/h
-                speeds.append(spd)
-                segments.append({
-                    "from": [p0["lat"], p0["lon"]],
-                    "to": [p1["lat"], p1["lon"]],
-                    "speed_kmh": round(spd, 2),
-                })
+            spd = dist / dt * 3600 if dt > 0 else None  # km/h
+        else:
+            spd = None
+
+        if spd is not None:
+            speeds.append(spd)
+            segments.append({
+                "from": [p0["lat"], p0["lon"]],
+                "to": [p1["lat"], p1["lon"]],
+                "speed_kmh": round(spd, 2),
+            })
 
     speed_avg = sum(speeds) / len(speeds) if speeds else None
     speed_max = max(speeds) if speeds else None
@@ -60,34 +75,92 @@ def _build_segments(points: list[dict]) -> tuple[list[dict], float, float, float
 
 # ── GPX ───────────────────────────────────────────────────────────────────────
 
-import re as _re
+# OsmAnd 3.x: short namespace, osmand:speed in m/s → multiply by 3.6 → km/h.
+# OsmAnd 4.x: long namespace, osmand:speed already in km/h.
+_OSMAND_NS_V3 = "https://osmand.net"
+_OSMAND_NS_V4 = "https://osmand.net/docs/technical/osmand-file-formats/osmand-gpx"
+_GPX_NS = "http://www.topografix.com/GPX/1/1"
 
-# OsmAnd exports use undeclared namespace prefixes (e.g. <osmand:speed>) inside
-# <extensions> blocks. Standard XML parsers reject undeclared prefixes, so we
-# strip the entire <extensions>…</extensions> section before parsing.
-_EXTENSIONS_RE = _re.compile(rb"<extensions>.*?</extensions>", _re.DOTALL)
+
+def _detect_osmand(header: bytes) -> Optional[tuple[str, bool]]:
+    """Return (osmand_namespace_uri, speed_is_kmh) or None if not OsmAnd."""
+    if _OSMAND_NS_V4.encode() in header:
+        return (_OSMAND_NS_V4, True)
+    if b"xmlns:osmand=" in header:
+        return (_OSMAND_NS_V3, False)
+    return None
 
 
-def _sanitize_gpx(data: bytes) -> bytes:
-    # Strip BOM if present
-    if data.startswith(b"\xef\xbb\xbf"):
-        data = data[3:]
-    return _EXTENSIONS_RE.sub(b"", data)
+def _parse_time(text: str) -> Optional[datetime]:
+    try:
+        t = datetime.fromisoformat(text.replace("Z", "+00:00"))
+        return t if t.tzinfo else t.replace(tzinfo=timezone.utc)
+    except ValueError:
+        return None
+
+
+def _gpx_iter(root, tag: str):
+    """Yield elements matching tag, supporting both namespaced and bare GPX."""
+    nodes = list(root.iter(f"{{{_GPX_NS}}}{tag}"))
+    return nodes if nodes else list(root.iter(tag))
+
+
+def _gpx_find(el, tag: str):
+    """Find a child element, supporting both namespaced and bare GPX."""
+    found = el.find(f"{{{_GPX_NS}}}{tag}")
+    return found if found is not None else el.find(tag)
 
 
 def _parse_gpx(data: bytes) -> dict:
-    gpx = gpxpy.parse(_sanitize_gpx(data).decode("utf-8", errors="replace"))
+    if data.startswith(b"\xef\xbb\xbf"):
+        data = data[3:]
+
+    osmand = _detect_osmand(data[:2048])
+    osmand_ns: Optional[str] = osmand[0] if osmand else None
+    speed_is_kmh: bool = osmand[1] if osmand else False
+
+    lxml_parser = etree.XMLParser(recover=True, remove_comments=True)
+    root = etree.fromstring(data, lxml_parser)
+
     points: list[dict] = []
-    for track in gpx.tracks:
-        for seg in track.segments:
-            for pt in seg.points:
-                points.append({
-                    "lat": pt.latitude,
-                    "lon": pt.longitude,
-                    "elevation": pt.elevation,
-                    "time": pt.time.replace(tzinfo=timezone.utc) if pt.time and pt.time.tzinfo is None else pt.time,
-                })
-    recorded_at = points[0]["time"] if points and points[0]["time"] else None
+    for trkpt in _gpx_iter(root, "trkpt"):
+        try:
+            lat = float(trkpt.get("lat"))
+            lon = float(trkpt.get("lon"))
+        except (TypeError, ValueError):
+            continue
+
+        ele_el = _gpx_find(trkpt, "ele")
+        ele = float(ele_el.text) if ele_el is not None and ele_el.text else None
+
+        time_el = _gpx_find(trkpt, "time")
+        t = _parse_time(time_el.text) if time_el is not None and time_el.text else None
+
+        osmand_speed_kmh: Optional[float] = None
+        if osmand_ns:
+            ext_el = _gpx_find(trkpt, "extensions")
+            if ext_el is not None:
+                # osmand:speed may be declared on root or on the extensions element itself
+                spd_el = ext_el.find(f"{{{osmand_ns}}}speed")
+                if spd_el is not None and spd_el.text:
+                    try:
+                        raw = float(spd_el.text)
+                        osmand_speed_kmh = raw if speed_is_kmh else raw * 3.6
+                    except ValueError:
+                        pass
+
+        points.append({
+            "lat": lat,
+            "lon": lon,
+            "elevation": ele,
+            "time": t,
+            "osmand_speed_kmh": osmand_speed_kmh,
+        })
+
+    if not points:
+        raise ValueError("No GPS points found in GPX file")
+
+    recorded_at = points[0]["time"] if points[0]["time"] else None
     segs, dist, s_avg, s_max, s_min, dur = _build_segments(points)
     return {
         "points": points,

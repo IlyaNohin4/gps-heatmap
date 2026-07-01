@@ -42,6 +42,7 @@ body {
   border-radius: var(--radius);
   box-shadow: var(--shadow);
   border: 1px solid var(--border);
+  pointer-events: auto;
 }
 
 button {

@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useRef } from 'react';
 import {
   Plus, Minus, Compass, Search, Navigation, Layers, Info, X,
   Flame, Gauge, MapPin, PenLine, ChevronRight,
@@ -11,6 +11,16 @@ import { POI_CATEGORIES } from '../../map/POILayer.jsx';
 
 const GROUPS = [...new Set(LAYER_OPTIONS.map((l) => l.group))];
 
+// Speed breakpoints: [max_kmh, label_km, label_mi, color]
+const SPEED_LEGEND = [
+  { maxKmh: 10,  labelKm: '0–10 km/h',   labelMi: '0–6 mph',   color: 'rgb(155,155,155)' },
+  { maxKmh: 30,  labelKm: '10–30 km/h',  labelMi: '6–19 mph',  color: 'rgb(0,122,255)' },
+  { maxKmh: 60,  labelKm: '30–60 km/h',  labelMi: '19–37 mph', color: 'rgb(52,199,89)' },
+  { maxKmh: 90,  labelKm: '60–90 km/h',  labelMi: '37–56 mph', color: 'rgb(255,204,0)' },
+  { maxKmh: 120, labelKm: '90–120 km/h', labelMi: '56–75 mph', color: 'rgb(255,149,0)' },
+  { maxKmh: Infinity, labelKm: '120+ km/h', labelMi: '75+ mph', color: 'rgb(255,59,48)' },
+];
+
 export default function RightIsland() {
   const { t } = useTranslation();
   const {
@@ -20,22 +30,20 @@ export default function RightIsland() {
     showPOI, togglePOI, poiCategories, togglePOICategory,
     showTrackCreator, toggleTrackCreator,
   } = useMapStore();
-  const { theme } = useAppStore();
+  const { unitSystem, activePanel, setActivePanel } = useAppStore();
 
-  // Single activePanel state — toggling the same panel closes it
-  const [activePanel, setActivePanel] = useState(null); // 'city' | 'layers' | 'attr' | 'poi'
-  const cityOpen   = activePanel === 'city';
-  const layersOpen = activePanel === 'layers';
-  const attrOpen   = activePanel === 'attr';
-  const poiOpen    = activePanel === 'poi';
+  const cityOpen   = activePanel === 'right:city';
+  const layersOpen = activePanel === 'right:layers';
+  const attrOpen   = activePanel === 'right:attr';
+  const poiOpen    = activePanel === 'right:poi';
 
   function togglePanel(name) {
-    setActivePanel((prev) => (prev === name ? null : name));
+    setActivePanel(activePanel === name ? null : name);
   }
 
-  const [citySearch, setCitySearch] = useState('');
-  const [cityResults, setCityResults] = useState([]);
-  const [searching, setSearching] = useState(false);
+  const [citySearch, setCitySearch] = React.useState('');
+  const [cityResults, setCityResults] = React.useState([]);
+  const [searching, setSearching] = React.useState(false);
   const searchTimeout = useRef(null);
 
   function zoomIn() { mapInstance?.zoomIn(); }
@@ -45,7 +53,7 @@ export default function RightIsland() {
   function geolocate() {
     if (!navigator.geolocation) return;
     navigator.geolocation.getCurrentPosition(
-      (pos) => mapInstance?.flyTo([pos.coords.latitude, pos.coords.longitude], 14),
+      (pos) => mapInstance?.flyTo([pos.coords.latitude, pos.coords.longitude], 14, { animate: true, duration: 2.0 }),
       () => import('react-toastify').then((m) => m.toast.error('Geolocation denied'))
     );
   }
@@ -74,7 +82,7 @@ export default function RightIsland() {
   }
 
   function flyToResult(r) {
-    mapInstance?.flyTo([parseFloat(r.lat), parseFloat(r.lon)], 13);
+    mapInstance?.flyTo([parseFloat(r.lat), parseFloat(r.lon)], 13, { animate: true, duration: 2.2 });
     setActivePanel(null);
     setCitySearch('');
     setCityResults([]);
@@ -97,19 +105,19 @@ export default function RightIsland() {
   const divider = <div style={{ height: 1, background: 'var(--border)', margin: '4px 2px' }} />;
 
   return (
-    <div style={{ position: 'fixed', right: 16, top: '50%', transform: 'translateY(-50%)', zIndex: 1000 }}>
+    <div onClick={(e) => e.stopPropagation()} style={{ position: 'fixed', right: 16, top: '50%', transform: 'translateY(-50%)', zIndex: 1000 }}>
       <div className="island" style={{ padding: '6px', display: 'flex', flexDirection: 'column', gap: 2 }}>
         <button style={iconBtn()} onClick={zoomIn} title={t('map.zoom_in')}><Plus size={16} /></button>
         <button style={iconBtn()} onClick={zoomOut} title={t('map.zoom_out')}><Minus size={16} /></button>
         {divider}
         <button style={iconBtn()} onClick={resetBearing} title={t('map.reset_bearing')}><Compass size={16} /></button>
         {divider}
-        <button style={iconBtn(cityOpen)} onClick={() => togglePanel('city')} title={t('map.city_search')}>
+        <button style={iconBtn(cityOpen)} onClick={() => togglePanel('right:city')} title={t('map.city_search')}>
           <Search size={16} />
         </button>
         <button style={iconBtn()} onClick={geolocate} title={t('map.my_location')}><Navigation size={16} /></button>
         {divider}
-        <button style={iconBtn(layersOpen)} onClick={() => togglePanel('layers')} title={t('map.map_layers')}>
+        <button style={iconBtn(layersOpen)} onClick={() => togglePanel('right:layers')} title={t('map.map_layers')}>
           <Layers size={16} />
         </button>
         {divider}
@@ -122,7 +130,7 @@ export default function RightIsland() {
         {divider}
         <button
           style={iconBtn(poiOpen || showPOI)}
-          onClick={() => togglePanel('poi')}
+          onClick={() => togglePanel('right:poi')}
           title={t('map.poi')}
         >
           <MapPin size={16} />
@@ -132,7 +140,7 @@ export default function RightIsland() {
           <PenLine size={16} />
         </button>
         {divider}
-        <button style={iconBtn(attrOpen)} onClick={() => togglePanel('attr')} title={t('map.attribution')}>
+        <button style={iconBtn(attrOpen)} onClick={() => togglePanel('right:attr')} title={t('map.attribution')}>
           <Info size={16} />
         </button>
       </div>
@@ -278,17 +286,12 @@ export default function RightIsland() {
           padding: '8px 12px', minWidth: 120,
         }}>
           <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: 6 }}>{t('map.speed_legend')}</div>
-          {[
-            { label: '0–10 km/h',   color: 'rgb(155,155,155)' },
-            { label: '10–30 km/h',  color: 'rgb(0,122,255)' },
-            { label: '30–60 km/h',  color: 'rgb(52,199,89)' },
-            { label: '60–90 km/h',  color: 'rgb(255,204,0)' },
-            { label: '90–120 km/h', color: 'rgb(255,149,0)' },
-            { label: '120+ km/h',   color: 'rgb(255,59,48)' },
-          ].map(({ label, color }) => (
-            <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}>
+          {SPEED_LEGEND.map(({ labelKm, labelMi, color }) => (
+            <div key={labelKm} style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}>
               <div style={{ width: 20, height: 4, borderRadius: 2, background: color, flexShrink: 0 }} />
-              <span style={{ fontSize: 11, color: 'var(--text-secondary)' }}>{label}</span>
+              <span style={{ fontSize: 11, color: 'var(--text-secondary)' }}>
+                {unitSystem === 'imperial' ? labelMi : labelKm}
+              </span>
             </div>
           ))}
         </div>

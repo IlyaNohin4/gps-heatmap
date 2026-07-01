@@ -28,7 +28,7 @@ const PublicTrackPage = lazy(() => import('./pages/PublicTrackPage.jsx'));
 // ---- Main App Page ----
 function MainPage() {
   const { isAuthenticated, setUser } = useAuthStore();
-  const { theme, setTracks, setTheme, setUnits, setLanguage } = useAppStore();
+  const { theme, setTracks, setTheme, setUnitSystem, setLanguage } = useAppStore();
   const { mapInstance } = useMapStore();
   const { t, i18n } = useTranslation();
   const [tracksLoading, setTracksLoading] = useState(false);
@@ -47,7 +47,7 @@ function MainPage() {
         setUser(user);
         setTheme(user.theme);
         setLanguage(user.language);
-        setUnits({ distance: user.unit_distance, speed: user.unit_speed });
+        setUnitSystem(user.unit_distance === 'mi' ? 'imperial' : 'metric');
         i18n.changeLanguage(user.language);
         // Apply theme to DOM and keep fast-load cache in sync
         document.documentElement.dataset.theme = user.theme;

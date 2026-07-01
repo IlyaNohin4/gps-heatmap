@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, memo } from 'react';
 import { useMap } from 'react-leaflet';
 import L from 'leaflet';
 
@@ -28,7 +28,7 @@ function speedToColor(kmh) {
   return 'rgb(255,59,48)';
 }
 
-export default function SpeedLayer({ tracks }) {
+const SpeedLayer = memo(function SpeedLayer({ tracks }) {
   const map = useMap();
   const groupRef = useRef(null);
 
@@ -73,7 +73,9 @@ export default function SpeedLayer({ tracks }) {
   }, [tracks]);
 
   return null;
-}
+});
+
+export default SpeedLayer;
 
 // Speed legend data (exported for UI use)
 export const SPEED_LEGEND = BREAKPOINTS.map((b) => ({

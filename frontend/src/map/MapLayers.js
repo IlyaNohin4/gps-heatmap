@@ -14,12 +14,7 @@ export const TILE_LAYERS = {
     attribution: '<a href="https://www.cyclosm.org">CyclOSM</a> | © OpenStreetMap contributors',
     maxZoom: 20,
   },
-  hiking: {
-    url: 'https://tile.waymarkedtrails.org/hiking/{z}/{x}/{y}.png',
-    attribution: '© <a href="https://hiking.waymarkedtrails.org">Waymarked Trails</a> | © OpenStreetMap contributors',
-    maxZoom: 19,
-  },
-  'carto-light': {
+'carto-light': {
     url: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
     attribution: '© <a href="https://carto.com/attributions">CARTO</a> | © OpenStreetMap contributors',
     maxZoom: 20,
@@ -53,8 +48,7 @@ export const LAYER_OPTIONS = [
   { id: 'osm',            label: 'OpenStreetMap',    group: 'Street' },
   { id: 'topo',           label: 'OpenTopoMap',      group: 'Street' },
   { id: 'cyclosm',        label: 'CyclOSM',          group: 'Street' },
-  { id: 'hiking',         label: 'Hiking Trails',    group: 'Street' },
-  { id: 'carto-light',    label: 'CartoDB Light',    group: 'Style' },
+{ id: 'carto-light',    label: 'CartoDB Light',    group: 'Style' },
   { id: 'carto-dark',     label: 'CartoDB Dark',     group: 'Style' },
   { id: 'google-street',  label: 'Google Street',    group: 'Google' },
   { id: 'google-satellite', label: 'Google Satellite', group: 'Google' },

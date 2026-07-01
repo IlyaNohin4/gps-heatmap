@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, memo } from 'react';
 import { useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet.heat';
@@ -13,7 +13,7 @@ const GRADIENT = {
   1.00: '#ff3b30',
 };
 
-export default function VisitLayer({ tracks }) {
+const VisitLayer = memo(function VisitLayer({ tracks }) {
   const map = useMap();
   const heatRef = useRef(null);
 
@@ -53,4 +53,6 @@ export default function VisitLayer({ tracks }) {
   }, [map, tracks]);
 
   return null;
-}
+});
+
+export default VisitLayer;
