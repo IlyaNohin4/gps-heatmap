@@ -49,7 +49,7 @@ services:
         condition: service_healthy
     volumes:
       - ./backend:/app
-    command: celery -A app.tasks.celery_app worker --loglevel=info
+    command: watchmedo auto-restart -d /app -p '*.py' --recursive -- celery -A app.tasks.celery_app worker --loglevel=info
 
   frontend:
     build: ./frontend
