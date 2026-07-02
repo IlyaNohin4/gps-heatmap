@@ -8,6 +8,7 @@ import './styles/globals.css';
 
 import useAppStore from './store/appStore.js';
 import useAuthStore from './store/authStore.js';
+import useMapStore from './store/mapStore.js';
 
 import MapContainer from './components/MapContainer.jsx';
 import AuthModal from './components/auth/AuthModal.jsx';
@@ -16,9 +17,12 @@ import TopIsland from './components/islands/TopIsland.jsx';
 import LeftIsland from './components/islands/LeftIsland.jsx';
 import RightIsland from './components/islands/RightIsland.jsx';
 import BottomIsland from './components/islands/BottomIsland.jsx';
+import { TrackCreatorPanel } from './map/TrackCreator.jsx';
+import SaveTrackModal from './components/track/SaveTrackModal.jsx';
 
-import { fetchTracks } from './api/tracks.js';
+import { fetchTracks, createTrackFromPoints } from './api/tracks.js';
 import { getMe } from './api/auth.js';
+import { toast } from 'react-toastify';
 import { Search, RotateCcw } from 'lucide-react';
 import useMapStore from './store/mapStore.js';
 
@@ -39,10 +43,17 @@ const SPEED_LEGEND = [
 function MainPage() {
   const { isAuthenticated, setUser } = useAuthStore();
   const { theme, setTracks, setTheme, setUnitSystem, setLanguage, selectedTrackId, unitSystem } = useAppStore();
-  const { mapInstance, showSpeed } = useMapStore();
+  const {
+    mapInstance, showSpeed, showTrackCreator, toggleTrackCreator,
+    trackCreatorState, setTrackCreatorState, undoWaypoint, redoWaypoint, clearTrackCreatorState
+  } = useMapStore();
   const { t, i18n } = useTranslation();
   const [tracksLoading, setTracksLoading] = useState(false);
   const [topIslandBottom, setTopIslandBottom] = useState(64);
+  const [creatorMode, setCreatorMode] = useState('manual');
+  const [creatorProfile, setCreatorProfile] = useState('cycling-regular');
+  const [showSaveModal, setShowSaveModal] = useState(false);
+  const [savingTrack, setSavingTrack] = useState(false);
   const uploadInputRef = useRef(null);
   const topIslandRef = useRef(null);
 
@@ -165,6 +176,68 @@ function MainPage() {
           ))}
         </div>
       )}
+
+      {/* Track creator panel - rendered outside map */}
+      {showTrackCreator && (
+        <TrackCreatorPanel
+          mode={creatorMode}
+          setMode={(m) => {
+            setCreatorMode(m);
+            setTrackCreatorState({ mode: m });
+          }}
+          profile={creatorProfile}
+          setProfile={(p) => {
+            setCreatorProfile(p);
+            setTrackCreatorState({ profile: p });
+          }}
+          onUndo={undoWaypoint}
+          onRedo={redoWaypoint}
+          onClear={clearTrackCreatorState}
+          onSave={() => setShowSaveModal(true)}
+          onCancel={() => {
+            clearTrackCreatorState();
+            toggleTrackCreator();
+          }}
+        />
+      )}
+
+      {/* Save track modal - rendered outside map */}
+      <SaveTrackModal
+        isOpen={showSaveModal}
+        trackName="New Track"
+        points={
+          creatorMode === 'auto'
+            ? trackCreatorState.routePoints
+            : trackCreatorState.waypoints
+        }
+        onClose={() => setShowSaveModal(false)}
+        onSaveToDb={async (trackName, format, points) => {
+          setSavingTrack(true);
+          try {
+            await createTrackFromPoints(
+              trackName,
+              creatorMode === 'auto' ? trackCreatorState.routePoints : trackCreatorState.waypoints,
+              format
+            );
+
+            const updatedTracks = await fetchTracks();
+            setTracks(updatedTracks);
+
+            clearTrackCreatorState();
+            toggleTrackCreator();
+            setShowSaveModal(false);
+
+            toast.success(`Track "${trackName}" saved!`);
+          } catch (err) {
+            toast.error('Failed to save track');
+            console.error(err);
+          } finally {
+            setSavingTrack(false);
+          }
+        }}
+        saving={savingTrack}
+      />
+
       <AuthModal />
       <UploadZone inputRef={uploadInputRef} />
       <ToastContainer
