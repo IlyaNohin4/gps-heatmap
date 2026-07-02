@@ -217,6 +217,10 @@ font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif
 - **Type:** Dropdown filter in LeftIsland
 - **Behavior:** Realtime filtering of track list
 
+### Area Filtering
+- **Find in this area:** кнопка загружает треки в текущей области карты (bbox фильтр)
+- **Show all:** маленькая иконка-кнопка отменяет bbox фильтр, загружает все треки
+
 ---
 
 ## Celery & Background Processing
