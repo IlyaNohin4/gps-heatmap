@@ -153,7 +153,7 @@ export default function LeftIsland({ onUploadClick, loading }) {
           <div style={{ padding: '10px 12px', borderBottom: '1px solid var(--border)' }}>
             <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-secondary)', marginBottom: 6, textTransform: 'uppercase' }}>{t('tracks.sort')}</div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 10 }}>
-              {(['newest', 'oldest', 'longest', 'fastest', 'slowest', 'shortest']).map((v) => (
+              {(['newest', 'oldest', 'longest', 'shortest', 'fastest', 'slowest']).map((v) => (
                 <button key={v} style={chip(sort === v)} onClick={() => setSort(v)}>{t(`sort.${v}`)}</button>
               ))}
             </div>
