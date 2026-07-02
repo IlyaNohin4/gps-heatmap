@@ -240,20 +240,76 @@ def _normalize_points(points: list[dict]) -> list[dict]:
     return points
 
 
-def _build_segments(points: list[dict]) -> tuple[list[dict], float, float, float, float, Optional[int]]:
-    """Compute speed_segments, distance_km, speed stats, duration.
+def _calculate_grade(ele_delta_m: float, distance_m: float) -> Optional[float]:
+    """Calculate grade (slope) in percent.
+
+    Args:
+        ele_delta_m: elevation change in meters
+        distance_m: horizontal distance in meters
+
+    Returns:
+        Grade in percent (e.g., 5.5 for 5.5% slope), or None if invalid
+    """
+    if distance_m <= 0:
+        return None
+    return (ele_delta_m / distance_m) * 100
+
+
+def _classify_segment(grade: Optional[float], climbing_threshold: float = 5.0, descent_threshold: float = -5.0) -> str:
+    """Classify segment by grade.
+
+    Args:
+        grade: grade in percent
+        climbing_threshold: grade above this is "climbing" (default 5%)
+        descent_threshold: grade below this is "descent" (default -5%)
+
+    Returns:
+        Classification: "climbing", "descent", or "flat"
+    """
+    if grade is None:
+        return "flat"
+    if grade > climbing_threshold:
+        return "climbing"
+    elif grade < descent_threshold:
+        return "descent"
+    else:
+        return "flat"
+
+
+def _build_segments(points: list[dict]) -> tuple[list[dict], float, float, float, float, Optional[int], dict]:
+    """Compute speed_segments, distance_km, speed stats, duration, and grade stats.
 
     Uses osmand_speed_kmh from each point when available; falls back to Haversine
     for points that carry no recorded speed.
+
+    Also calculates grade and classifies each segment.
     """
     segments: list[dict] = []
     total_km = 0.0
     speeds: list[float] = []
+    grades: list[float] = []
+    segment_types: dict[str, int] = {"climbing": 0, "descent": 0, "flat": 0}
+    segment_distances: dict[str, float] = {"climbing": 0.0, "descent": 0.0, "flat": 0.0}
 
     for i in range(1, len(points)):
         p0, p1 = points[i - 1], points[i]
-        dist = _haversine(p0["lat"], p0["lon"], p1["lat"], p1["lon"])
-        total_km += dist
+        dist_km = _haversine(p0["lat"], p0["lon"], p1["lat"], p1["lon"])
+        dist_m = dist_km * 1000
+        total_km += dist_km
+
+        # Calculate grade
+        ele0 = p0.get("elevation")
+        ele1 = p1.get("elevation")
+        grade = None
+        if ele0 is not None and ele1 is not None:
+            grade = _calculate_grade(ele1 - ele0, dist_m)
+            if grade is not None:
+                grades.append(grade)
+
+        # Classify segment
+        seg_type = _classify_segment(grade)
+        segment_types[seg_type] += 1
+        segment_distances[seg_type] += dist_km
 
         # Prefer the speed recorded at the destination point, then origin.
         recorded = p1.get("osmand_speed_kmh")
@@ -264,28 +320,51 @@ def _build_segments(points: list[dict]) -> tuple[list[dict], float, float, float
             spd = recorded
         elif p0["time"] and p1["time"]:
             dt = (p1["time"] - p0["time"]).total_seconds()
-            spd = dist / dt * 3600 if dt > 0 else None  # km/h
+            spd = dist_km / (dt / 3600) if dt > 0 else None  # km/h
         else:
             spd = None
 
         if spd is not None:
             speeds.append(spd)
-            segments.append({
-                "from": [p0["lat"], p0["lon"]],
-                "to": [p1["lat"], p1["lon"]],
-                "speed_kmh": round(spd, 2),
-            })
+
+        # Build segment
+        segment = {
+            "from": [p0["lat"], p0["lon"]],
+            "to": [p1["lat"], p1["lon"]],
+            "speed_kmh": round(spd, 2) if spd is not None else None,
+            "grade_percent": round(grade, 1) if grade is not None else None,
+            "type": seg_type,
+            "distance_km": round(dist_km, 3),
+        }
+        segments.append(segment)
 
     speed_avg = sum(speeds) / len(speeds) if speeds else None
     speed_max = max(speeds) if speeds else None
     speed_min = min(speeds) if speeds else None
+
+    grade_avg = sum(grades) / len(grades) if grades else None
+    grade_max = max(grades) if grades else None
+    grade_min = min(grades) if grades else None
 
     duration = None
     timed = [p for p in points if p["time"]]
     if len(timed) >= 2:
         duration = int((timed[-1]["time"] - timed[0]["time"]).total_seconds())
 
-    return segments, total_km, speed_avg, speed_max, speed_min, duration
+    # Build statistics
+    stats = {
+        "grade_avg": round(grade_avg, 1) if grade_avg is not None else None,
+        "grade_max": round(grade_max, 1) if grade_max is not None else None,
+        "grade_min": round(grade_min, 1) if grade_min is not None else None,
+        "segment_counts": segment_types,
+        "segment_distances": {k: round(v, 2) for k, v in segment_distances.items()},
+        "segment_percentages": {
+            k: round((v / total_km * 100), 1) if total_km > 0 else 0
+            for k, v in segment_distances.items()
+        }
+    }
+
+    return segments, total_km, speed_avg, speed_max, speed_min, duration, stats
 
 
 # ── GPX ───────────────────────────────────────────────────────────────────────
@@ -379,7 +458,7 @@ def _parse_gpx(data: bytes) -> dict:
     normalized_points = _normalize_points(points)
 
     recorded_at = points[0]["time"] if points[0]["time"] else None
-    segs, dist, s_avg, s_max, s_min, dur = _build_segments(normalized_points)
+    segs, dist, s_avg, s_max, s_min, dur, stats = _build_segments(normalized_points)
     return {
         "points": raw_points,
         "normalized_points": normalized_points,
@@ -390,6 +469,7 @@ def _parse_gpx(data: bytes) -> dict:
         "speed_min": round(s_min, 2) if s_min else None,
         "duration_sec": dur,
         "recorded_at": recorded_at,
+        "grade_stats": stats,
     }
 
 
@@ -414,7 +494,7 @@ def _parse_kml(data: bytes) -> dict:
     raw_points = points
     normalized_points = _normalize_points(points) if points else []
 
-    segs, dist, s_avg, s_max, s_min, dur = _build_segments(normalized_points)
+    segs, dist, s_avg, s_max, s_min, dur, stats = _build_segments(normalized_points)
     return {
         "points": raw_points,
         "normalized_points": normalized_points,
@@ -425,6 +505,7 @@ def _parse_kml(data: bytes) -> dict:
         "speed_min": round(s_min, 2) if s_min else None,
         "duration_sec": None,
         "recorded_at": None,
+        "grade_stats": stats,
     }
 
 
@@ -460,7 +541,7 @@ def _parse_tcx(data: bytes) -> dict:
     normalized_points = _normalize_points(points) if points else []
 
     recorded_at = points[0]["time"] if points and points[0]["time"] else None
-    segs, dist, s_avg, s_max, s_min, dur = _build_segments(normalized_points)
+    segs, dist, s_avg, s_max, s_min, dur, stats = _build_segments(normalized_points)
     return {
         "points": raw_points,
         "normalized_points": normalized_points,
@@ -471,6 +552,7 @@ def _parse_tcx(data: bytes) -> dict:
         "speed_min": round(s_min, 2) if s_min else None,
         "duration_sec": dur,
         "recorded_at": recorded_at,
+        "grade_stats": stats,
     }
 
 
@@ -501,7 +583,7 @@ def _parse_fit(data: bytes) -> dict:
     normalized_points = _normalize_points(points) if points else []
 
     recorded_at = points[0]["time"] if points and points[0]["time"] else None
-    segs, dist, s_avg, s_max, s_min, dur = _build_segments(normalized_points)
+    segs, dist, s_avg, s_max, s_min, dur, stats = _build_segments(normalized_points)
     return {
         "points": raw_points,
         "normalized_points": normalized_points,
@@ -512,6 +594,7 @@ def _parse_fit(data: bytes) -> dict:
         "speed_min": round(s_min, 2) if s_min else None,
         "duration_sec": dur,
         "recorded_at": recorded_at,
+        "grade_stats": stats,
     }
 
 
@@ -541,7 +624,7 @@ def _parse_geojson(data: bytes) -> dict:
     raw_points = points
     normalized_points = _normalize_points(points) if points else []
 
-    segs, dist, s_avg, s_max, s_min, dur = _build_segments(normalized_points)
+    segs, dist, s_avg, s_max, s_min, dur, stats = _build_segments(normalized_points)
     return {
         "points": raw_points,
         "normalized_points": normalized_points,
@@ -552,6 +635,7 @@ def _parse_geojson(data: bytes) -> dict:
         "speed_min": None,
         "duration_sec": None,
         "recorded_at": None,
+        "grade_stats": stats,
     }
 
 

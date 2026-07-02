@@ -353,6 +353,75 @@ ParseResult = {
 
 ---
 
+## Grade Calculation & Segment Classification
+
+**Grade (Slope) in Percent:**
+
+```python
+def _calculate_grade(ele_delta_m: float, distance_m: float) -> Optional[float]:
+    """grade = (elevation_delta / distance) * 100"""
+    if distance_m <= 0:
+        return None
+    return (ele_delta_m / distance_m) * 100
+
+# Example:
+# - Climb 10m over 200m horizontal = (10 / 200) * 100 = 5% grade
+# - Descend 10m over 200m horizontal = (-10 / 200) * 100 = -5% grade
+```
+
+**Segment Classification:**
+
+```python
+def _classify_segment(grade: Optional[float]) -> str:
+    """
+    Classify by grade:
+    - grade > 5% → "climbing"
+    - grade < -5% → "descent"
+    - -5% ≤ grade ≤ 5% → "flat"
+    """
+    if grade is None:
+        return "flat"
+    elif grade > 5.0:
+        return "climbing"
+    elif grade < -5.0:
+        return "descent"
+    else:
+        return "flat"
+```
+
+**Output Statistics:**
+
+```python
+"grade_stats": {
+    "grade_avg": 2.5,        # Average slope %
+    "grade_max": 15.2,       # Steepest climb
+    "grade_min": -12.8,      # Steepest descent
+    "segment_counts": {
+        "climbing": 45,      # Number of climbing segments
+        "descent": 40,
+        "flat": 35
+    },
+    "segment_distances": {
+        "climbing": 3.2,     # Total km climbing
+        "descent": 2.8,
+        "flat": 2.0
+    },
+    "segment_percentages": {
+        "climbing": 40.0,    # % of route that's climbing
+        "descent": 35.0,
+        "flat": 25.0
+    }
+}
+```
+
+**Use Cases:**
+- Route difficulty assessment: "40% climbing → Hard route"
+- Route recommendations: filter by climbing %
+- Training analysis: "How much climbing did I do?"
+- UI visualization: color segments by type (red=climbing, blue=descent, green=flat)
+
+---
+
 ## Speed Segments
 
 **Вычисляется для каждой пары консеквентных точек:**
@@ -384,9 +453,24 @@ def calculate_speed_segments(points: List[Dict]) -> List[Dict]:
     return segments
 ```
 
+**Структура сегмента:**
+```python
+{
+    "from": [lat, lon],
+    "to": [lat, lon],
+    "speed_kmh": float | None,
+    "grade_percent": float | None,    # NEW: slope in percent
+    "type": "climbing" | "descent" | "flat",  # NEW: classification
+    "distance_km": float
+}
+```
+
 **Используется для:**
-- SpeedLayer на карте (градиент цветов, рисует линии от/до координат)
+- SpeedLayer на карте (градиент цветов по скорости)
+- GradeLayer на карте (градиент цветов по уклону)
 - Расчёта `speed_avg`, `speed_max`, `speed_min`
+- Расчёта `grade_avg`, `grade_max`, `grade_min`
+- Классификации маршрута (% climbing, descent, flat)
 - Analytics в графиках (BottomIsland)
 
 ---
