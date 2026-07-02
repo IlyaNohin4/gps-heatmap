@@ -9,11 +9,6 @@ export const TILE_LAYERS = {
     attribution: '© <a href="https://opentopomap.org">OpenTopoMap</a> | © OpenStreetMap contributors',
     maxZoom: 17,
   },
-  cyclosm: {
-    url: 'https://{s}.tile-cyclosm.openstreetmap.fr/cyclosm/{z}/{x}/{y}.png',
-    attribution: '<a href="https://www.cyclosm.org">CyclOSM</a> | © OpenStreetMap contributors',
-    maxZoom: 20,
-  },
   'carto-voyager': {
     url: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png',
     attribution: '© <a href="https://carto.com/attributions">CARTO</a> | © OpenStreetMap contributors',
@@ -36,21 +31,13 @@ export const TILE_LAYERS = {
     maxZoom: 22,
     subdomains: [],
   },
-  'tracestrack-positron': {
-    url: 'https://tile.tracestrack.com/positron/{z}/{x}/{y}.png',
-    attribution: '© <a href="https://tracestrack.com">Tracestrack</a> | © <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-    maxZoom: 19,
-    subdomains: [],
-  },
 };
 
 export const LAYER_OPTIONS = [
-  { id: 'osm',                  label: 'OpenStreetMap' },
-  { id: 'topo',                 label: 'OpenTopoMap' },
-  { id: 'cyclosm',              label: 'CyclOSM' },
-  { id: 'carto-voyager',        label: 'CARTO Voyager' },
-  { id: 'stamen-terrain',       label: 'Stamen Terrain' },
-  { id: 'tracestrack-positron', label: 'Tracestrack Positron' },
-  { id: 'google-street',        label: 'Google Street' },
-  { id: 'google-satellite',     label: 'Google Satellite' },
+  { id: 'osm',            label: 'OpenStreetMap' },
+  { id: 'topo',           label: 'OpenTopoMap' },
+  { id: 'carto-voyager',  label: 'CARTO Voyager' },
+  { id: 'stamen-terrain', label: 'Stamen Terrain' },
+  { id: 'google-street',  label: 'Google Street' },
+  { id: 'google-satellite', label: 'Google Satellite' },
 ];
