@@ -238,17 +238,26 @@ font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif
   - Фронтенд отправляет файлы по одному
   - Celery очередь обрабатывает их последовательно
   - Status "queued" — трек ждет обработки
-  - Status "parsing/normalizing/geocoding/saving" — активная обработка
+  - Status "parsing/geocoding/saving" — активная обработка
   
 - **Task:** `process_track` (разблокируется после завершения предыдущего)
-  1. Определить формат по magic bytes
-  2. Парсить (см. PARSER.md)
-  3. Нормализовать (см. PARSER.md)
-  4. Определить регионы (Nominatim + Redis кэш 30 дней)
-  5. Сохранить в БД
-  6. Освободить lock — следующий трек начинает обработку
+  1. **Parse + Normalize** (см. PARSER.md)
+     - Определить формат по magic bytes
+     - Парсить файл → raw_points
+     - Collapse drift (кластеризация близких точек)
+     - Remove speed outliers (hard limit 200 км/ч)
+     - Apply Kalman filter → normalized_points
+     - Вычислить метрики (distance, speed_avg/max/min, segments)
+  2. Определить регионы (Nominatim + Redis кэш 30 дней)
+  3. Сохранить в БД (raw_points + normalized_points)
+  4. Освободить lock — следующий трек начинает обработку
 
 - **Nominatim:** User-Agent: `gps-heatmap/1.0 (email)` в `.env` (настроен на 3 точки, Redis кэш 30 дней)
+
+- **Database Storage:**
+  - `raw_points` — оригинальные GPS данные (как есть в файле)
+  - `normalized_points` — после нормализации (фильтрация + Kalman)
+  - Все метрики (distance, speed, segments) считаются из normalized_points
 
 ---
 
