@@ -28,6 +28,13 @@ MAGIC = {
 ALLOWED_FORMATS = {"gpx", "kml", "tcx", "fit", "geojson"}
 
 
+# ── Schemas ────────────────────────────────────────────────────────────────────
+
+class Point(BaseModel):
+    lat: float
+    lon: float
+
+
 def _detect_format(header: bytes, filename: str) -> str:
     """Detect file format from magic bytes, fall back to extension."""
     for magic, fmts in MAGIC.items():
@@ -304,11 +311,6 @@ def delete_track(
         raise HTTPException(status_code=404, detail="Track not found")
     db.delete(track)
     db.commit()
-
-
-class Point(BaseModel):
-    lat: float
-    lon: float
 
 
 class CreateTrackBody(BaseModel):
