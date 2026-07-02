@@ -225,7 +225,9 @@ font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif
 
 ### Area Filtering
 - **Find in this area:** кнопка загружает треки в текущей области карты (bbox фильтр)
-- **Show all:** маленькая иконка-кнопка отменяет bbox фильтр, загружает все треки
+  - Style: `.btn-glass` (glassmorphism, padding 6px 14px, fontSize 12px)
+- **Show all:** маленькая иконка-кнопка (32x32) отменяет bbox фильтр, загружает все треки
+  - Style: `.btn-glass` (glassmorphism)
 
 ---
 
