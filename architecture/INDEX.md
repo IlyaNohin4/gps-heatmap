@@ -148,7 +148,10 @@ id, user_id, token, expires_at, used
 
 ### LeftIsland
 - Поиск (border-radius: 24px)
-- Фильтры (кнопка)
+- Фильтры (кнопка):
+  - **Sort:** newest, oldest, longest, fastest, slowest, shortest
+  - **Format:** all, gpx, kml, tcx, fit, geojson
+  - **Speed range:** dual-range slider (0–200 km/h)
 - Список карточек треков (название, дата, длина, avg скорость, формат)
 - Кнопка "Найти в этой области"
 - Создание трека
