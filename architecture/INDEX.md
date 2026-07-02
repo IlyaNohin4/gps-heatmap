@@ -249,9 +249,14 @@ font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif
        2. Remove speed outliers (hard limit 200 км/ч)
        3. Apply Kalman filter (сглаживание lat/lon)
        4. Smooth elevation (Savitzky-Golay фильтр, устраняет GPS шум в высоте)
-     - Вычислить метрики (distance, elevation_gain/loss, speed_avg/max/min, segments)
+     - **Вычислить метрики:**
+       - Distance, duration, elevation_gain/loss
+       - Speed: avg, max, min
+       - Grade: avg, max, min (в процентах)
+       - Segment classification: climbing | descent | flat
+       - Statistics: % climbing, % descent, % flat
   2. Определить регионы (Nominatim + Redis кэш 30 дней)
-  3. Сохранить в БД (raw_points + normalized_points)
+  3. Сохранить в БД (raw_points + normalized_points + grade_stats)
   4. Освободить lock — следующий трек начинает обработку
 
 - **Nominatim:** User-Agent: `gps-heatmap/1.0 (email)` в `.env` (настроен на 3 точки, Redis кэш 30 дней)
