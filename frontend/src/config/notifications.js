@@ -4,7 +4,7 @@ export const NOTIFICATIONS = {
   LOGIN_SUCCESS: '✅ Логин успех',
   LOGIN_ERROR: (detail) => `❌ Логин ошибка${detail ? ': ' + detail : ''}`,
   REGISTER_SUCCESS: '✅ Регистрация аккаунта успех',
-  REGISTER_ERROR: (detail) => `❌ Регистрация ошибка${detail ? ': ' + detail : ''}',
+  REGISTER_ERROR: (detail) => `❌ Регистрация ошибка${detail ? ': ' + detail : ''}`,
   PASSWORD_RESET_SENT: '✅ Восстановление пароля отправлено',
   PASSWORD_RESET_ERROR: (detail) => `❌ Ошибка${detail ? ': ' + detail : ''}`,
   PASSWORD_CHANGE_SUCCESS: '✅ Смена пароля успех',
