@@ -23,7 +23,7 @@ import SaveTrackModal from './components/track/SaveTrackModal.jsx';
 import { fetchTracks, createTrackFromPoints } from './api/tracks.js';
 import { getMe } from './api/auth.js';
 import { toast } from 'react-toastify';
-import { Search, RotateCcw } from 'lucide-react';
+import { Search, RotateCcw, Eye, EyeOff } from 'lucide-react';
 
 // Lazy-load the public track page so it doesn't pull leaflet into the main bundle
 const PublicTrackPage = lazy(() => import('./pages/PublicTrackPage.jsx'));
@@ -41,10 +41,11 @@ const SPEED_LEGEND = [
 // ---- Main App Page ----
 function MainPage() {
   const { isAuthenticated, setUser } = useAuthStore();
-  const { theme, setTracks, setTheme, setUnitSystem, setLanguage, selectedTrackId, unitSystem } = useAppStore();
+  const { theme, setTracks, setTheme, setUnitSystem, setLanguage, selectedTrackId, unitSystem, tracks } = useAppStore();
   const {
     mapInstance, showSpeed, showTrackCreator, toggleTrackCreator,
-    trackCreatorState, setTrackCreatorState, undoWaypoint, redoWaypoint, clearTrackCreatorState
+    trackCreatorState, setTrackCreatorState, undoWaypoint, redoWaypoint, clearTrackCreatorState,
+    visibleTrackIds, toggleTrackVisibility
   } = useMapStore();
   const { t, i18n } = useTranslation();
   const [tracksLoading, setTracksLoading] = useState(false);
@@ -53,6 +54,7 @@ function MainPage() {
   const [creatorProfile, setCreatorProfile] = useState('cycling-regular');
   const [showSaveModal, setShowSaveModal] = useState(false);
   const [savingTrack, setSavingTrack] = useState(false);
+  const [allTracksVisible, setAllTracksVisible] = useState(false);
   const uploadInputRef = useRef(null);
   const topIslandRef = useRef(null);
 
@@ -125,6 +127,20 @@ function MainPage() {
     } catch { /* ignore */ }
   }
 
+  function handleToggleVisibility() {
+    const next = !allTracksVisible;
+    setAllTracksVisible(next);
+
+    tracks.forEach((track) => {
+      const isVisible = visibleTrackIds.has(track.id);
+      if (next && !isVisible) {
+        toggleTrackVisibility(track.id);
+      } else if (!next && isVisible) {
+        toggleTrackVisibility(track.id);
+      }
+    });
+  }
+
   return (
     <>
       <MapContainer />
@@ -144,10 +160,19 @@ function MainPage() {
       }}>
         <button
           className="btn-glass"
-          style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 14px', fontSize: 12, whiteSpace: 'nowrap' }}
-          onClick={handleFindInArea}
+          onClick={handleToggleVisibility}
+          title={allTracksVisible ? 'Hide all tracks' : 'Show all tracks'}
+          style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 32, height: 32, padding: 0 }}
         >
-          <Search size={13} /> {t('tracks.find_in_area')}
+          {allTracksVisible ? <Eye size={14} /> : <EyeOff size={14} />}
+        </button>
+        <button
+          className="btn-glass"
+          onClick={handleFindInArea}
+          title={t('tracks.find_in_area')}
+          style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 32, height: 32, padding: 0 }}
+        >
+          <Search size={14} />
         </button>
         <button
           className="btn-glass"
