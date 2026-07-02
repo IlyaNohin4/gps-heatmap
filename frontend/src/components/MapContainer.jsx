@@ -8,6 +8,7 @@ import {
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import 'leaflet.heat';
+import 'leaflet-rotate';
 
 import useMapStore from '../store/mapStore.js';
 import useAppStore from '../store/appStore.js';
@@ -183,6 +184,9 @@ export default function MapContainer() {
       style={{ position: 'fixed', inset: 0, zIndex: 0 }}
       zoomControl={false}
       attributionControl={false}
+      bearing={0}
+      transform={true}
+      rotateControl={false}
     >
       <MapLayers />
     </LeafletMap>

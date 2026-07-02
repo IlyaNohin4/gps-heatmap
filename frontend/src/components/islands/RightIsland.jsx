@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React, { useRef, useEffect } from 'react';
 import {
   Plus, Minus, Compass, Search, Navigation, Layers, Info, X,
   Flame, Gauge, MapPin, PenLine, ChevronRight,
@@ -44,11 +44,23 @@ export default function RightIsland() {
   const [citySearch, setCitySearch] = React.useState('');
   const [cityResults, setCityResults] = React.useState([]);
   const [searching, setSearching] = React.useState(false);
+  const [bearing, setBearing] = React.useState(0);
   const searchTimeout = useRef(null);
 
   function zoomIn() { mapInstance?.zoomIn(); }
   function zoomOut() { mapInstance?.zoomOut(); }
   function resetBearing() { if (mapInstance?.setBearing) mapInstance.setBearing(0); }
+
+  useEffect(() => {
+    if (!mapInstance) return;
+    const updateBearing = () => {
+      const b = mapInstance.getBearing?.() ?? 0;
+      setBearing(Math.round(b));
+    };
+    mapInstance.on('rotate', updateBearing);
+    updateBearing();
+    return () => mapInstance.off('rotate', updateBearing);
+  }, [mapInstance]);
 
   function geolocate() {
     if (!navigator.geolocation) return;
@@ -110,7 +122,7 @@ export default function RightIsland() {
         <button style={iconBtn()} onClick={zoomIn} title={t('map.zoom_in')}><Plus size={16} /></button>
         <button style={iconBtn()} onClick={zoomOut} title={t('map.zoom_out')}><Minus size={16} /></button>
         {divider}
-        <button style={iconBtn()} onClick={resetBearing} title={t('map.reset_bearing')}><Compass size={16} /></button>
+        <button style={iconBtn()} onClick={resetBearing} title={`${t('map.reset_bearing')} (${bearing}°)`}><Compass size={16} /></button>
         {divider}
         <button style={iconBtn(cityOpen)} onClick={() => togglePanel('right:city')} title={t('map.city_search')}>
           <Search size={16} />
