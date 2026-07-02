@@ -6,20 +6,17 @@
   - Тест: реальный трек показывает max 115 км/ч (реалистично для спуска)
 ---
 
-## ⭐⭐⭐ КРИТИЧНЫЕ (MVP blockers)
+## ⭐⭐⭐ КРИТИЧНЫЕ (MVP blockers) — 1 ЗАДАЧА
 
-- [ ] **Display grade_stats in Frontend UI** (ПРИОРИТЕТ)
-  - Добавить climbing%, flat%, descent% в карточках треков (LeftIsland)
-  - Показать в панели деталей трека
-  - Интегрировать в track detail view
-  - ✓ Slope profile chart уже есть в BottomIsland (рассчитывается из normalized_points)
-  - Влияет на: track analytics display
-
-- [ ] **Full integration test** (ПРИОРИТЕТ)
+- [ ] **Full integration test** (MVP REQUIREMENT)
   - Загрузить реальный трек через UI
   - Проверить что данные появились на карте (normalized_points)
-  - Проверить что графики работают (elevation, speed, slope)
-  - Проверить что grade_stats отображается корректно
+  - Проверить что все графики работают (Elevation, Speed, Slope)
+  - Проверить что Slope chart рассчитывается корректно
+  - Est. Time: 1-2 часа
+  
+  **NOTE:** Grade stats (climbing%, flat%, descent%) НЕ нужны в UI
+  Slope chart в BottomIsland достаточен для анализа уклона
 
 ---
 

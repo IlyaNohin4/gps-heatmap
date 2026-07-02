@@ -80,7 +80,6 @@ def test_parse_and_save_track_to_db(db_session, test_user):
     track.raw_points = result["points"]
     track.normalized_points = result["normalized_points"]
     track.speed_segments = result["speed_segments"]
-    track.grade_stats = result["grade_stats"]
     track.distance_km = result["distance_km"]
     track.duration_sec = result["duration_sec"]
     track.speed_avg = result["speed_avg"]
@@ -124,18 +123,6 @@ def test_parse_and_save_track_to_db(db_session, test_user):
     assert len(saved_track.speed_segments) > 0
     print(f"✓ Speed segments: {len(saved_track.speed_segments)}")
 
-    # Step 8: Verify grade_stats
-    assert saved_track.grade_stats is not None
-    grade_stats = saved_track.grade_stats
-    assert "grade_avg" in grade_stats
-    assert "segment_percentages" in grade_stats
-
-    print(f"✓ Grade stats:")
-    print(f"  - grade_avg: {grade_stats['grade_avg']}%")
-    print(f"  - climbing: {grade_stats['segment_percentages'].get('climbing', 0):.1f}%")
-    print(f"  - flat: {grade_stats['segment_percentages'].get('flat', 0):.1f}%")
-    print(f"  - descent: {grade_stats['segment_percentages'].get('descent', 0):.1f}%")
-
     print(f"\n✅ FULL PIPELINE TEST PASSED!")
 
 
@@ -159,7 +146,6 @@ def test_elevation_gain_loss_saved(db_session, test_user):
         "elevation_loss": 5.0,   # 110→105
         "recorded_at": datetime(2025, 1, 1, 10, 0, 0, tzinfo=timezone.utc),
         "speed_segments": [],
-        "grade_stats": {},
     }
 
     track = Track(user_id=test_user.id, name="Elevation Test", file_format="gpx")

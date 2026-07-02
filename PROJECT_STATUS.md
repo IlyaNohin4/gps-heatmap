@@ -127,12 +127,16 @@
 - [x] Forgot password modal
 - [x] Auto-redirect on session expire
 
-### ❌ Pending
+### ✅ Completed
 
-- [ ] **Display grade_stats in UI** ⭐⭐⭐
-  - Add climbing %, flat %, descent % in track cards
-  - Show in track detail panel
-  - Integrate into slope profile chart (data already available via API)
+- [x] **Slope chart (Grade profile)** ⭐⭐⭐
+  - Recharts visualization of grade/slope across the track
+  - Calculate slope from normalized_points
+  - Interactive hover → marker on map
+  - Display as percentage ±80% range
+  - Part of BottomIsland tab system (Elevation, Speed, Slope)
+
+### ❌ Pending
 
 - [ ] Speed legend positioning verification
   - Currently fixed in bottom-left corner
@@ -230,18 +234,14 @@
 
 ## 🎯 Next Priorities (by Importance)
 
-### ⭐⭐⭐ Critical (MVP blockers)
+### ⭐⭐⭐ Critical (MVP blockers) — 1 TASK
 
-1. **Display grade_stats in Frontend UI**
-   - Add climbing %, flat %, descent % to track cards in LeftIsland
-   - Show grade breakdown in track detail view
-   - Data is already in API response; just needs UI binding
-
-2. **Full end-to-end integration test**
+1. **Full end-to-end integration test** (1-2 hours)
    - Upload real track through UI
    - Verify data appears on map (normalized_points)
-   - Check charts display elevation, speed, slope profiles correctly
-   - Confirm grade_stats displays correctly
+   - Check charts work: Elevation, Speed, and Slope profiles
+   - Verify Slope chart calculates correctly from normalized_points
+   - **NOTE:** Grade stats (climbing%, flat%, descent%) not needed in UI; Slope chart sufficient
 
 ### ⭐⭐ Important (soon after MVP)
 
@@ -300,6 +300,6 @@ All work follows documented architecture:
 - ✅ Backend: All data flows correctly from parser → DB → API
 - ✅ API: All endpoints working with full grade_stats
 - ✅ Database: All metrics persisted and validated
-- ⏳ Frontend: Needs grade_stats UI display (data ready in API)
+- ✅ Frontend: Slope chart complete (data visualization working)
 
-**Suggested next step:** Implement grade_stats UI display in track cards & detail view, then run full integration test with real track upload.
+**Suggested next step:** Run full integration test with real track upload to verify all pipeline components work correctly.

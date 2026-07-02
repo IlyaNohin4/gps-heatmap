@@ -84,7 +84,6 @@ def process_track(self, track_id: int, file_bytes: bytes) -> dict:
             track.raw_points = raw_serializable
             track.normalized_points = norm_serializable
             track.speed_segments = result["speed_segments"]
-            track.grade_stats = result["grade_stats"]
             track.distance_km = result["distance_km"]
             track.duration_sec = result["duration_sec"]
             track.speed_avg = result["speed_avg"]
