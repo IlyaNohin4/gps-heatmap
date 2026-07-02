@@ -18,6 +18,9 @@ import SpeedLayer from '../map/SpeedLayer.jsx';
 import VisitLayer from '../map/VisitLayer.jsx';
 import POILayer from '../map/POILayer.jsx';
 import TrackCreator, { TrackCreatorPanel } from '../map/TrackCreator.jsx';
+import SaveTrackModal from '../components/track/SaveTrackModal.jsx';
+import { createTrackFromPoints, fetchTracks } from '../api/tracks.js';
+import { toast } from 'react-toastify';
 
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
@@ -141,18 +144,40 @@ function MapLayers() {
 
   const [creatorMode, setCreatorMode] = useState('manual');
   const [creatorProfile, setCreatorProfile] = useState('cycling-regular');
+  const [showSaveModal, setShowSaveModal] = useState(false);
+  const [savingTrack, setSavingTrack] = useState(false);
 
   const handleUndo = () => undoWaypoint();
   const handleRedo = () => redoWaypoint();
   const handleClear = () => clearTrackCreatorState();
-  const handleSave = () => {
-    // TODO: Open save modal
-    console.log('[TrackCreator] Save:', {
-      waypoints: trackCreatorState.waypoints,
-      routePoints: trackCreatorState.routePoints,
-      mode: creatorMode,
-    });
+  const handleSave = () => setShowSaveModal(true);
+
+  const handleSaveToDb = async (trackName, format, points) => {
+    setSavingTrack(true);
+    try {
+      const newTrack = await createTrackFromPoints(
+        trackName,
+        creatorMode === 'auto' ? trackCreatorState.routePoints : trackCreatorState.waypoints,
+        format
+      );
+
+      // Add to tracks list
+      const updatedTracks = await fetchTracks();
+      useAppStore.getState().setTracks(updatedTracks);
+
+      clearTrackCreatorState();
+      toggleTrackCreator();
+      setShowSaveModal(false);
+
+      toast.success(`Track "${trackName}" saved!`);
+    } catch (err) {
+      toast.error('Failed to save track');
+      console.error(err);
+    } finally {
+      setSavingTrack(false);
+    }
   };
+
   const handleCancel = () => {
     clearTrackCreatorState();
     toggleTrackCreator();
@@ -210,6 +235,20 @@ function MapLayers() {
           onCancel={handleCancel}
         />
       )}
+
+      {/* Save track modal */}
+      <SaveTrackModal
+        isOpen={showSaveModal}
+        trackName="New Track"
+        points={
+          creatorMode === 'auto'
+            ? trackCreatorState.routePoints
+            : trackCreatorState.waypoints
+        }
+        onClose={() => setShowSaveModal(false)}
+        onSaveToDb={handleSaveToDb}
+        saving={savingTrack}
+      />
     </>
   );
 }

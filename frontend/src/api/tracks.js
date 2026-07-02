@@ -49,6 +49,18 @@ export async function getPublicTrack(token) {
   return data;
 }
 
+export async function createTrackFromPoints(name, points, format = 'gpx') {
+  const { data } = await client.post('/api/tracks/create', {
+    name,
+    points: points.map((p) => ({
+      lat: p.lat,
+      lon: p.lng || p.lon,
+    })),
+    format,
+  });
+  return data;
+}
+
 export async function pollTaskStatus(taskId) {
   const { data } = await client.get(`/api/tasks/${taskId}/status`);
   return data;
