@@ -191,6 +191,12 @@ backdrop-filter: blur(20px)
 font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif
 ```
 
+**Components:**
+- `.island` — container with glassmorphism (islands + speed legend)
+- `.btn-glass` — action buttons with frosted glass effect (Find in this area, Show all)
+- `.btn-secondary` — regular surface buttons
+- `.btn-primary` — accent color buttons
+
 ---
 
 ## Global Panel System
