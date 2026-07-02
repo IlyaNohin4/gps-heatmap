@@ -11,6 +11,7 @@ from datetime import datetime, timezone
 from typing import Any, Optional
 
 from lxml import etree
+from scipy.signal import savgol_filter
 
 import statistics
 
@@ -162,14 +163,79 @@ def _apply_kalman_filter(points: list[dict], process_variance: float = 0.01, mea
     return result
 
 
+def _smooth_elevation(points: list[dict], window: int = 5, polyorder: int = 2) -> list[dict]:
+    """Apply Savitzky-Golay filter to elevation data.
+
+    Removes GPS noise from elevation while preserving peaks and valleys.
+
+    Args:
+        points: list of point dicts with 'elevation' field
+        window: filter window size (must be odd, default 5)
+        polyorder: polynomial order (default 2)
+
+    Returns:
+        Points with smoothed elevation
+    """
+    if len(points) < 3:
+        return points
+
+    # Extract elevations
+    elevations = [p.get('elevation') for p in points]
+
+    # If no elevations or too many missing, skip smoothing
+    if not elevations or elevations.count(None) > len(elevations) * 0.5:
+        return points
+
+    # Handle missing elevations: interpolate with neighbors
+    filled_ele = []
+    for i, ele in enumerate(elevations):
+        if ele is None:
+            # Try to interpolate from neighbors
+            if i > 0 and filled_ele:
+                filled_ele.append(filled_ele[-1])
+            elif i < len(elevations) - 1 and elevations[i + 1] is not None:
+                filled_ele.append(elevations[i + 1])
+            else:
+                filled_ele.append(0)
+        else:
+            filled_ele.append(ele)
+
+    # Ensure window is odd and not larger than data
+    window = min(window, len(filled_ele))
+    if window % 2 == 0:
+        window -= 1
+    if window < 3:
+        return points
+
+    # Apply Savitzky-Golay filter
+    try:
+        smoothed_ele = savgol_filter(filled_ele, window, polyorder)
+    except Exception:
+        # Fallback: return original if filter fails
+        return points
+
+    # Copy points with smoothed elevation
+    result = []
+    for i, point in enumerate(points):
+        if elevations[i] is not None:
+            point_copy = dict(point)
+            point_copy['elevation'] = float(smoothed_ele[i])
+            result.append(point_copy)
+        else:
+            result.append(point)
+
+    return result
+
+
 def _normalize_points(points: list[dict]) -> list[dict]:
-    """Full normalization pipeline: collapse drift → remove outliers → Kalman filter."""
+    """Full normalization pipeline: collapse drift → remove outliers → Kalman filter → smooth elevation."""
     if len(points) < 2:
         return points
 
     points = _collapse_drift(points)
     points = _remove_speed_outliers(points)
     points = _apply_kalman_filter(points)
+    points = _smooth_elevation(points)
 
     return points
 

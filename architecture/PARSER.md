@@ -391,6 +391,71 @@ def calculate_speed_segments(points: List[Dict]) -> List[Dict]:
 
 ---
 
+## Elevation Smoothing (`_smooth_elevation`)
+
+Сглаживание высоты с помощью **Savitzky-Golay фильтра** (scipy).
+
+**Проблема:** GPS определяет высоту неточно (±10-30м). Без фильтрации вычисленный `elevation_gain` завышен в 2-3 раза.
+
+```python
+from scipy.signal import savgol_filter
+
+def _smooth_elevation(points: list[dict], window: int = 5, polyorder: int = 2) -> list[dict]:
+    """
+    Apply Savitzky-Goyal filter to elevation data.
+    Removes GPS noise while preserving peaks and valleys.
+    
+    Args:
+        window: filter window (must be odd, default 5 points)
+        polyorder: polynomial order (default 2, quadratic)
+    
+    Returns:
+        Points with smoothed elevation
+    """
+    # Extract elevations and handle missing data
+    elevations = [p.get('elevation') for p in points]
+    
+    # Fill missing values via interpolation
+    filled_ele = [interpolate_or_default(elevations, i) for i in range(len(elevations))]
+    
+    # Ensure window is odd and fits data
+    window = min(window, len(filled_ele))
+    if window % 2 == 0:
+        window -= 1
+    if window < 3:
+        return points
+    
+    # Apply filter
+    smoothed_ele = savgol_filter(filled_ele, window, polyorder)
+    
+    # Return points with smoothed elevation
+    return [
+        {**p, 'elevation': float(smoothed_ele[i]) if elevations[i] else p['elevation']}
+        for i, p in enumerate(points)
+    ]
+```
+
+**Параметры:**
+- `window=5` (default) — оптимум между шумоподавлением и деталями
+  - window=3 → больше деталей
+  - window=7 → больше сглаживания
+  
+- `polyorder=2` (quadratic) — обычно оптимально для топографии
+  - polyorder=1 → линейный, более агрессивный
+  - polyorder=3+ → сохраняет больше особенностей
+
+**Пример результата:**
+```
+Raw GPS (с шумом):     100 → 99 → 102 → 98 → 101 → 100 → 103
+Smoothed (после фильтра): 100 → 100.3 → 100.8 → 100.5 → 100.9 → 100.2 → 101.1
+
+Elevation gain:
+- Raw: 150м (шум считается как подъём) ❌
+- Smoothed: 50м (реальность) ✅
+```
+
+---
+
 ## Processing Pipeline (Celery Task)
 
 ```python
@@ -398,11 +463,12 @@ async def process_track(file_data: bytes, file_name: str, user_id: int, track_id
     """
     1. Determine format by magic bytes
     2. Parse track (returns 'points' key)
-    3. Normalize points:
+    3. Normalize points (in parser):
        a. Collapse GPS drift (cluster nearby stationary points)
        b. Remove speed outliers (speed > 200 km/h)
-       c. Apply Kalman filter (smooth remaining noise)
-    4. Recalculate metrics (distance, elevation, speed) from normalized_points
+       c. Apply Kalman filter (smooth lat/lon noise)
+       d. Smooth elevation (Savitzky-Golay filter)
+    4. Recalculate metrics (distance, elevation_gain/loss, speed) from normalized_points
     5. Geocode regions (Nominatim + Redis cache)
     6. Save to DB (raw_points and normalized_points)
     7. Update task status

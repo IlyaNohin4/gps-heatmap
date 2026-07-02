@@ -18,3 +18,4 @@ resend==2.2.0
 python-dotenv==1.0.1
 pydantic-settings==2.3.0
 watchdog[watchmedo]==4.0.0
+scipy==1.14.0
