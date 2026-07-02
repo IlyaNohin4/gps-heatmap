@@ -244,11 +244,12 @@ font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif
   1. **Parse + Normalize** (см. PARSER.md)
      - Определить формат по magic bytes
      - Парсить файл → raw_points
-     - **Normalization pipeline:**
+     - **Normalization pipeline (5 этапов):**
        1. Collapse drift (кластеризация близких точек < 3м, > 10с)
        2. Remove speed outliers (hard limit 200 км/ч)
        3. Apply Kalman filter (сглаживание lat/lon)
        4. Smooth elevation (Savitzky-Golay фильтр, устраняет GPS шум в высоте)
+       5. Simplify trajectory (Douglas-Peucker, ~50% point reduction)
      - **Вычислить метрики:**
        - Distance, duration, elevation_gain/loss
        - Speed: avg, max, min

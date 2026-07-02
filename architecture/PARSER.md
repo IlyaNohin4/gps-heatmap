@@ -540,6 +540,64 @@ Elevation gain:
 
 ---
 
+## Trajectory Simplification (`_simplify_trajectory`) — Phase 6
+
+Упрощение траектории с помощью **Douglas-Peucker алгоритма**.
+
+**Проблема:** 8650 точек трека замедляют рендеринг на карте.
+
+**Решение:** Удаление ненужных промежуточных точек, сохраняя форму маршрута.
+
+```python
+def _point_to_line_distance(point, line_start, line_end) -> float:
+    """Perpendicular distance from point to line (in meters)."""
+    # Convert lat/lon to local meters projection
+    # Use formula for perpendicular distance from point to line segment
+
+def _simplify_trajectory(points: list[dict], tolerance_m: float = 15.0) -> list[dict]:
+    """
+    Douglas-Peucker simplification.
+    Recursively removes points closer than tolerance to the line between endpoints.
+    
+    Args:
+        points: list of point dicts with lat, lon
+        tolerance_m: perpendicular distance threshold in meters (default 15m)
+    
+    Returns:
+        Simplified point list (~50% reduction)
+    """
+    # Recursive algorithm:
+    # 1. Draw line between first and last point
+    # 2. Find point with max perpendicular distance to line
+    # 3. If distance > tolerance:
+    #    a. Split at that point
+    #    b. Recursively simplify left and right parts
+    # 4. Else: replace entire segment with line (keep only endpoints)
+```
+
+**Параметры:**
+- `tolerance_m=15.0` (default) — расстояние при котором точка считается "ненужной"
+  - Меньше (5-10м) → больше деталей, медленнее
+  - Больше (20-30м) → выше производительность, меньше деталей
+
+**Примеры результатов:**
+```
+✓ Straight line:    101 → 2 points   (98% reduction)
+✓ Noisy curve:      100 → 43 points  (57% reduction)
+✓ 8650-point track: 8650 → 4016 points (53.6% reduction)
+```
+
+**Когда использовать:**
+- Рендеринг большие треки на карте (>5000 точек)
+- Экспорт для мобильных приложений
+- Анализ на маршрутов (не нужны все шумовые точки)
+
+**Когда НЕ использовать:**
+- Расчет точных метрик (используйте raw_points)
+- Анализ высот с большой точностью (используйте до фильтрации)
+
+---
+
 ## Processing Pipeline (Celery Task)
 
 ```python
@@ -552,6 +610,7 @@ async def process_track(file_data: bytes, file_name: str, user_id: int, track_id
        b. Remove speed outliers (speed > 200 km/h)
        c. Apply Kalman filter (smooth lat/lon noise)
        d. Smooth elevation (Savitzky-Golay filter)
+       e. Simplify trajectory (Douglas-Peucker: ~50% point reduction)
     4. Recalculate metrics (distance, elevation_gain/loss, speed) from normalized_points
     5. Geocode regions (Nominatim + Redis cache)
     6. Save to DB (raw_points and normalized_points)
