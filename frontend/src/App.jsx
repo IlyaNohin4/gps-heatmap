@@ -134,7 +134,7 @@ function MainPage() {
       }}>
         <button
           className="btn-glass"
-          style={{ display: 'flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap' }}
+          style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 14px', fontSize: 12, whiteSpace: 'nowrap' }}
           onClick={handleFindInArea}
         >
           <Search size={13} /> {t('tracks.find_in_area')}
@@ -143,7 +143,7 @@ function MainPage() {
           className="btn-glass"
           onClick={handleShowAll}
           title={t('tracks.show_all')}
-          style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 36, height: 32, padding: 0 }}
+          style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 32, height: 32, padding: 0 }}
         >
           <RotateCcw size={14} />
         </button>
