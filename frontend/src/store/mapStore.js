@@ -16,6 +16,17 @@ const useMapStore = create((set, get) => ({
   imports: [],
   visibleImports: new Set(),
 
+  // Track creator state
+  trackCreatorState: {
+    waypoints: [],
+    redoStack: [],
+    routePoints: [],
+    mode: 'manual',
+    profile: 'cycling-regular',
+    error: null,
+    routing: false,
+  },
+
   setMapInstance: (mapInstance) => set({ mapInstance }),
   setActiveLayer: (activeLayer) => set({ activeLayer }),
   toggleHeatmap: () => set((s) => ({ showHeatmap: !s.showHeatmap, showSpeed: false })),
@@ -76,6 +87,64 @@ const useMapStore = create((set, get) => ({
       })
       .catch(() => {});
   },
+
+  // Track creator methods
+  setTrackCreatorState: (newState) =>
+    set((s) => ({
+      trackCreatorState: { ...s.trackCreatorState, ...newState },
+    })),
+
+  clearTrackCreatorState: () =>
+    set({
+      trackCreatorState: {
+        waypoints: [],
+        redoStack: [],
+        routePoints: [],
+        mode: 'manual',
+        profile: 'cycling-regular',
+        error: null,
+        routing: false,
+      },
+    }),
+
+  addWaypoint: (latlng) =>
+    set((s) => ({
+      trackCreatorState: {
+        ...s.trackCreatorState,
+        waypoints: [...s.trackCreatorState.waypoints, latlng],
+        redoStack: [], // Clear redo stack on new waypoint
+      },
+    })),
+
+  undoWaypoint: () =>
+    set((s) => {
+      if (s.trackCreatorState.waypoints.length === 0) return s;
+      const waypoints = s.trackCreatorState.waypoints.slice(0, -1);
+      const redoStack = [...s.trackCreatorState.redoStack, s.trackCreatorState.waypoints[s.trackCreatorState.waypoints.length - 1]];
+      return {
+        trackCreatorState: {
+          ...s.trackCreatorState,
+          waypoints,
+          redoStack,
+          routePoints: [], // Will be recalculated
+        },
+      };
+    }),
+
+  redoWaypoint: () =>
+    set((s) => {
+      if (s.trackCreatorState.redoStack.length === 0) return s;
+      const redoStack = s.trackCreatorState.redoStack.slice(0, -1);
+      const waypoints = [...s.trackCreatorState.waypoints, s.trackCreatorState.redoStack[s.trackCreatorState.redoStack.length - 1]];
+      return {
+        trackCreatorState: {
+          ...s.trackCreatorState,
+          waypoints,
+          redoStack,
+          routePoints: [], // Will be recalculated
+        },
+      };
+    }),
 }));
 
 export default useMapStore;
