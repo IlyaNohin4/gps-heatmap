@@ -95,6 +95,7 @@ class TrackDetail(TrackOut):
     raw_points: Optional[object] = None
     normalized_points: Optional[object] = None
     speed_segments: Optional[object] = None
+    grade_stats: Optional[object] = None
 
     @classmethod
     def from_orm_dt(cls, t: Track) -> "TrackDetail":  # type: ignore[override]
@@ -104,6 +105,7 @@ class TrackDetail(TrackOut):
             raw_points=t.raw_points,
             normalized_points=t.normalized_points,
             speed_segments=t.speed_segments,
+            grade_stats=t.grade_stats,
         )
 
 
