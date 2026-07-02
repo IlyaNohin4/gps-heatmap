@@ -3,6 +3,7 @@ import { toast } from 'react-toastify';
 import { Upload } from 'lucide-react';
 import useAppStore from '../../store/appStore.js';
 import { uploadTrack, pollTaskStatus, fetchTracks } from '../../api/tracks.js';
+import { NOTIFICATIONS } from '../../config/notifications.js';
 
 const ACCEPTED = ['.gpx', '.kml', '.tcx', '.fit', '.geojson'];
 const MAX_SIZE = 20 * 1024 * 1024; // 20MB
@@ -80,10 +81,10 @@ export default function UploadZone({ inputRef: externalInputRef }) {
         await pollUntilDone(taskId, file.name);
       } else if (result.track) {
         addTrack(result.track);
-        toast.success(`✅ Трек загружен успешно: ${file.name}`);
+        toast.success(NOTIFICATIONS.TRACK_UPLOADED_SUCCESS(file.name));
       }
     } catch (err) {
-      toast.error(`❌ Загрузка трека ошибка: ${file.name}`);
+      toast.error(NOTIFICATIONS.TRACK_UPLOAD_ERROR(file.name));
       if (taskId) removeUploadingId(taskId);
       // Continue to next file — don't rethrow
     }
@@ -103,12 +104,12 @@ export default function UploadZone({ inputRef: externalInputRef }) {
             } catch {
               if (status.track) addTrack(status.track);
             }
-            toast.success(`✅ Трек загружен: ${filename}`);
+            toast.success(NOTIFICATIONS.TRACK_UPLOADED(filename));
             resolve();
           } else if (status.state === 'FAILURE' || status.status === 'error' || status.status === 'failed') {
             clearInterval(interval);
             removeUploadingId(taskId);
-            toast.error(`❌ Загрузка трека ошибка: ${filename}`);
+            toast.error(NOTIFICATIONS.TRACK_UPLOAD_ERROR(filename));
             resolve();
           }
         } catch {

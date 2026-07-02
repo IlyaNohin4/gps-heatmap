@@ -3,6 +3,7 @@ import { toast } from 'react-toastify';
 import { X, Mail, Lock, Eye, EyeOff } from 'lucide-react';
 import useAuthStore from '../../store/authStore.js';
 import { login as apiLogin, register as apiRegister, forgotPassword } from '../../api/auth.js';
+import { NOTIFICATIONS } from '../../config/notifications.js';
 
 const styles = {
   overlay: {
@@ -161,9 +162,9 @@ export default function AuthModal() {
     try {
       const data = await apiLogin(email, password);
       storeLogin(data.access_token, data.user);
-      toast.success('✅ Логин успех');
+      toast.success(NOTIFICATIONS.LOGIN_SUCCESS);
     } catch (err) {
-      toast.error(`❌ Логин ошибка: ${err.response?.data?.detail || 'Попробуйте снова'}`);
+      toast.error(NOTIFICATIONS.LOGIN_ERROR(err.response?.data?.detail));
     } finally {
       setLoading(false);
     }
@@ -178,9 +179,9 @@ export default function AuthModal() {
     try {
       const data = await apiRegister(email, password);
       storeLogin(data.access_token, data.user);
-      toast.success('✅ Регистрация аккаунта успех');
+      toast.success(NOTIFICATIONS.REGISTER_SUCCESS);
     } catch (err) {
-      toast.error(`❌ Регистрация ошибка: ${err.response?.data?.detail || 'Попробуйте снова'}`);
+      toast.error(NOTIFICATIONS.REGISTER_ERROR(err.response?.data?.detail));
     } finally {
       setLoading(false);
     }
@@ -192,10 +193,10 @@ export default function AuthModal() {
     setLoading(true);
     try {
       await forgotPassword(forgotEmail);
-      toast.success('✅ Восстановление пароля отправлено');
+      toast.success(NOTIFICATIONS.PASSWORD_RESET_SENT);
       setForgotMode(false);
     } catch (err) {
-      toast.error(`❌ Ошибка: ${err.response?.data?.detail || 'Не удалось отправить письмо'}`);
+      toast.error(NOTIFICATIONS.PASSWORD_RESET_ERROR(err.response?.data?.detail));
     } finally {
       setLoading(false);
     }

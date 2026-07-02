@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import useAppStore from '../../store/appStore.js';
 import { deleteTrack, togglePublish, renameTrack, getTrackDownloadUrl } from '../../api/tracks.js';
+import { NOTIFICATIONS } from '../../config/notifications.js';
 
 function formatDate(iso) {
   if (!iso) return '—';
@@ -58,9 +59,9 @@ export default function TrackCard({ track, isSelected, onClick }) {
       if (selectedTrackId === track.id) {
         setSelectedTrackId(null);
       }
-      toast.success('✅ Трек удален');
+      toast.success(NOTIFICATIONS.TRACK_DELETED);
     } catch {
-      toast.error('❌ Удаление трека ошибка');
+      toast.error(NOTIFICATIONS.TRACK_DELETE_ERROR);
       setDeleting(false);
     }
   }
@@ -93,9 +94,9 @@ export default function TrackCard({ track, isSelected, onClick }) {
     try {
       const updated = await renameTrack(track.id, trimmed);
       updateTrack(updated);
-      toast.success('✅ Трек переименован');
+      toast.success(NOTIFICATIONS.TRACK_RENAMED);
     } catch {
-      toast.error('❌ Переименование ошибка');
+      toast.error(NOTIFICATIONS.TRACK_RENAME_ERROR);
     }
     setRenaming(false);
   }

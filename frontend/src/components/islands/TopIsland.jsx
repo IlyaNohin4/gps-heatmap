@@ -9,6 +9,7 @@ import useAppStore from '../../store/appStore.js';
 import useAuthStore from '../../store/authStore.js';
 import client from '../../api/client.js';
 import { updatePrefs } from '../../api/auth.js';
+import { NOTIFICATIONS } from '../../config/notifications.js';
 
 const LANGUAGES = [
   { code: 'en', label: 'English' },
@@ -76,10 +77,10 @@ export default function TopIsland() {
     if (!oldPass || !newPass) return toast.error(t('toast.password_failed'));
     try {
       await client.post('/api/auth/change-password', { old_password: oldPass, new_password: newPass });
-      toast.success('✅ Смена пароля успех');
+      toast.success(NOTIFICATIONS.PASSWORD_CHANGE_SUCCESS);
       setOldPass(''); setNewPass(''); setChangePassOpen(false);
     } catch (err) {
-      toast.error(`❌ Смена пароля ошибка: ${err.response?.data?.detail || 'Попробуйте снова'}`);
+      toast.error(NOTIFICATIONS.PASSWORD_CHANGE_ERROR(err.response?.data?.detail));
     }
   }
 
@@ -254,7 +255,7 @@ export default function TopIsland() {
                   <button
                     className="btn-secondary"
                     style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, padding: '7px' }}
-                    onClick={() => { logout(); toast.success('✅ Логаут успех'); }}
+                    onClick={() => { logout(); toast.success(NOTIFICATIONS.LOGOUT_SUCCESS); }}
                   >
                     <LogOut size={13} /> {t('settings.sign_out')}
                   </button>

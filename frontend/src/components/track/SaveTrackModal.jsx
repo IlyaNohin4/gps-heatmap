@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'react-toastify';
+import { NOTIFICATIONS } from '../../config/notifications.js';
 
 const FORMAT_OPTIONS = [
   { id: 'gpx', label: 'GPX (.gpx)' },
@@ -148,10 +149,10 @@ export default function SaveTrackModal({
       }[format];
 
       downloadFile(content, `${trackName}.${ext}`, mimeType);
-      toast.success('✅ Трек скачан/экспортирован');
+      toast.success(NOTIFICATIONS.TRACK_DOWNLOADED);
       onClose();
     } catch (err) {
-      toast.error('❌ Скачивание ошибка');
+      toast.error(NOTIFICATIONS.TRACK_DOWNLOAD_ERROR);
       console.error(err);
     }
   };
