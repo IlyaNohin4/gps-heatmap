@@ -94,10 +94,14 @@ export default function POIImportPanel({ onClose }) {
   }
 
   return (
-    <div className="island" style={{
-      position: 'absolute', right: 52, top: '50%', transform: 'translateY(-50%)',
-      width: 260, maxHeight: '70vh', overflowY: 'auto', padding: 10
-    }}>
+    <div
+      className="island"
+      onClick={(e) => e.stopPropagation()}
+      style={{
+        position: 'absolute', right: 52, top: '50%', transform: 'translateY(-50%)',
+        width: 260, maxHeight: '70vh', overflowY: 'auto', padding: 10
+      }}
+    >
       {/* Header */}
       <div style={{
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
