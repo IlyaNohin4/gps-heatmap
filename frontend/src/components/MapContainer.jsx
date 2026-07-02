@@ -178,7 +178,7 @@ function MapLayers() {
 
       {/* POI markers */}
       {showPOI && (
-        <POILayer activeCategories={poiCategories} />
+        <POILayer />
       )}
 
       {/* Track creator (map click handler) */}

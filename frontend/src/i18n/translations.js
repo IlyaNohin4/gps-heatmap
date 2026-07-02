@@ -102,6 +102,17 @@ const translations = {
       collapse: 'Collapse',
       expand: 'Expand',
     },
+    // POI import
+    poi: {
+      title: 'Points of interest',
+      upload_kml_kmz: 'Upload KML/KMZ',
+      uploading: 'Uploading…',
+      categories: 'Categories',
+      no_data: 'No POI imported yet',
+      imported: 'Imported {{count}} POI',
+      upload_failed: 'Upload failed',
+      invalid_format: 'Only .kml or .kmz files allowed',
+    },
     // Auth
     auth: {
       sign_in: 'Sign in',
@@ -229,6 +240,16 @@ const translations = {
       collapse: 'Свернуть',
       expand: 'Развернуть',
     },
+    poi: {
+      title: 'Достопримечательности',
+      upload_kml_kmz: 'Загрузить KML/KMZ',
+      uploading: 'Загрузка…',
+      categories: 'Категории',
+      no_data: 'Достопримечательности не загружены',
+      imported: 'Загружено {{count}} POI',
+      upload_failed: 'Ошибка загрузки',
+      invalid_format: 'Допускаются только файлы .kml или .kmz',
+    },
     auth: {
       sign_in: 'Войти',
       register: 'Создать аккаунт',
@@ -352,6 +373,16 @@ const translations = {
       deselect: 'Скасувати вибір треку',
       collapse: 'Згорнути',
       expand: 'Розгорнути',
+    },
+    poi: {
+      title: 'Точки інтересу',
+      upload_kml_kmz: 'Завантажити KML/KMZ',
+      uploading: 'Завантаження…',
+      categories: 'Категорії',
+      no_data: 'Точки інтересу не завантажені',
+      imported: 'Завантажено {{count}} POI',
+      upload_failed: 'Помилка завантаження',
+      invalid_format: 'Дозволені лише файли .kml або .kmz',
     },
     auth: {
       sign_in: 'Увійти',
@@ -477,6 +508,16 @@ const translations = {
       collapse: 'Einklappen',
       expand: 'Ausklappen',
     },
+    poi: {
+      title: 'Orte von Interesse',
+      upload_kml_kmz: 'KML/KMZ hochladen',
+      uploading: 'Wird hochgeladen…',
+      categories: 'Kategorien',
+      no_data: 'Noch keine POI hochgeladen',
+      imported: '{{count}} POI importiert',
+      upload_failed: 'Upload fehlgeschlagen',
+      invalid_format: 'Nur .kml- oder .kmz-Dateien zulässig',
+    },
     auth: {
       sign_in: 'Anmelden',
       register: 'Konto erstellen',
@@ -600,6 +641,16 @@ const translations = {
       deselect: 'Deseleccionar track',
       collapse: 'Colapsar',
       expand: 'Expandir',
+    },
+    poi: {
+      title: 'Puntos de interés',
+      upload_kml_kmz: 'Cargar KML/KMZ',
+      uploading: 'Cargando…',
+      categories: 'Categorías',
+      no_data: 'Aún no hay puntos de interés cargados',
+      imported: '{{count}} POI importados',
+      upload_failed: 'Error al cargar',
+      invalid_format: 'Solo se permiten archivos .kml o .kmz',
     },
     auth: {
       sign_in: 'Iniciar sesión',

@@ -7,7 +7,7 @@ import { useTranslation } from 'react-i18next';
 import useMapStore from '../../store/mapStore.js';
 import useAppStore from '../../store/appStore.js';
 import { LAYER_OPTIONS } from '../../map/MapLayers.js';
-import { POI_CATEGORIES } from '../../map/POILayer.jsx';
+import POIImportPanel from '../poi/POIImportPanel.jsx';
 
 const GROUPS = [...new Set(LAYER_OPTIONS.map((l) => l.group))];
 
@@ -209,35 +209,9 @@ export default function RightIsland() {
         </div>
       )}
 
-      {/* POI categories popover */}
+      {/* POI import panel */}
       {poiOpen && (
-        <div className="island" style={{ position: 'absolute', right: 52, top: '50%', transform: 'translateY(-50%)', width: 220, padding: 10 }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase' }}>{t('map.poi')}</div>
-            <label style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, cursor: 'pointer' }}>
-              <input type="checkbox" checked={showPOI} onChange={togglePOI} style={{ width: 14, height: 14, accentColor: 'var(--accent)' }} />
-              {showPOI ? t('map.on') : t('map.off')}
-            </label>
-          </div>
-          {POI_CATEGORIES.map((cat) => {
-            const active = poiCategories.includes(cat.id);
-            return (
-              <button
-                key={cat.id}
-                onClick={() => { togglePOICategory(cat.id); if (!showPOI) togglePOI(); }}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: 8, width: '100%',
-                  padding: '7px 8px', borderRadius: 8, border: 'none',
-                  background: active ? `${cat.color}18` : 'none',
-                  color: active ? cat.color : 'var(--text)',
-                  cursor: 'pointer', fontSize: 13, fontWeight: active ? 600 : 400,
-                }}
-              >
-                <span>{cat.icon}</span> {cat.label}
-              </button>
-            );
-          })}
-        </div>
+        <POIImportPanel onClose={() => togglePanel('right:poi')} />
       )}
 
       {/* Attribution popover */}

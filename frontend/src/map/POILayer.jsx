@@ -1,131 +1,87 @@
-import { useEffect, useRef, useCallback, useMemo } from 'react';
-import { useMap, useMapEvents } from 'react-leaflet';
+import { useEffect, useRef, useMemo } from 'react';
+import { useMap } from 'react-leaflet';
 import L from 'leaflet';
 
-export const POI_CATEGORIES = [
-  { id: 'food',      label: 'Food & Drink',      color: '#ff9500', icon: '🍴', query: 'amenity~"restaurant|cafe|bar|fast_food|pub"' },
-  { id: 'amenity',   label: 'Amenities',          color: '#007aff', icon: '🏪', query: 'amenity~"atm|bank|fuel|parking|toilets|post_office"' },
-  { id: 'medical',   label: 'Medical',            color: '#ff3b30', icon: '🏥', query: 'amenity~"hospital|clinic|pharmacy|doctors"' },
-  { id: 'tourism',   label: 'Tourism',            color: '#af52de', icon: '🏛️', query: 'tourism~"attraction|museum|viewpoint|hotel|hostel"' },
-  { id: 'bicycle',   label: 'Bicycle',            color: '#34c759', icon: '🚲', query: 'amenity~"bicycle_parking|bicycle_repair_station"' },
-  { id: 'transport', label: 'Public Transport',   color: '#5856d6', icon: '🚌', query: 'public_transport~"stop_position|platform"' },
-];
+import useMapStore from '../store/mapStore.js';
 
-function buildOverpassQuery(bounds, categories) {
-  const { south, west, north, east } = bounds;
-  const bbox = `${south},${west},${north},${east}`;
-  const parts = categories.map((cat) => `node[${cat.query}](${bbox});`).join('\n');
-  return `[out:json][timeout:20];\n(\n${parts}\n);\nout body 200;`;
-}
+// Category colors for display
+const CATEGORY_COLORS = {
+  food: '#ff9500',
+  water: '#007aff',
+  repair: '#5856d6',
+  bike: '#34c759',
+  medical: '#ff3b30',
+  shelter: '#af52de',
+  other: '#8e8e93',
+};
 
-function makeDivIcon(icon, color) {
+function makeDivIcon(category, color) {
+  const iconEmoji = {
+    food: '🍴',
+    water: '💧',
+    repair: '🔧',
+    bike: '🚲',
+    medical: '🏥',
+    shelter: '🏔️',
+    other: '📍',
+  }[category] || '📍';
+
   return L.divIcon({
     html: `<div style="
-      width:28px;height:28px;border-radius:50%;
+      width:32px;height:32px;border-radius:50%;
       background:${color};
-      border:2px solid #fff;
-      box-shadow:0 2px 6px rgba(0,0,0,0.3);
+      border:3px solid #fff;
+      box-shadow:0 2px 8px rgba(0,0,0,0.4);
       display:flex;align-items:center;justify-content:center;
-      font-size:14px;line-height:1;
-    ">${icon}</div>`,
+      font-size:16px;line-height:1;
+    ">${iconEmoji}</div>`,
     className: '',
-    iconSize: [28, 28],
-    iconAnchor: [14, 14],
+    iconSize: [32, 32],
+    iconAnchor: [16, 16],
+    popupAnchor: [0, -16],
   });
 }
 
-export default function POILayer({ activeCategories }) {
+export default function POILayer() {
   const map = useMap();
+  const { userPOI, poiCategories } = useMapStore();
   const groupRef = useRef(null);
-  const abortRef = useRef(null);
-  const lastBoundsRef = useRef(null);
-  const debounceRef = useRef(null);
 
-  const enabledCats = useMemo(
-    () => (activeCategories || []).map((id) => POI_CATEGORIES.find((c) => c.id === id)).filter(Boolean),
-    [activeCategories]
-  );
-
+  // Create layer group on mount
   useEffect(() => {
     const group = L.layerGroup().addTo(map);
     groupRef.current = group;
-    return () => {
-      group.remove();
-      abortRef.current?.abort();
-      clearTimeout(debounceRef.current);
-    };
+    return () => group.remove();
   }, [map]);
 
-  const fetchPOI = useCallback(async () => {
-    if (!enabledCats.length) {
-      groupRef.current?.clearLayers();
-      return;
-    }
+  // Filter POI by selected categories
+  const visiblePOI = useMemo(() => {
+    if (!poiCategories.length) return [];
+    return userPOI.filter((poi) => poiCategories.includes(poi.category || 'other'));
+  }, [userPOI, poiCategories]);
 
-    const b = map.getBounds();
-    const bounds = {
-      south: b.getSouth().toFixed(5),
-      west:  b.getWest().toFixed(5),
-      north: b.getNorth().toFixed(5),
-      east:  b.getEast().toFixed(5),
-    };
-
-    // Skip re-fetch if bounds haven't moved significantly
-    const key = `${bounds.south},${bounds.west},${bounds.north},${bounds.east}`;
-    if (key === lastBoundsRef.current) return;
-    lastBoundsRef.current = key;
-
-    abortRef.current?.abort();
-    const ctrl = new AbortController();
-    abortRef.current = ctrl;
-
-    try {
-      const query = buildOverpassQuery(bounds, enabledCats);
-      const resp = await fetch('https://overpass-api.de/api/interpreter', {
-        method: 'POST',
-        body: query,
-        signal: ctrl.signal,
-      });
-      const data = await resp.json();
-      const group = groupRef.current;
-      group.clearLayers();
-
-      data.elements?.forEach((el) => {
-        if (!el.lat || !el.lon) return;
-        const cat = enabledCats.find((c) => {
-          const [key, pattern] = c.query.split('~');
-          const k = key.replace('[', '');
-          const vals = pattern?.replace(/"/g, '').split('|') || [];
-          return el.tags?.[k] && vals.includes(el.tags[k]);
-        });
-        if (!cat) return;
-
-        const name = el.tags?.name || cat.label;
-        L.marker([el.lat, el.lon], { icon: makeDivIcon(cat.icon, cat.color) })
-          .bindPopup(`<strong>${name}</strong><br><small>${el.tags?.amenity || el.tags?.tourism || el.tags?.public_transport || ''}</small>`)
-          .addTo(group);
-      });
-    } catch (err) {
-      if (err.name !== 'AbortError') console.warn('[POI] fetch error', err);
-    }
-  }, [map, enabledCats]);
-
-  const debouncedFetch = useCallback(() => {
-    clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(fetchPOI, 350);
-  }, [fetchPOI]);
-
-  // Debounced fetch on move/zoom end
-  useMapEvents({
-    moveend: debouncedFetch,
-    zoomend: debouncedFetch,
-  });
-
-  // Immediate fetch when categories change (user action, not map movement)
+  // Render POI markers
   useEffect(() => {
-    lastBoundsRef.current = null;
-    fetchPOI();
-  }, [fetchPOI]);
+    if (!groupRef.current) return;
+
+    groupRef.current.clearLayers();
+
+    visiblePOI.forEach((poi) => {
+      const category = poi.category || 'other';
+      const color = CATEGORY_COLORS[category] || CATEGORY_COLORS.other;
+      const icon = makeDivIcon(category, color);
+
+      L.marker([poi.lat, poi.lon], { icon })
+        .bindPopup(`
+          <div style="font-size: 12px; max-width: 200px;">
+            <strong>${poi.name}</strong>
+            <br><small style="color: #666;">${category}</small>
+            ${poi.description ? `<br><small>${poi.description}</small>` : ''}
+          </div>
+        `)
+        .addTo(groupRef.current);
+    });
+  }, [visiblePOI]);
 
   return null;
 }
