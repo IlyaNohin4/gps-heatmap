@@ -49,6 +49,48 @@ def _detect_format(header: bytes, filename: str) -> str:
     raise ValueError("Unrecognized file format")
 
 
+def _points_to_gpx(points: List[Point]) -> str:
+    """Convert points to GPX format."""
+    header = '<?xml version="1.0" encoding="UTF-8"?>\n<gpx version="1.1" xmlns="http://www.topografix.com/GPX/1/1">\n<trk><name>Track</name><trkseg>\n'
+    trkpts = "\n".join([f'<trkpt lat="{p.lat}" lon="{p.lon}"><ele>0</ele></trkpt>' for p in points])
+    footer = '\n</trkseg></trk>\n</gpx>'
+    return header + trkpts + footer
+
+
+def _points_to_kml(points: List[Point]) -> str:
+    """Convert points to KML format."""
+    coords = " ".join([f"{p.lon},{p.lat},0" for p in points])
+    return f'''<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2">
+  <Document>
+    <Placemark>
+      <LineString>
+        <coordinates>{coords}</coordinates>
+      </LineString>
+    </Placemark>
+  </Document>
+</kml>'''
+
+
+def _points_to_geojson(points: List[Point]) -> str:
+    """Convert points to GeoJSON format."""
+    import json
+    coordinates = [[p.lon, p.lat] for p in points]
+    geojson = {
+        "type": "FeatureCollection",
+        "features": [
+            {
+                "type": "Feature",
+                "geometry": {
+                    "type": "LineString",
+                    "coordinates": coordinates,
+                },
+            }
+        ],
+    }
+    return json.dumps(geojson)
+
+
 # ── Schemas ────────────────────────────────────────────────────────────────────
 
 class TrackOut(BaseModel):
@@ -185,6 +227,52 @@ async def upload_track(
     return {"track_id": track.id, "task_id": task.id}
 
 
+@router.post("/create", response_model=TrackOut, status_code=status.HTTP_201_CREATED)
+async def create_track(
+    body: CreateTrackBody,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Create track from waypoints (e.g., drawn on map)."""
+    if not body.name or not body.name.strip():
+        raise HTTPException(status_code=400, detail="Track name required")
+
+    if body.format not in ALLOWED_FORMATS:
+        raise HTTPException(status_code=400, detail=f"Format must be one of {ALLOWED_FORMATS}")
+
+    if len(body.points) < 2:
+        raise HTTPException(status_code=400, detail="At least 2 points required")
+
+    # Validate coordinates
+    for point in body.points:
+        if not (-90 <= point.lat <= 90):
+            raise HTTPException(status_code=400, detail="Invalid latitude")
+        if not (-180 <= point.lon <= 180):
+            raise HTTPException(status_code=400, detail="Invalid longitude")
+
+    # Convert points to file format
+    if body.format == "gpx":
+        content = _points_to_gpx(body.points).encode("utf-8")
+    elif body.format == "kml":
+        content = _points_to_kml(body.points).encode("utf-8")
+    elif body.format == "geojson":
+        content = _points_to_geojson(body.points).encode("utf-8")
+    else:
+        raise HTTPException(status_code=400, detail="Unsupported format")
+
+    # Create track record
+    name = body.name.strip()
+    track = Track(user_id=current_user.id, name=name, file_format=body.format, raw_points=None)
+    db.add(track)
+    db.commit()
+    db.refresh(track)
+
+    # Queue for async processing
+    task = process_track.delay(track.id, content)
+
+    return TrackOut.from_orm_dt(track)
+
+
 @router.get("/public/{public_token}", response_model=TrackDetail)
 def get_public_track(public_token: str, db: Session = Depends(get_db)):
     track = db.query(Track).filter(Track.public_token == public_token, Track.is_public == True).first()
@@ -216,6 +304,17 @@ def delete_track(
         raise HTTPException(status_code=404, detail="Track not found")
     db.delete(track)
     db.commit()
+
+
+class Point(BaseModel):
+    lat: float
+    lon: float
+
+
+class CreateTrackBody(BaseModel):
+    name: str
+    points: List[Point]
+    format: str = "gpx"
 
 
 class RenameBody(BaseModel):
