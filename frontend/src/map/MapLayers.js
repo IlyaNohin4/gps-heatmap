@@ -24,11 +24,6 @@ export const TILE_LAYERS = {
     attribution: '© <a href="https://openstreetmap.org">OpenStreetMap</a> contributors | Map tiles by <a href="https://www.openstreetmap.de">OpenStreetMap.de</a>',
     maxZoom: 18,
   },
-  'stamen-toner': {
-    url: 'https://tiles.stadiamaps.com/tiles/stamen_toner/{z}/{x}/{y}.png',
-    attribution: '© Stadia Maps | © OpenStreetMap contributors',
-    maxZoom: 20,
-  },
   'google-street': {
     url: 'https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}',
     attribution: '© Google',
@@ -41,12 +36,6 @@ export const TILE_LAYERS = {
     maxZoom: 22,
     subdomains: [],
   },
-  'esri-satellite': {
-    url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-    attribution: '© Esri, DigitalGlobe, GeoEye, Earthstar Geographics',
-    maxZoom: 18,
-    subdomains: [],
-  },
 };
 
 export const LAYER_OPTIONS = [
@@ -55,8 +44,6 @@ export const LAYER_OPTIONS = [
   { id: 'cyclosm',        label: 'CyclOSM',          group: 'Street' },
   { id: 'carto-voyager',  label: 'CARTO Voyager',    group: 'Style' },
   { id: 'stamen-terrain', label: 'Stamen Terrain',   group: 'Terrain' },
-  { id: 'stamen-toner',   label: 'Stamen Toner',     group: 'Minimal' },
   { id: 'google-street',  label: 'Google Street',    group: 'Google' },
   { id: 'google-satellite', label: 'Google Satellite', group: 'Google' },
-  { id: 'esri-satellite', label: 'Esri Satellite',   group: 'Satellite' },
 ];
