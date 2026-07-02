@@ -36,28 +36,20 @@ export const TILE_LAYERS = {
     maxZoom: 22,
     subdomains: [],
   },
-  'esri-world-topo': {
-    url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}',
-    attribution: '© <a href="https://www.esri.com/">Esri</a>',
-    maxZoom: 18,
-    subdomains: [],
-  },
-  'openmaptiles-positron': {
-    url: 'https://api.maptiler.com/maps/positron/256/{z}/{x}/{y}.png?key=YOUR_API_KEY',
-    attribution: '© <a href="https://www.maptiler.com/">MapTiler</a> © <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+  'tracestrack-positron': {
+    url: 'https://tile.tracestrack.com/positron/{z}/{x}/{y}.png',
+    attribution: '© <a href="https://tracestrack.com">Tracestrack</a> | © <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
     maxZoom: 19,
-    subdomains: [],
   },
 };
 
 export const LAYER_OPTIONS = [
-  { id: 'osm',                    label: 'OpenStreetMap' },
-  { id: 'topo',                   label: 'OpenTopoMap' },
-  { id: 'cyclosm',                label: 'CyclOSM' },
-  { id: 'carto-voyager',          label: 'CARTO Voyager' },
-  { id: 'stamen-terrain',         label: 'Stamen Terrain' },
-  { id: 'esri-world-topo',        label: 'ESRI World Topo' },
-  { id: 'openmaptiles-positron',  label: 'OpenMapTiles Positron' },
-  { id: 'google-street',          label: 'Google Street' },
-  { id: 'google-satellite',       label: 'Google Satellite' },
+  { id: 'osm',                  label: 'OpenStreetMap' },
+  { id: 'topo',                 label: 'OpenTopoMap' },
+  { id: 'cyclosm',              label: 'CyclOSM' },
+  { id: 'carto-voyager',        label: 'CARTO Voyager' },
+  { id: 'stamen-terrain',       label: 'Stamen Terrain' },
+  { id: 'tracestrack-positron', label: 'Tracestrack Positron' },
+  { id: 'google-street',        label: 'Google Street' },
+  { id: 'google-satellite',     label: 'Google Satellite' },
 ];
