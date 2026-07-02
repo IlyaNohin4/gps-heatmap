@@ -66,6 +66,8 @@ export default function LeftIsland({ onUploadClick, loading }) {
       case 'oldest': list.sort((a, b) => new Date(a.recorded_at) - new Date(b.recorded_at)); break;
       case 'longest': list.sort((a, b) => (b.distance_km ?? 0) - (a.distance_km ?? 0)); break;
       case 'fastest': list.sort((a, b) => (b.speed_avg ?? 0) - (a.speed_avg ?? 0)); break;
+      case 'slowest': list.sort((a, b) => (a.speed_avg ?? 0) - (b.speed_avg ?? 0)); break;
+      case 'shortest': list.sort((a, b) => (a.distance_km ?? 0) - (b.distance_km ?? 0)); break;
       default: list.sort((a, b) => new Date(b.recorded_at || b.uploaded_at) - new Date(a.recorded_at || a.uploaded_at));
     }
     return list;
@@ -151,7 +153,7 @@ export default function LeftIsland({ onUploadClick, loading }) {
           <div style={{ padding: '10px 12px', borderBottom: '1px solid var(--border)' }}>
             <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-secondary)', marginBottom: 6, textTransform: 'uppercase' }}>{t('tracks.sort')}</div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 10 }}>
-              {(['newest', 'oldest', 'longest', 'fastest']).map((v) => (
+              {(['newest', 'oldest', 'longest', 'fastest', 'slowest', 'shortest']).map((v) => (
                 <button key={v} style={chip(sort === v)} onClick={() => setSort(v)}>{t(`sort.${v}`)}</button>
               ))}
             </div>

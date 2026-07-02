@@ -60,6 +60,8 @@ const translations = {
       oldest: 'Oldest first',
       longest: 'Longest first',
       fastest: 'Fastest first',
+      slowest: 'Slowest first',
+      shortest: 'Shortest first',
     },
     // Map controls
     map: {
@@ -186,6 +188,8 @@ const translations = {
       oldest: 'Сначала старые',
       longest: 'Сначала длинные',
       fastest: 'Сначала быстрые',
+      slowest: 'Сначала медленные',
+      shortest: 'Сначала короткие',
     },
     map: {
       zoom_in: 'Приблизить',
@@ -307,6 +311,8 @@ const translations = {
       oldest: 'Спочатку старі',
       longest: 'Спочатку довгі',
       fastest: 'Спочатку швидкі',
+      slowest: 'Спочатку повільні',
+      shortest: 'Спочатку коротші',
     },
     map: {
       zoom_in: 'Збільшити',
@@ -428,6 +434,8 @@ const translations = {
       oldest: 'Älteste zuerst',
       longest: 'Längste zuerst',
       fastest: 'Schnellste zuerst',
+      slowest: 'Langsamste zuerst',
+      shortest: 'Kürzeste zuerst',
     },
     map: {
       zoom_in: 'Vergrößern',
@@ -549,6 +557,8 @@ const translations = {
       oldest: 'Más antiguos',
       longest: 'Más largos',
       fastest: 'Más rápidos',
+      slowest: 'Más lentos',
+      shortest: 'Más cortos',
     },
     map: {
       zoom_in: 'Acercar',
