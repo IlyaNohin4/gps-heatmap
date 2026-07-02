@@ -108,7 +108,7 @@ export default function RightIsland() {
   const divider = <div style={{ height: 1, background: 'var(--border)', margin: '4px 2px' }} />;
 
   return (
-    <div onClick={(e) => e.stopPropagation()} style={{ position: 'fixed', right: 16, top: '50%', transform: 'translateY(-50%)', zIndex: 1000 }}>
+    <div onClick={(e) => e.stopPropagation()} style={{ position: 'fixed', right: 16, top: '50%', transform: 'translateY(-50%)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
       <div className="island" style={{ padding: '6px', display: 'flex', flexDirection: 'column', gap: 2 }}>
         <button style={iconBtn()} onClick={zoomIn} title={t('map.zoom_in')}><Plus size={16} /></button>
         <button style={iconBtn()} onClick={zoomOut} title={t('map.zoom_out')}><Minus size={16} /></button>
@@ -155,7 +155,7 @@ export default function RightIsland() {
 
       {/* City search popover */}
       {cityOpen && (
-        <div className="island panel-animate-in-right" style={{ position: 'absolute', right: 52, top: '50%', transform: 'translateY(-50%)', width: 260, padding: 10 }}>
+        <div className="island panel-animate-in-right" style={{ position: 'absolute', right: 52, width: 260, padding: 10 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             <input
               value={citySearch}
@@ -190,7 +190,7 @@ export default function RightIsland() {
 
       {/* Layers popover */}
       {layersOpen && (
-        <div className="island panel-animate-in-right" style={{ position: 'absolute', right: 52, top: '50%', transform: 'translateY(-50%)', width: 200, padding: 10, maxHeight: '70vh', overflowY: 'auto' }}>
+        <div className="island panel-animate-in-right" style={{ position: 'absolute', right: 52, width: 200, padding: 10, maxHeight: '70vh', overflowY: 'auto' }}>
           <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: 8 }}>{t('map.map_layers')}</div>
           {LAYER_OPTIONS.map((l) => (
             <button
@@ -219,7 +219,7 @@ export default function RightIsland() {
 
       {/* Attribution popover */}
       {attrOpen && (
-        <div className="island panel-animate-in-right" style={{ position: 'absolute', right: 52, top: '50%', transform: 'translateY(-50%)', width: 240, padding: '12px 14px' }}>
+        <div className="island panel-animate-in-right" style={{ position: 'absolute', right: 52, width: 240, padding: '12px 14px' }}>
           <div style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.7 }}>
             Map data © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent)' }}>OpenStreetMap</a> contributors.<br />
             Geocoding by <a href="https://nominatim.org" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent)' }}>Nominatim</a>.<br />

@@ -98,7 +98,7 @@ export default function POIImportPanel({ onClose }) {
       className="island panel-animate-in-right"
       onClick={(e) => e.stopPropagation()}
       style={{
-        position: 'absolute', right: 52, top: '50%', transform: 'translateY(-50%)',
+        position: 'absolute', right: 52,
         width: 260, maxHeight: '70vh', overflowY: 'auto', padding: 10
       }}
     >
