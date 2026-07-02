@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api import auth, tasks, tracks
+from app.api import auth, poi, tasks, tracks
 from app.core.database import Base, engine
 
 Base.metadata.create_all(bind=engine)
@@ -52,6 +52,7 @@ async def add_security_headers(request, call_next):
 app.include_router(auth.router)
 app.include_router(tracks.router)
 app.include_router(tasks.router)
+app.include_router(poi.router)
 
 
 @app.get("/health")
