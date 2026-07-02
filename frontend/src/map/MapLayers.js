@@ -40,6 +40,7 @@ export const TILE_LAYERS = {
     url: 'https://tile.tracestrack.com/positron/{z}/{x}/{y}.png',
     attribution: '© <a href="https://tracestrack.com">Tracestrack</a> | © <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
     maxZoom: 19,
+    subdomains: [],
   },
 };
 
