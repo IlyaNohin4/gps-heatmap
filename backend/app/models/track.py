@@ -43,6 +43,7 @@ class Track(Base):
     raw_points = Column(JSON)
     normalized_points = Column(JSON)
     speed_segments = Column(JSON)
+    grade_stats = Column(JSON)
 
     is_public = Column(Boolean, default=False)
     public_token = Column(String(64), unique=True, default=lambda: secrets.token_urlsafe(32))

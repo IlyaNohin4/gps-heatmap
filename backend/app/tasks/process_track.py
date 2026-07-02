@@ -80,28 +80,18 @@ def process_track(self, track_id: int, file_bytes: bytes) -> dict:
                 wkt = _points_to_linestring(norm_points)
                 geom = WKTElement(wkt, srid=4326)
 
-            # 5. Persist
-            # Compute elevation gain/loss from normalized points
-            elev_gain = 0.0
-            elev_loss = 0.0
-            elevations = [p.get("elevation") for p in norm_points if p.get("elevation") is not None]
-            for i in range(1, len(elevations)):
-                diff = elevations[i] - elevations[i - 1]
-                if diff > 0:
-                    elev_gain += diff
-                else:
-                    elev_loss += abs(diff)
-
+            # 5. Persist all parsed metrics (normalization includes elevation & grade calculation)
             track.raw_points = raw_serializable
             track.normalized_points = norm_serializable
             track.speed_segments = result["speed_segments"]
+            track.grade_stats = result["grade_stats"]
             track.distance_km = result["distance_km"]
             track.duration_sec = result["duration_sec"]
             track.speed_avg = result["speed_avg"]
             track.speed_max = result["speed_max"]
             track.speed_min = result["speed_min"]
-            track.elevation_gain = elev_gain if elevations else None
-            track.elevation_loss = elev_loss if elevations else None
+            track.elevation_gain = result["elevation_gain"]
+            track.elevation_loss = result["elevation_loss"]
             track.recorded_at = result["recorded_at"]
             track.regions = regions or []
             track.geom = geom
