@@ -28,6 +28,7 @@ export default function RightIsland() {
     showHeatmap, toggleHeatmap,
     showSpeed, toggleSpeed,
     visibleImports,
+    showTrackCreator, toggleTrackCreator,
   } = useMapStore();
   const { unitSystem, activePanel, setActivePanel } = useAppStore();
 
@@ -136,9 +137,9 @@ export default function RightIsland() {
         </button>
         {divider}
         <button
-          style={{...iconBtn(false), opacity: 0.5, cursor: 'not-allowed'}}
-          disabled
-          title={t('map.create_track') + ' (TODO)'}
+          style={iconBtn(showTrackCreator)}
+          onClick={toggleTrackCreator}
+          title={t('map.create_track')}
         >
           <PenLine size={16} />
         </button>

@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   MapContainer as LeafletMap,
   TileLayer,
@@ -17,6 +17,7 @@ import TrackLayer from '../map/TrackLayer.jsx';
 import SpeedLayer from '../map/SpeedLayer.jsx';
 import VisitLayer from '../map/VisitLayer.jsx';
 import POILayer from '../map/POILayer.jsx';
+import TrackCreator, { TrackCreatorPanel } from '../map/TrackCreator.jsx';
 
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
@@ -127,9 +128,35 @@ function useVisibleTracks() {
 }
 
 function MapLayers() {
-  const { showSpeed, showHeatmap, showPOI } = useMapStore();
+  const {
+    showSpeed, showHeatmap, showPOI, showTrackCreator, toggleTrackCreator,
+    trackCreatorState,
+    setTrackCreatorState,
+    undoWaypoint,
+    redoWaypoint,
+    clearTrackCreatorState,
+  } = useMapStore();
   const tracks = useAppStore((s) => s.tracks);
   const { visibleTracks, selectedTrackId } = useVisibleTracks();
+
+  const [creatorMode, setCreatorMode] = useState('manual');
+  const [creatorProfile, setCreatorProfile] = useState('cycling-regular');
+
+  const handleUndo = () => undoWaypoint();
+  const handleRedo = () => redoWaypoint();
+  const handleClear = () => clearTrackCreatorState();
+  const handleSave = () => {
+    // TODO: Open save modal
+    console.log('[TrackCreator] Save:', {
+      waypoints: trackCreatorState.waypoints,
+      routePoints: trackCreatorState.routePoints,
+      mode: creatorMode,
+    });
+  };
+  const handleCancel = () => {
+    clearTrackCreatorState();
+    toggleTrackCreator();
+  };
 
   return (
     <>
@@ -156,6 +183,32 @@ function MapLayers() {
       {/* POI markers */}
       {showPOI && (
         <POILayer />
+      )}
+
+      {/* Track creator (map click handler) */}
+      {showTrackCreator && (
+        <TrackCreator />
+      )}
+
+      {/* Track creator control panel */}
+      {showTrackCreator && (
+        <TrackCreatorPanel
+          mode={creatorMode}
+          setMode={(m) => {
+            setCreatorMode(m);
+            setTrackCreatorState({ mode: m });
+          }}
+          profile={creatorProfile}
+          setProfile={(p) => {
+            setCreatorProfile(p);
+            setTrackCreatorState({ profile: p });
+          }}
+          onUndo={handleUndo}
+          onRedo={handleRedo}
+          onClear={handleClear}
+          onSave={handleSave}
+          onCancel={handleCancel}
+        />
       )}
     </>
   );
