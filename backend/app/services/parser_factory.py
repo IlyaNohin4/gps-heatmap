@@ -347,7 +347,7 @@ def _classify_segment(grade: Optional[float], climbing_threshold: float = 5.0, d
 
 
 def _build_segments(points: list[dict]) -> tuple[list[dict], float, float, float, float, Optional[int], dict]:
-    """Compute speed_segments, distance_km, speed stats, duration, and grade stats.
+    """Compute speed_segments, distance_km, speed stats, duration, grade stats, and elevation gain/loss.
 
     Uses osmand_speed_kmh from each point when available; falls back to Haversine
     for points that carry no recorded speed.
@@ -358,6 +358,8 @@ def _build_segments(points: list[dict]) -> tuple[list[dict], float, float, float
     total_km = 0.0
     speeds: list[float] = []
     grades: list[float] = []
+    elevation_gain = 0.0
+    elevation_loss = 0.0
     segment_types: dict[str, int] = {"climbing": 0, "descent": 0, "flat": 0}
     segment_distances: dict[str, float] = {"climbing": 0.0, "descent": 0.0, "flat": 0.0}
 
@@ -367,14 +369,20 @@ def _build_segments(points: list[dict]) -> tuple[list[dict], float, float, float
         dist_m = dist_km * 1000
         total_km += dist_km
 
-        # Calculate grade
+        # Calculate grade and elevation change
         ele0 = p0.get("elevation")
         ele1 = p1.get("elevation")
         grade = None
         if ele0 is not None and ele1 is not None:
-            grade = _calculate_grade(ele1 - ele0, dist_m)
+            ele_delta = ele1 - ele0
+            grade = _calculate_grade(ele_delta, dist_m)
             if grade is not None:
                 grades.append(grade)
+            # Track elevation gain/loss
+            if ele_delta > 0:
+                elevation_gain += ele_delta
+            else:
+                elevation_loss += abs(ele_delta)
 
         # Classify segment
         seg_type = _classify_segment(grade)
@@ -426,6 +434,8 @@ def _build_segments(points: list[dict]) -> tuple[list[dict], float, float, float
         "grade_avg": round(grade_avg, 1) if grade_avg is not None else None,
         "grade_max": round(grade_max, 1) if grade_max is not None else None,
         "grade_min": round(grade_min, 1) if grade_min is not None else None,
+        "elevation_gain": round(elevation_gain, 1),
+        "elevation_loss": round(elevation_loss, 1),
         "segment_counts": segment_types,
         "segment_distances": {k: round(v, 2) for k, v in segment_distances.items()},
         "segment_percentages": {
@@ -537,6 +547,8 @@ def _parse_gpx(data: bytes) -> dict:
         "speed_avg": round(s_avg, 2) if s_avg else None,
         "speed_max": round(s_max, 2) if s_max else None,
         "speed_min": round(s_min, 2) if s_min else None,
+        "elevation_gain": stats.get("elevation_gain", 0.0),
+        "elevation_loss": stats.get("elevation_loss", 0.0),
         "duration_sec": dur,
         "recorded_at": recorded_at,
         "grade_stats": stats,
@@ -573,6 +585,8 @@ def _parse_kml(data: bytes) -> dict:
         "speed_avg": round(s_avg, 2) if s_avg else None,
         "speed_max": round(s_max, 2) if s_max else None,
         "speed_min": round(s_min, 2) if s_min else None,
+        "elevation_gain": stats.get("elevation_gain", 0.0),
+        "elevation_loss": stats.get("elevation_loss", 0.0),
         "duration_sec": None,
         "recorded_at": None,
         "grade_stats": stats,
@@ -620,6 +634,8 @@ def _parse_tcx(data: bytes) -> dict:
         "speed_avg": round(s_avg, 2) if s_avg else None,
         "speed_max": round(s_max, 2) if s_max else None,
         "speed_min": round(s_min, 2) if s_min else None,
+        "elevation_gain": stats.get("elevation_gain", 0.0),
+        "elevation_loss": stats.get("elevation_loss", 0.0),
         "duration_sec": dur,
         "recorded_at": recorded_at,
         "grade_stats": stats,
@@ -662,6 +678,8 @@ def _parse_fit(data: bytes) -> dict:
         "speed_avg": round(s_avg, 2) if s_avg else None,
         "speed_max": round(s_max, 2) if s_max else None,
         "speed_min": round(s_min, 2) if s_min else None,
+        "elevation_gain": stats.get("elevation_gain", 0.0),
+        "elevation_loss": stats.get("elevation_loss", 0.0),
         "duration_sec": dur,
         "recorded_at": recorded_at,
         "grade_stats": stats,
@@ -703,6 +721,8 @@ def _parse_geojson(data: bytes) -> dict:
         "speed_avg": None,
         "speed_max": None,
         "speed_min": None,
+        "elevation_gain": stats.get("elevation_gain", 0.0),
+        "elevation_loss": stats.get("elevation_loss", 0.0),
         "duration_sec": None,
         "recorded_at": None,
         "grade_stats": stats,
