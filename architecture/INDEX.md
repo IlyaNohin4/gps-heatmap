@@ -244,10 +244,12 @@ font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif
   1. **Parse + Normalize** (см. PARSER.md)
      - Определить формат по magic bytes
      - Парсить файл → raw_points
-     - Collapse drift (кластеризация близких точек)
-     - Remove speed outliers (hard limit 200 км/ч)
-     - Apply Kalman filter → normalized_points
-     - Вычислить метрики (distance, speed_avg/max/min, segments)
+     - **Normalization pipeline:**
+       1. Collapse drift (кластеризация близких точек < 3м, > 10с)
+       2. Remove speed outliers (hard limit 200 км/ч)
+       3. Apply Kalman filter (сглаживание lat/lon)
+       4. Smooth elevation (Savitzky-Golay фильтр, устраняет GPS шум в высоте)
+     - Вычислить метрики (distance, elevation_gain/loss, speed_avg/max/min, segments)
   2. Определить регионы (Nominatim + Redis кэш 30 дней)
   3. Сохранить в БД (raw_points + normalized_points)
   4. Освободить lock — следующий трек начинает обработку
