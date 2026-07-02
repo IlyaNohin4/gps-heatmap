@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
 import {
   MapContainer as LeafletMap,
   TileLayer,
@@ -17,7 +17,6 @@ import TrackLayer from '../map/TrackLayer.jsx';
 import SpeedLayer from '../map/SpeedLayer.jsx';
 import VisitLayer from '../map/VisitLayer.jsx';
 import POILayer from '../map/POILayer.jsx';
-import TrackCreator, { TrackCreatorPanel } from '../map/TrackCreator.jsx';
 
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
@@ -128,31 +127,9 @@ function useVisibleTracks() {
 }
 
 function MapLayers() {
-  const { showSpeed, showHeatmap, showPOI, showTrackCreator, poiCategories } = useMapStore();
+  const { showSpeed, showHeatmap, showPOI } = useMapStore();
   const tracks = useAppStore((s) => s.tracks);
   const { visibleTracks, selectedTrackId } = useVisibleTracks();
-
-  const [creatorMode, setCreatorMode] = useState('manual');
-  const [creatorProfile, setCreatorProfile] = useState('foot-walking');
-  const [creatorWaypoints, setCreatorWaypoints] = useState([]);
-  const [creatorRoutePoints, setCreatorRoutePoints] = useState([]);
-  const [creatorRouting, setCreatorRouting] = useState(false);
-  const [creatorError, setCreatorError] = useState(null);
-
-  const orsApiKey = import.meta.env.VITE_ORS_API_KEY || '';
-
-  function handleCreatorSave(pts) {
-    console.log('[TrackCreator] saved', pts.length, 'points');
-    useMapStore.getState().toggleTrackCreator();
-    setCreatorWaypoints([]);
-    setCreatorRoutePoints([]);
-  }
-
-  function handleCreatorCancel() {
-    useMapStore.getState().toggleTrackCreator();
-    setCreatorWaypoints([]);
-    setCreatorRoutePoints([]);
-  }
 
   return (
     <>
@@ -179,35 +156,6 @@ function MapLayers() {
       {/* POI markers */}
       {showPOI && (
         <POILayer />
-      )}
-
-      {/* Track creator (map click handler) */}
-      {showTrackCreator && (
-        <TrackCreator
-          mode={creatorMode}
-          profile={creatorProfile}
-          orsApiKey={orsApiKey}
-          onSave={handleCreatorSave}
-          onCancel={handleCreatorCancel}
-        />
-      )}
-
-      {/* Track creator control panel (fixed overlay, rendered via MapLayers so it's inside
-          the same component tree but uses fixed positioning to float above the map) */}
-      {showTrackCreator && (
-        <TrackCreatorPanel
-          mode={creatorMode}
-          setMode={setCreatorMode}
-          profile={creatorProfile}
-          setProfile={setCreatorProfile}
-          routing={creatorRouting}
-          error={creatorError}
-          waypointCount={creatorWaypoints.length}
-          onUndo={() => setCreatorWaypoints((p) => p.slice(0, -1))}
-          onClear={() => { setCreatorWaypoints([]); setCreatorRoutePoints([]); }}
-          onSave={() => handleCreatorSave(creatorMode === 'auto' ? creatorRoutePoints : creatorWaypoints)}
-          onCancel={handleCreatorCancel}
-        />
       )}
     </>
   );
