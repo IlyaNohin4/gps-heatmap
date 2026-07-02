@@ -42,10 +42,11 @@ def process_track(self, track_id: int, file_bytes: bytes) -> dict:
 
             self.update_state(state="PROGRESS", meta={"step": "parsing"})
 
-            # 1. Parse
+            # 1. Parse (normalization happens inside parser)
             from app.services.parser_factory import parse
             result = parse(file_bytes, track.file_format)
             raw_points = result["points"]
+            norm_points = result.get("normalized_points", raw_points)  # Fallback to raw if not present
 
             if not raw_points:
                 _set_error(db, track, "No GPS points found in file")
@@ -59,9 +60,7 @@ def process_track(self, track_id: int, file_bytes: bytes) -> dict:
 
             self.update_state(state="PROGRESS", meta={"step": "normalizing"})
 
-            # 2. Normalize
-            from app.services.normalizer import normalize
-            norm_points, clean_segs = normalize(raw_points, result["speed_segments"])
+            # 2. Normalized points already computed in parser
             norm_serializable = [
                 {**p, "time": p["time"].isoformat() if p["time"] else None}
                 for p in norm_points
@@ -95,7 +94,7 @@ def process_track(self, track_id: int, file_bytes: bytes) -> dict:
 
             track.raw_points = raw_serializable
             track.normalized_points = norm_serializable
-            track.speed_segments = clean_segs
+            track.speed_segments = result["speed_segments"]
             track.distance_km = result["distance_km"]
             track.duration_sec = result["duration_sec"]
             track.speed_avg = result["speed_avg"]
