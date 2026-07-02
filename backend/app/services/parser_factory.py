@@ -12,6 +12,8 @@ from typing import Any, Optional
 
 from lxml import etree
 
+import statistics
+
 # ── Haversine ─────────────────────────────────────────────────────────────────
 
 _EARTH_R = 6371.0  # km
@@ -23,6 +25,153 @@ def _haversine(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
     dlon = math.radians(lon2 - lon1)
     a = math.sin(dlat / 2) ** 2 + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(dlon / 2) ** 2
     return 2 * _EARTH_R * math.asin(math.sqrt(a))
+
+
+# ── Normalization ──────────────────────────────────────────────────────────────
+
+class _KalmanFilter1D:
+    """1D Kalman filter for independent lat/lon smoothing."""
+
+    def __init__(self, process_variance: float = 0.01, measurement_variance: float = 0.00001):
+        self.Q = process_variance
+        self.R = measurement_variance
+        self.x = 0.0  # position estimate
+        self.v = 0.0  # velocity estimate
+        self.P = 1.0  # estimation error
+
+    def update(self, z: float, dt: float) -> float:
+        """Update with new measurement, return filtered position."""
+        dt = max(dt, 0.01)  # Avoid division by zero
+
+        # Predict
+        self.x = self.x + self.v * dt
+        self.P = self.P + self.Q
+
+        # Update
+        K = self.P / (self.P + self.R)  # Kalman gain
+        self.x = self.x + K * (z - self.x)
+        self.v = self.v + K * (z - self.x) / dt if dt > 0 else self.v
+        self.P = (1 - K) * self.P
+
+        return self.x
+
+
+def _collapse_drift(points: list[dict], distance_threshold: float = 3.0, time_threshold: int = 10) -> list[dict]:
+    """Cluster stationary points (GPS drift during pause) into single point."""
+    if len(points) < 2:
+        return points
+
+    result = []
+    i = 0
+
+    while i < len(points):
+        cluster = [points[i]]
+        j = i + 1
+
+        # Gather nearby points
+        while j < len(points):
+            dist = _haversine(points[i]['lat'], points[i]['lon'], points[j]['lat'], points[j]['lon']) * 1000  # to meters
+            time_diff = (points[j]['time'] - points[i]['time']).total_seconds() if points[j]['time'] and points[i]['time'] else 0
+
+            if dist < distance_threshold and time_diff >= time_threshold:
+                cluster.append(points[j])
+                j += 1
+            else:
+                break
+
+        if len(cluster) > 1:
+            # Replace cluster with centroid
+            avg_lat = sum(p['lat'] for p in cluster) / len(cluster)
+            avg_lon = sum(p['lon'] for p in cluster) / len(cluster)
+            avg_ele = sum(p.get('elevation') or 0 for p in cluster) / len(cluster) if cluster[0].get('elevation') else None
+
+            result.append({
+                'lat': avg_lat,
+                'lon': avg_lon,
+                'elevation': avg_ele,
+                'time': cluster[0]['time'],
+                'osmand_speed_kmh': cluster[0].get('osmand_speed_kmh')
+            })
+            i = j
+        else:
+            result.append(points[i])
+            i += 1
+
+    return result
+
+
+def _remove_speed_outliers(points: list[dict], max_speed_kmh: float = 200) -> list[dict]:
+    """Remove points with impossible speed > max_speed_kmh."""
+    if len(points) < 2:
+        return points
+
+    outlier_indices = set()
+
+    for i in range(len(points) - 1):
+        p0, p1 = points[i], points[i + 1]
+        if not (p0['time'] and p1['time']):
+            continue
+
+        dist_km = _haversine(p0['lat'], p0['lon'], p1['lat'], p1['lon'])
+        time_diff = (p1['time'] - p0['time']).total_seconds()
+
+        if time_diff > 0:
+            speed_kmh = dist_km / (time_diff / 3600)
+
+            if speed_kmh > max_speed_kmh:
+                outlier_indices.add(i)
+                outlier_indices.add(i + 1)
+
+    return [p for i, p in enumerate(points) if i not in outlier_indices]
+
+
+def _apply_kalman_filter(points: list[dict], process_variance: float = 0.01, measurement_variance: float = 0.00001) -> list[dict]:
+    """Apply Kalman filter to smooth lat/lon independently."""
+    if len(points) < 2:
+        return points
+
+    kf_lat = _KalmanFilter1D(process_variance, measurement_variance)
+    kf_lon = _KalmanFilter1D(process_variance, measurement_variance)
+
+    # Initialize
+    kf_lat.x = points[0]['lat']
+    kf_lon.x = points[0]['lon']
+
+    result = []
+    prev_time = points[0]['time']
+
+    for point in points:
+        if prev_time and point['time']:
+            dt = (point['time'] - prev_time).total_seconds()
+        else:
+            dt = 0.1
+
+        filtered_lat = kf_lat.update(point['lat'], dt)
+        filtered_lon = kf_lon.update(point['lon'], dt)
+
+        result.append({
+            'lat': filtered_lat,
+            'lon': filtered_lon,
+            'elevation': point.get('elevation'),
+            'time': point['time'],
+            'osmand_speed_kmh': point.get('osmand_speed_kmh')
+        })
+
+        prev_time = point['time']
+
+    return result
+
+
+def _normalize_points(points: list[dict]) -> list[dict]:
+    """Full normalization pipeline: collapse drift → remove outliers → Kalman filter."""
+    if len(points) < 2:
+        return points
+
+    points = _collapse_drift(points)
+    points = _remove_speed_outliers(points)
+    points = _apply_kalman_filter(points)
+
+    return points
 
 
 def _build_segments(points: list[dict]) -> tuple[list[dict], float, float, float, float, Optional[int]]:
@@ -160,10 +309,14 @@ def _parse_gpx(data: bytes) -> dict:
     if not points:
         raise ValueError("No GPS points found in GPX file")
 
+    raw_points = points
+    normalized_points = _normalize_points(points)
+
     recorded_at = points[0]["time"] if points[0]["time"] else None
-    segs, dist, s_avg, s_max, s_min, dur = _build_segments(points)
+    segs, dist, s_avg, s_max, s_min, dur = _build_segments(normalized_points)
     return {
-        "points": points,
+        "points": raw_points,
+        "normalized_points": normalized_points,
         "speed_segments": segs,
         "distance_km": round(dist, 4),
         "speed_avg": round(s_avg, 2) if s_avg else None,
@@ -191,9 +344,14 @@ def _parse_kml(data: bytes) -> dict:
                     points.append({"lat": lat, "lon": lon, "elevation": ele, "time": None})
                 except ValueError:
                     continue
-    segs, dist, s_avg, s_max, s_min, dur = _build_segments(points)
+
+    raw_points = points
+    normalized_points = _normalize_points(points) if points else []
+
+    segs, dist, s_avg, s_max, s_min, dur = _build_segments(normalized_points)
     return {
-        "points": points,
+        "points": raw_points,
+        "normalized_points": normalized_points,
         "speed_segments": segs,
         "distance_km": round(dist, 4),
         "speed_avg": round(s_avg, 2) if s_avg else None,
@@ -232,10 +390,14 @@ def _parse_tcx(data: bytes) -> dict:
                 pass
         points.append({"lat": lat, "lon": lon, "elevation": ele, "time": t})
 
+    raw_points = points
+    normalized_points = _normalize_points(points) if points else []
+
     recorded_at = points[0]["time"] if points and points[0]["time"] else None
-    segs, dist, s_avg, s_max, s_min, dur = _build_segments(points)
+    segs, dist, s_avg, s_max, s_min, dur = _build_segments(normalized_points)
     return {
-        "points": points,
+        "points": raw_points,
+        "normalized_points": normalized_points,
         "speed_segments": segs,
         "distance_km": round(dist, 4),
         "speed_avg": round(s_avg, 2) if s_avg else None,
@@ -269,10 +431,14 @@ def _parse_fit(data: bytes) -> dict:
             t = t.replace(tzinfo=timezone.utc)
         points.append({"lat": lat, "lon": lon, "elevation": ele, "time": t})
 
+    raw_points = points
+    normalized_points = _normalize_points(points) if points else []
+
     recorded_at = points[0]["time"] if points and points[0]["time"] else None
-    segs, dist, s_avg, s_max, s_min, dur = _build_segments(points)
+    segs, dist, s_avg, s_max, s_min, dur = _build_segments(normalized_points)
     return {
-        "points": points,
+        "points": raw_points,
+        "normalized_points": normalized_points,
         "speed_segments": segs,
         "distance_km": round(dist, 4),
         "speed_avg": round(s_avg, 2) if s_avg else None,
@@ -306,9 +472,13 @@ def _parse_geojson(data: bytes) -> dict:
             ele = c[2] if len(c) >= 3 else None
             points.append({"lat": lat, "lon": lon, "elevation": ele, "time": None})
 
-    segs, dist, s_avg, s_max, s_min, dur = _build_segments(points)
+    raw_points = points
+    normalized_points = _normalize_points(points) if points else []
+
+    segs, dist, s_avg, s_max, s_min, dur = _build_segments(normalized_points)
     return {
-        "points": points,
+        "points": raw_points,
+        "normalized_points": normalized_points,
         "speed_segments": segs,
         "distance_km": round(dist, 4),
         "speed_avg": None,
