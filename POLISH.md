@@ -4,11 +4,88 @@
   - Решение: Hard limit 200 km/h (физический максимум для велосипеда)
   - Результат: Все невозможные скорости (247 km/h) отсекаются
   - Тест: реальный трек показывает max 115 км/ч (реалистично для спуска)
+---
+
+## ⭐⭐⭐ КРИТИЧНЫЕ (MVP blockers)
+
+- [ ] **Display grade_stats in Frontend UI** (ПРИОРИТЕТ)
+  - Добавить climbing%, flat%, descent% в карточках треков (LeftIsland)
+  - Показать в панели деталей трека
+  - Интегрировать в slope profile chart (данные уже есть в API)
+  - Влияет на: track analytics display
+
+- [ ] **Full integration test** (ПРИОРИТЕТ)
+  - Загрузить реальный трек через UI
+  - Проверить что данные появились на карте (normalized_points)
+  - Проверить что графики работают (elevation, speed, slope)
+  - Проверить что grade_stats отображается корректно
+
+---
+
+## ⭐⭐ ВАЖНЫЕ
+
+- [ ] Отправка email — Resend API интеграция
+  - Resend API настроен в .env.example (RESEND_API_KEY)
+  - Нужна реальная интеграция для:
+    - Сброса пароля (forgot-password endpoint существует)
+    - Подтверждения email при регистрации
+    - Смены email в профиле
+
+- [ ] Production deployment setup
+  - Оптимизация production Dockerfile
+  - nginx reverse proxy конфигурация
+  - .env template и environment variable management
+  - CI/CD pipeline (GitHub Actions для tests & deploy)
+  - Database backup strategy
+  - Monitoring & logging setup (e.g., Sentry)
+
+---
+
+## ⭐ NICE-TO-HAVE
+
 - [ ] Добавить плавные анимации:
   - Раскрытие/сворачивание меню настроек и островов (TopIsland, RightIsland поповеры)
   - Появление/исчезновение элементов (toast уведомления, модальные окна)
   - Переходы между состояниями карты/режимов визуализации (смена тайлового слоя, переключение Speed/Heatmap)
-- [ ] Отправка email не реализована — Resend API настроен в .env.example (RESEND_API_KEY) но реальная интеграция отсутствует. Затрагивает: подтверждение регистрации, сброс пароля (forgot-password endpoint существует но письмо не отправляется фактически), смену email.
+
+- [ ] Speed legend positioning verification
+  - Проверить что легенда работает во всех размерах viewport
+  - Currently fixed в bottom-left corner
+
+- [ ] POI search UI (if Overpass API enabled)
+  - Food, Amenities, Medical, Tourism, Bicycle, Public Transport
+  - Debounced search с 350ms delay
+
+- [ ] Reset bearing button (currently broken)
+  - Кнопка в RightIsland не работает
+
+- [ ] Track creation tool
+  - Возможность рисовать трек на карте
+  - Сохранение как новый трек
+
+---
+
+## 🔧 BACKEND TASKS
+
+### Not Yet Started
+
+- [ ] OpenRouteService routing integration (optional)
+  - 2500 req/day free tier
+  - Интеграция для route planning
+
+- [ ] POI search via Overpass API (under question)
+  - Food, Amenities, Medical, Tourism, Bicycle, Public Transport
+  - Возможно не нужна
+
+- [ ] Track creation from scratch (under question)
+  - API для создания треков без файла
+  - Рисование на карте
+  - Возможно не нужна
+
+- [ ] More granular error handling & logging
+  - Улучшить error messages
+  - Добавить structured logging
+  - Better debugging for track processing issues
 
 ---
 
