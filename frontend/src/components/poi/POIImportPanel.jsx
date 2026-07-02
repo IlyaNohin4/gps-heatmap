@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { toast } from 'react-toastify';
 
 import useMapStore from '../../store/mapStore.js';
+import { uploadPOI, fetchPOI, fetchPOICategories } from '../../api/poi.js';
 
 export default function POIImportPanel({ onClose }) {
   const { t } = useTranslation();
@@ -25,32 +26,15 @@ export default function POIImportPanel({ onClose }) {
 
     setUploading(true);
     try {
-      const formData = new FormData();
-      formData.append('file', file);
-
-      const token = localStorage.getItem('token');
-      const response = await fetch('/api/poi/upload', {
-        method: 'POST',
-        body: formData,
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-
-      if (!response.ok) {
-        const err = await response.json();
-        throw new Error(err.detail || 'Upload failed');
-      }
-
-      const data = await response.json();
-      toast.success(t('poi.imported', { count: data.imported }));
+      // Upload file
+      const uploadData = await uploadPOI(file);
+      toast.success(t('poi.imported', { count: uploadData.imported }));
 
       // Update categories
-      setUploadedPOICategories(data.categories || []);
+      setUploadedPOICategories(uploadData.categories || []);
 
       // Refresh POI list
-      const poiData = await fetch('/api/poi', {
-        headers: { 'Authorization': `Bearer ${token}` }
-      }).then(r => r.json());
-
+      const poiData = await fetchPOI();
       setUserPOI(poiData);
 
       // Auto-enable POI if not already
