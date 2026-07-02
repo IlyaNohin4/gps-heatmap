@@ -143,7 +143,7 @@ function MainPage() {
           className="icon-btn"
           onClick={handleShowAll}
           title={t('tracks.show_all')}
-          style={{ width: 32, height: 32 }}
+          style={{ width: 32, height: 32, background: 'var(--surface)', border: '1px solid var(--border)' }}
         >
           <RotateCcw size={14} />
         </button>
