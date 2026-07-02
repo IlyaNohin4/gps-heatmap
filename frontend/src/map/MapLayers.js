@@ -39,11 +39,11 @@ export const TILE_LAYERS = {
 };
 
 export const LAYER_OPTIONS = [
-  { id: 'osm',            label: 'OpenStreetMap',    group: 'Street' },
-  { id: 'topo',           label: 'OpenTopoMap',      group: 'Street' },
-  { id: 'cyclosm',        label: 'CyclOSM',          group: 'Street' },
-  { id: 'carto-voyager',  label: 'CARTO Voyager',    group: 'Style' },
-  { id: 'stamen-terrain', label: 'Stamen Terrain',   group: 'Terrain' },
-  { id: 'google-street',  label: 'Google Street',    group: 'Google' },
-  { id: 'google-satellite', label: 'Google Satellite', group: 'Google' },
+  { id: 'osm',            label: 'OpenStreetMap' },
+  { id: 'topo',           label: 'OpenTopoMap' },
+  { id: 'cyclosm',        label: 'CyclOSM' },
+  { id: 'carto-voyager',  label: 'CARTO Voyager' },
+  { id: 'stamen-terrain', label: 'Stamen Terrain' },
+  { id: 'google-street',  label: 'Google Street' },
+  { id: 'google-satellite', label: 'Google Satellite' },
 ];

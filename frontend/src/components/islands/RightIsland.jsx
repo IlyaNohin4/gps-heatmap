@@ -9,8 +9,6 @@ import useAppStore from '../../store/appStore.js';
 import { LAYER_OPTIONS } from '../../map/MapLayers.js';
 import POIImportPanel from '../poi/POIImportPanel.jsx';
 
-const GROUPS = [...new Set(LAYER_OPTIONS.map((l) => l.group))];
-
 // Speed breakpoints: [max_kmh, label_km, label_mi, color]
 const SPEED_LEGEND = [
   { maxKmh: 10,  labelKm: '0–10 km/h',   labelMi: '0–6 mph',   color: 'rgb(155,155,155)' },
@@ -188,27 +186,22 @@ export default function RightIsland() {
       {layersOpen && (
         <div className="island" style={{ position: 'absolute', right: 52, top: '50%', transform: 'translateY(-50%)', width: 200, padding: 10, maxHeight: '70vh', overflowY: 'auto' }}>
           <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: 8 }}>{t('map.map_layers')}</div>
-          {GROUPS.map((group) => (
-            <div key={group}>
-              <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', padding: '6px 8px 2px', letterSpacing: '0.05em' }}>{group}</div>
-              {LAYER_OPTIONS.filter((l) => l.group === group).map((l) => (
-                <button
-                  key={l.id}
-                  onClick={() => setActiveLayer(l.id)}
-                  style={{
-                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                    width: '100%', padding: '7px 8px', borderRadius: 8, border: 'none',
-                    background: activeLayer === l.id ? 'rgba(0,122,255,0.1)' : 'none',
-                    color: activeLayer === l.id ? 'var(--accent)' : 'var(--text)',
-                    cursor: 'pointer', fontSize: 13,
-                    fontWeight: activeLayer === l.id ? 600 : 400,
-                  }}
-                >
-                  {l.label}
-                  {activeLayer === l.id && <ChevronRight size={12} />}
-                </button>
-              ))}
-            </div>
+          {LAYER_OPTIONS.map((l) => (
+            <button
+              key={l.id}
+              onClick={() => setActiveLayer(l.id)}
+              style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                width: '100%', padding: '7px 8px', borderRadius: 8, border: 'none',
+                background: activeLayer === l.id ? 'rgba(0,122,255,0.1)' : 'none',
+                color: activeLayer === l.id ? 'var(--accent)' : 'var(--text)',
+                cursor: 'pointer', fontSize: 13,
+                fontWeight: activeLayer === l.id ? 600 : 400,
+              }}
+            >
+              {l.label}
+              {activeLayer === l.id && <ChevronRight size={12} />}
+            </button>
           ))}
         </div>
       )}
