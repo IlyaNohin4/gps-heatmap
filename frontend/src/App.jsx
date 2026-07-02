@@ -19,7 +19,7 @@ import BottomIsland from './components/islands/BottomIsland.jsx';
 
 import { fetchTracks } from './api/tracks.js';
 import { getMe } from './api/auth.js';
-import { Search } from 'lucide-react';
+import { Search, RotateCcw } from 'lucide-react';
 import useMapStore from './store/mapStore.js';
 
 // Lazy-load the public track page so it doesn't pull leaflet into the main bundle
@@ -108,6 +108,13 @@ function MainPage() {
     } catch { /* ignore */ }
   }
 
+  async function handleShowAll() {
+    try {
+      const data = await fetchTracks();
+      setTracks(data.tracks || data);
+    } catch { /* ignore */ }
+  }
+
   return (
     <>
       <MapContainer />
@@ -121,6 +128,9 @@ function MainPage() {
         transform: 'translateX(-50%)',
         zIndex: 999,
         transition: 'top 0.2s ease',
+        display: 'flex',
+        alignItems: 'center',
+        gap: 6,
       }}>
         <button
           className="btn-secondary"
@@ -128,6 +138,14 @@ function MainPage() {
           onClick={handleFindInArea}
         >
           <Search size={13} /> {t('tracks.find_in_area')}
+        </button>
+        <button
+          className="icon-btn"
+          onClick={handleShowAll}
+          title={t('tracks.show_all')}
+          style={{ width: 32, height: 32 }}
+        >
+          <RotateCcw size={14} />
         </button>
       </div>
       <LeftIsland onUploadClick={handleUploadClick} loading={tracksLoading} />
