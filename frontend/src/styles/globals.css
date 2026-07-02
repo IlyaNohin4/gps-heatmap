@@ -160,3 +160,12 @@ input:focus, select:focus, textarea:focus {
   background: var(--border);
   border-radius: 4px;
 }
+
+/* Hide default toast icons - we use emoji in text instead */
+.Toastify__toast-icon {
+  display: none !important;
+}
+
+.Toastify__toast-body {
+  padding: 0 !important;
+}
