@@ -35,6 +35,12 @@ class Point(BaseModel):
     lon: float
 
 
+class CreateTrackBody(BaseModel):
+    name: str
+    points: List[Point]
+    format: str = "gpx"
+
+
 def _detect_format(header: bytes, filename: str) -> str:
     """Detect file format from magic bytes, fall back to extension."""
     for magic, fmts in MAGIC.items():
@@ -311,12 +317,6 @@ def delete_track(
         raise HTTPException(status_code=404, detail="Track not found")
     db.delete(track)
     db.commit()
-
-
-class CreateTrackBody(BaseModel):
-    name: str
-    points: List[Point]
-    format: str = "gpx"
 
 
 class RenameBody(BaseModel):
