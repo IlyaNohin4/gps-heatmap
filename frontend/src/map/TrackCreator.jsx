@@ -19,17 +19,22 @@ const WAYPOINT_ICON = L.divIcon({
 
 async function fetchRoute(waypoints, profile, orsApiKey) {
   if (waypoints.length < 2) return null;
+  if (!orsApiKey) throw new Error('OpenRouteService API key not configured');
+
   const coords = waypoints.map((p) => [p.lng, p.lat]);
   const url = `https://api.openrouteservice.org/v2/directions/${profile}/geojson`;
   const resp = await fetch(url, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      Authorization: orsApiKey,
+      'Authorization': `Bearer ${orsApiKey}`,
     },
     body: JSON.stringify({ coordinates: coords }),
   });
-  if (!resp.ok) throw new Error(`ORS error ${resp.status}`);
+  if (!resp.ok) {
+    const errData = await resp.json().catch(() => ({}));
+    throw new Error(errData.message || `ORS error ${resp.status}`);
+  }
   const data = await resp.json();
   const coords2 = data.features?.[0]?.geometry?.coordinates || [];
   return coords2.map(([lng, lat]) => [lat, lng]);
