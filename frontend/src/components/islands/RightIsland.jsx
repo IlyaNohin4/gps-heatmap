@@ -30,7 +30,7 @@ export default function RightIsland() {
     visibleImports,
     showTrackCreator, toggleTrackCreator,
   } = useMapStore();
-  const { unitSystem, activePanel, setActivePanel } = useAppStore();
+  const { unitSystem, activePanel, setActivePanel, setSelectedTrackId } = useAppStore();
 
   const cityOpen   = activePanel === 'right:city';
   const layersOpen = activePanel === 'right:layers';
@@ -138,7 +138,10 @@ export default function RightIsland() {
         {divider}
         <button
           style={iconBtn(showTrackCreator)}
-          onClick={toggleTrackCreator}
+          onClick={() => {
+            toggleTrackCreator();
+            if (!showTrackCreator) setSelectedTrackId(null);
+          }}
           title={t('map.create_track')}
         >
           <PenLine size={16} />

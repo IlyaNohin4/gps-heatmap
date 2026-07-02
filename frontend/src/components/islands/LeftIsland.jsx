@@ -5,6 +5,7 @@ import Slider from 'rc-slider';
 import 'rc-slider/assets/index.css';
 import TrackCard from '../tracks/TrackCard.jsx';
 import useAppStore from '../../store/appStore.js';
+import useMapStore from '../../store/mapStore.js';
 
 const FORMAT_OPTIONS = [
   { value: 'all',     label: 'All' },
@@ -41,13 +42,14 @@ function SkeletonCard() {
 export default function LeftIsland({ onUploadClick, loading }) {
   const { t } = useTranslation();
   const { tracks, selectedTrackId, setSelectedTrack, isUploadingIds, activePanel, setActivePanel } = useAppStore();
+  const { showTrackCreator, toggleTrackCreator } = useMapStore();
   const [open, setOpen] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [search, setSearch] = useState('');
   const filterOpen = activePanel === 'left:filter';
   const [sort, setSort] = useState('newest');
   const [formatFilter, setFormatFilter] = useState('all');
-  const [speedRange, setSpeedRange] = useState([0, 100]);
+  const [speedRange, setSpeedRange] = useState([0, 200]);
 
   const filtered = useMemo(() => {
     let list = [...tracks];
@@ -184,7 +186,10 @@ export default function LeftIsland({ onUploadClick, loading }) {
                 key={track.id}
                 track={track}
                 isSelected={track.id === selectedTrackId}
-                onClick={() => setSelectedTrack(track.id === selectedTrackId ? null : track.id)}
+                onClick={() => {
+                  setSelectedTrack(track.id === selectedTrackId ? null : track.id);
+                  if (showTrackCreator && track.id !== selectedTrackId) toggleTrackCreator();
+                }}
               />
             ))
           )}
