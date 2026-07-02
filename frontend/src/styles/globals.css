@@ -177,3 +177,82 @@ input:focus, select:focus, textarea:focus {
   font-size: 16px;
   line-height: 1.5;
 }
+
+/* Panel Animation Keyframes */
+@keyframes fadeSlideInLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes fadeSlideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes fadeSlideInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Panel Animation Classes */
+.panel-animate-in-left {
+  animation: fadeSlideInLeft 0.3s ease-out forwards;
+}
+
+.panel-animate-in-right {
+  animation: fadeSlideInRight 0.3s ease-out forwards;
+}
+
+.panel-animate-in-up {
+  animation: fadeSlideInUp 0.3s ease-out forwards;
+}
+
+/* Tile Layer Fade Transition */
+.leaflet-tile-pane {
+  transition: opacity 0.3s ease-out;
+}

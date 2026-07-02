@@ -111,7 +111,7 @@ export default function LeftIsland({ onUploadClick, loading }) {
         </div>
       )}
 
-      {sidebarOpen && <div className="island" style={{
+      {sidebarOpen && <div className="island panel-animate-in-left" style={{
         display: 'flex',
         flexDirection: 'column',
         overflow: 'hidden',
@@ -152,7 +152,7 @@ export default function LeftIsland({ onUploadClick, loading }) {
 
         {/* Filter panel */}
         {filterOpen && (
-          <div style={{ padding: '10px 12px', borderBottom: '1px solid var(--border)' }}>
+          <div style={{ padding: '10px 12px', borderBottom: '1px solid var(--border)', animation: 'fadeIn 0.3s ease-out' }}>
             <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-secondary)', marginBottom: 6, textTransform: 'uppercase' }}>{t('tracks.sort')}</div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 10 }}>
               {(['newest', 'oldest', 'longest', 'shortest', 'fastest', 'slowest']).map((v) => (

@@ -7,6 +7,7 @@ import { useTranslation } from 'react-i18next';
 import useMapStore from '../../store/mapStore.js';
 import useAppStore from '../../store/appStore.js';
 import { LAYER_OPTIONS } from '../../map/MapLayers.js';
+import { MAP_ANIMATIONS } from '../../config/mapAnimations.js';
 import POIImportPanel from '../poi/POIImportPanel.jsx';
 
 // Speed breakpoints: [max_kmh, label_km, label_mi, color]
@@ -50,7 +51,7 @@ export default function RightIsland() {
   function geolocate() {
     if (!navigator.geolocation) return;
     navigator.geolocation.getCurrentPosition(
-      (pos) => mapInstance?.flyTo([pos.coords.latitude, pos.coords.longitude], 14, { animate: true, duration: 2.0 }),
+      (pos) => mapInstance?.flyTo([pos.coords.latitude, pos.coords.longitude], 14, MAP_ANIMATIONS.geolocation),
       () => import('react-toastify').then((m) => m.toast.error('Geolocation denied'))
     );
   }
@@ -84,7 +85,7 @@ export default function RightIsland() {
   }
 
   function flyToResult(r) {
-    mapInstance?.flyTo([parseFloat(r.lat), parseFloat(r.lon)], 13, { animate: true, duration: 2.2 });
+    mapInstance?.flyTo([parseFloat(r.lat), parseFloat(r.lon)], 13, MAP_ANIMATIONS.search);
     setActivePanel(null);
     setCitySearch('');
     setCityResults([]);
@@ -154,7 +155,7 @@ export default function RightIsland() {
 
       {/* City search popover */}
       {cityOpen && (
-        <div className="island" style={{ position: 'absolute', right: 52, top: '50%', transform: 'translateY(-50%)', width: 260, padding: 10 }}>
+        <div className="island panel-animate-in-right" style={{ position: 'absolute', right: 52, top: '50%', transform: 'translateY(-50%)', width: 260, padding: 10 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             <input
               value={citySearch}
@@ -189,7 +190,7 @@ export default function RightIsland() {
 
       {/* Layers popover */}
       {layersOpen && (
-        <div className="island" style={{ position: 'absolute', right: 52, top: '50%', transform: 'translateY(-50%)', width: 200, padding: 10, maxHeight: '70vh', overflowY: 'auto' }}>
+        <div className="island panel-animate-in-right" style={{ position: 'absolute', right: 52, top: '50%', transform: 'translateY(-50%)', width: 200, padding: 10, maxHeight: '70vh', overflowY: 'auto' }}>
           <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: 8 }}>{t('map.map_layers')}</div>
           {LAYER_OPTIONS.map((l) => (
             <button
@@ -218,7 +219,7 @@ export default function RightIsland() {
 
       {/* Attribution popover */}
       {attrOpen && (
-        <div className="island" style={{ position: 'absolute', right: 52, top: '50%', transform: 'translateY(-50%)', width: 240, padding: '12px 14px' }}>
+        <div className="island panel-animate-in-right" style={{ position: 'absolute', right: 52, top: '50%', transform: 'translateY(-50%)', width: 240, padding: '12px 14px' }}>
           <div style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.7 }}>
             Map data © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent)' }}>OpenStreetMap</a> contributors.<br />
             Geocoding by <a href="https://nominatim.org" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent)' }}>Nominatim</a>.<br />

@@ -13,6 +13,7 @@ import useMapStore from '../store/mapStore.js';
 import useAppStore from '../store/appStore.js';
 
 import { TILE_LAYERS } from '../map/MapLayers.js';
+import { MAP_ANIMATIONS } from '../config/mapAnimations.js';
 import TrackLayer from '../map/TrackLayer.jsx';
 import SpeedLayer from '../map/SpeedLayer.jsx';
 import VisitLayer from '../map/VisitLayer.jsx';
@@ -66,12 +67,7 @@ function TrackAnimator() {
     );
 
     if (bounds.isValid()) {
-      // Smooth animation with padding
-      map.flyToBounds(bounds, {
-        padding: [64, 64],
-        duration: 1, // 1 second animation
-        easeLinearity: 0.25,
-      });
+      map.flyToBounds(bounds, MAP_ANIMATIONS.trackSelection);
     }
   }, [selectedTrackId, trackDetailCache, map]);
 

@@ -1,6 +1,7 @@
 import { useEffect, useRef, memo } from 'react';
 import { useMap } from 'react-leaflet';
 import L from 'leaflet';
+import { MAP_ANIMATIONS } from '../config/mapAnimations.js';
 
 const TRACK_COLORS = [
   '#007aff', '#34c759', '#ff9500', '#af52de',

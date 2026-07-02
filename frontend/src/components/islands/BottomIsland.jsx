@@ -198,7 +198,7 @@ export default function BottomIsland() {
 
         {/* Body — visible only when expanded */}
         {expanded && (
-          <div style={{ padding: '12px 16px 14px' }}>
+          <div style={{ padding: '12px 16px 14px', animation: 'fadeIn 0.3s ease-out' }}>
             {!selectedTrackId ? (
               <div style={{ height: 80, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-secondary)', fontSize: 13 }}>
                 {t('chart.select_track')}
@@ -209,7 +209,7 @@ export default function BottomIsland() {
               </div>
             ) : chartData.length > 0 ? (
               <ResponsiveContainer width="100%" height={100}>
-                <AreaChart data={chartData} margin={{ top: 0, right: 0, bottom: 0, left: 0 }}>
+                <AreaChart data={chartData} margin={{ top: 0, right: 0, bottom: 0, left: 0 }} isAnimationActive={true}>
                   <defs>
                     <linearGradient id={`grad-${activeTab}`} x1="0" y1="0" x2="0" y2="1">
                       <stop offset="5%" stopColor={color} stopOpacity={0.3} />
@@ -230,7 +230,7 @@ export default function BottomIsland() {
                     axisLine={false}
                     width={36}
                   />
-                  <Tooltip content={<CustomTooltip tab={activeTab} unitSystem={unitSystem} />} />
+                  <Tooltip content={<CustomTooltip tab={activeTab} unitSystem={unitSystem} />} isAnimationActive={true} />
                   <Area
                     type="monotone"
                     dataKey={dataKey}
@@ -239,6 +239,8 @@ export default function BottomIsland() {
                     fill={`url(#grad-${activeTab})`}
                     dot={false}
                     activeDot={{ r: 4, fill: color }}
+                    isAnimationActive={true}
+                    animationDuration={500}
                   />
                 </AreaChart>
               </ResponsiveContainer>

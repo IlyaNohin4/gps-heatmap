@@ -156,7 +156,7 @@ export default function TopIsland() {
         </button>
 
         {open && (
-          <div style={{ padding: '0 16px 16px', borderTop: '1px solid var(--border)' }}>
+          <div style={{ padding: '0 16px 16px', borderTop: '1px solid var(--border)', animation: 'fadeIn 0.3s ease-out' }}>
             <div style={sectionLabel}>{t('settings.display')}</div>
 
             <div style={row}>
@@ -207,7 +207,7 @@ export default function TopIsland() {
                 </button>
 
                 {changeEmailOpen && (
-                  <form onSubmit={handleChangeEmail} style={{ marginBottom: 10 }}>
+                  <form onSubmit={handleChangeEmail} style={{ marginBottom: 10, animation: 'fadeIn 0.3s ease-out' }}>
                     <input
                       type="email"
                       placeholder={t('toast.email_placeholder')}
@@ -230,7 +230,7 @@ export default function TopIsland() {
                 </button>
 
                 {changePassOpen && (
-                  <form onSubmit={handleChangePassword} style={{ marginBottom: 10 }}>
+                  <form onSubmit={handleChangePassword} style={{ marginBottom: 10, animation: 'fadeIn 0.3s ease-out' }}>
                     <input
                       type="password"
                       placeholder={t('settings.current_password')}
