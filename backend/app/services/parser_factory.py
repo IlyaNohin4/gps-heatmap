@@ -227,8 +227,77 @@ def _smooth_elevation(points: list[dict], window: int = 5, polyorder: int = 2) -
     return result
 
 
+def _point_to_line_distance(point: tuple[float, float], line_start: tuple[float, float], line_end: tuple[float, float]) -> float:
+    """Calculate perpendicular distance from point to line in meters (lat, lon)."""
+    lat_p, lon_p = point
+    lat_a, lon_a = line_start
+    lat_b, lon_b = line_end
+
+    # Convert to meters locally (approximate for short distances)
+    # 1° latitude ≈ 111 km, 1° longitude ≈ 111 km * cos(latitude)
+    lat_m = 111000  # meters
+    lon_m = 111000 * math.cos(math.radians((lat_a + lat_b) / 2))
+
+    x_p, y_p = lon_p * lon_m, lat_p * lat_m
+    x_a, y_a = lon_a * lon_m, lat_a * lat_m
+    x_b, y_b = lon_b * lon_m, lat_b * lat_m
+
+    dx = x_b - x_a
+    dy = y_b - y_a
+
+    if dx == 0 and dy == 0:
+        return math.sqrt((x_p - x_a) ** 2 + (y_p - y_a) ** 2)
+
+    t = max(0, min(1, ((x_p - x_a) * dx + (y_p - y_a) * dy) / (dx ** 2 + dy ** 2)))
+    proj_x = x_a + t * dx
+    proj_y = y_a + t * dy
+
+    return math.sqrt((x_p - proj_x) ** 2 + (y_p - proj_y) ** 2)
+
+
+def _simplify_trajectory(points: list[dict], tolerance_m: float = 15.0) -> list[dict]:
+    """Douglas-Peucker trajectory simplification.
+
+    Removes unnecessary intermediate points while preserving trajectory shape.
+
+    Args:
+        points: list of point dicts with lat, lon
+        tolerance_m: perpendicular distance threshold in meters (default 15m)
+
+    Returns:
+        Simplified point list
+    """
+    if len(points) < 3:
+        return points
+
+    def rdp_recursive(pts: list[dict], eps: float) -> list[dict]:
+        """Recursive Douglas-Peucker."""
+        if len(pts) < 3:
+            return pts
+
+        dmax = 0.0
+        index = 0
+        start = (pts[0]["lat"], pts[0]["lon"])
+        end = (pts[-1]["lat"], pts[-1]["lon"])
+
+        for i in range(1, len(pts) - 1):
+            d = _point_to_line_distance((pts[i]["lat"], pts[i]["lon"]), start, end)
+            if d > dmax:
+                index = i
+                dmax = d
+
+        if dmax > eps:
+            rec1 = rdp_recursive(pts[: index + 1], eps)
+            rec2 = rdp_recursive(pts[index:], eps)
+            return rec1[:-1] + rec2
+        else:
+            return [pts[0], pts[-1]]
+
+    return rdp_recursive(points, tolerance_m)
+
+
 def _normalize_points(points: list[dict]) -> list[dict]:
-    """Full normalization pipeline: collapse drift → remove outliers → Kalman filter → smooth elevation."""
+    """Full normalization pipeline: collapse drift → remove outliers → Kalman filter → smooth elevation → simplify."""
     if len(points) < 2:
         return points
 
@@ -236,6 +305,7 @@ def _normalize_points(points: list[dict]) -> list[dict]:
     points = _remove_speed_outliers(points)
     points = _apply_kalman_filter(points)
     points = _smooth_elevation(points)
+    points = _simplify_trajectory(points, tolerance_m=15.0)
 
     return points
 
