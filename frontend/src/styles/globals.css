@@ -98,6 +98,28 @@ input:focus, select:focus, textarea:focus {
   background: var(--bg);
 }
 
+.btn-glass {
+  background: var(--glass);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: var(--shadow);
+  padding: 9px 18px;
+  font-size: 12px;
+  font-weight: 500;
+  transition: background 0.15s;
+}
+
+.btn-glass:hover {
+  background: rgba(255, 255, 255, 0.85);
+}
+
+[data-theme="dark"] .btn-glass:hover {
+  background: rgba(30, 30, 30, 0.9);
+}
+
 .btn-danger {
   background: #ff3b30;
   color: #fff;
