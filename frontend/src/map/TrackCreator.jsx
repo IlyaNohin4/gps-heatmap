@@ -149,30 +149,35 @@ export default function TrackCreator({ mode, profile, orsApiKey, onSave, onCance
 // Standalone control panel component (rendered outside the map)
 export function TrackCreatorPanel({ mode, setMode, profile, setProfile, routing, error, waypointCount, onUndo, onClear, onSave, onCancel }) {
   return (
-    <div style={{
-      position: 'fixed',
-      bottom: 80,
-      left: '50%',
-      transform: 'translateX(-50%)',
-      zIndex: 1200,
-      background: 'var(--glass)',
-      backdropFilter: 'blur(20px)',
-      WebkitBackdropFilter: 'blur(20px)',
-      border: '1px solid var(--border)',
-      borderRadius: 'var(--radius)',
-      boxShadow: 'var(--shadow)',
-      padding: '12px 16px',
-      display: 'flex',
-      alignItems: 'center',
-      gap: 10,
-      flexWrap: 'wrap',
-      minWidth: 360,
-    }}>
+    <div
+      onClick={(e) => e.stopPropagation()}
+      style={{
+        position: 'fixed',
+        bottom: 80,
+        left: '50%',
+        transform: 'translateX(-50%)',
+        zIndex: 1200,
+        background: 'var(--glass)',
+        backdropFilter: 'blur(20px)',
+        WebkitBackdropFilter: 'blur(20px)',
+        border: '1px solid var(--border)',
+        borderRadius: 'var(--radius)',
+        boxShadow: 'var(--shadow)',
+        padding: '12px 16px',
+        display: 'flex',
+        alignItems: 'center',
+        gap: 10,
+        flexWrap: 'wrap',
+        minWidth: 360,
+      }}>
       <div style={{ display: 'flex', gap: 4 }}>
         {['manual', 'auto'].map((m) => (
           <button
             key={m}
-            onClick={() => setMode(m)}
+            onClick={(e) => {
+              e.stopPropagation();
+              setMode(m);
+            }}
             style={{
               padding: '5px 12px',
               borderRadius: 8,
@@ -192,7 +197,11 @@ export function TrackCreatorPanel({ mode, setMode, profile, setProfile, routing,
       {mode === 'auto' && (
         <select
           value={profile}
-          onChange={(e) => setProfile(e.target.value)}
+          onChange={(e) => {
+            e.stopPropagation();
+            setProfile(e.target.value);
+          }}
+          onClick={(e) => e.stopPropagation()}
           style={{ fontSize: 12, padding: '4px 8px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface)' }}
         >
           {ORS_PROFILES.map((p) => (
@@ -208,16 +217,19 @@ export function TrackCreatorPanel({ mode, setMode, profile, setProfile, routing,
       </span>
 
       <div style={{ display: 'flex', gap: 6, marginLeft: 'auto' }}>
-        <button onClick={onUndo} style={{ fontSize: 12, padding: '5px 10px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg)', cursor: 'pointer', color: 'var(--text)' }}>Undo</button>
-        <button onClick={onClear} style={{ fontSize: 12, padding: '5px 10px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg)', cursor: 'pointer', color: 'var(--text)' }}>Clear</button>
+        <button onClick={(e) => { e.stopPropagation(); onUndo(); }} style={{ fontSize: 12, padding: '5px 10px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg)', cursor: 'pointer', color: 'var(--text)' }}>Undo</button>
+        <button onClick={(e) => { e.stopPropagation(); onClear(); }} style={{ fontSize: 12, padding: '5px 10px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg)', cursor: 'pointer', color: 'var(--text)' }}>Clear</button>
         <button
-          onClick={onSave}
+          onClick={(e) => {
+            e.stopPropagation();
+            onSave();
+          }}
           disabled={waypointCount < 2}
           style={{ fontSize: 12, padding: '5px 12px', borderRadius: 8, background: 'var(--accent)', color: '#fff', border: 'none', cursor: 'pointer', opacity: waypointCount < 2 ? 0.5 : 1 }}
         >
           Save
         </button>
-        <button onClick={onCancel} style={{ fontSize: 12, padding: '5px 10px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg)', cursor: 'pointer', color: 'var(--text)' }}>✕</button>
+        <button onClick={(e) => { e.stopPropagation(); onCancel(); }} style={{ fontSize: 12, padding: '5px 10px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg)', cursor: 'pointer', color: 'var(--text)' }}>✕</button>
       </div>
     </div>
   );
