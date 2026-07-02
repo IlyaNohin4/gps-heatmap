@@ -7,17 +7,30 @@ const FORMAT_OPTIONS = [
   { id: 'gpx', label: 'GPX (.gpx)' },
   { id: 'kml', label: 'KML (.kml)' },
   { id: 'geojson', label: 'GeoJSON (.geojson)' },
+  { id: 'tcx', label: 'TCX (.tcx)' },
+  { id: 'fit', label: 'FIT (.fit)' },
 ];
+
+function normalizePoint(p) {
+  if (Array.isArray(p)) return { lat: p[0], lon: p[1] };
+  return { lat: p.lat, lon: p.lng || p.lon };
+}
 
 function generateGPX(trackName, points) {
   const header = '<?xml version="1.0" encoding="UTF-8"?>\n<gpx version="1.1" xmlns="http://www.topografix.com/GPX/1/1">\n<metadata><name>' + trackName + '</name></metadata>\n<trk><name>' + trackName + '</name><trkseg>\n';
-  const trkpts = points.map((p) => `<trkpt lat="${p.lat}" lon="${p.lng || p.lon}"><ele>0</ele></trkpt>`).join('\n');
+  const trkpts = points.map((p) => {
+    const pt = normalizePoint(p);
+    return `<trkpt lat="${pt.lat}" lon="${pt.lon}"><ele>0</ele></trkpt>`;
+  }).join('\n');
   const footer = '\n</trkseg></trk>\n</gpx>';
   return header + trkpts + footer;
 }
 
 function generateKML(trackName, points) {
-  const coords = points.map((p) => `${p.lng || p.lon},${p.lat},0`).join(' ');
+  const coords = points.map((p) => {
+    const pt = normalizePoint(p);
+    return `${pt.lon},${pt.lat},0`;
+  }).join(' ');
   const kml = `<?xml version="1.0" encoding="UTF-8"?>
 <kml xmlns="http://www.opengis.net/kml/2.2">
   <Document>
@@ -33,7 +46,10 @@ function generateKML(trackName, points) {
 }
 
 function generateGeoJSON(trackName, points) {
-  const coordinates = points.map((p) => [p.lng || p.lon, p.lat]);
+  const coordinates = points.map((p) => {
+    const pt = normalizePoint(p);
+    return [pt.lon, pt.lat];
+  });
   return JSON.stringify({
     type: 'FeatureCollection',
     features: [
@@ -49,10 +65,41 @@ function generateGeoJSON(trackName, points) {
   }, null, 2);
 }
 
+function generateTCX(trackName, points) {
+  const trackpoints = points.map((p) => {
+    const pt = normalizePoint(p);
+    return `    <Trackpoint><Position><LatitudeDegrees>${pt.lat}</LatitudeDegrees><LongitudeDegrees>${pt.lon}</LongitudeDegrees></Position><AltitudeMeters>0</AltitudeMeters><Time>2024-01-01T00:00:00Z</Time></Trackpoint>`;
+  }).join('\n');
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<TrainingCenterDatabase xmlns="http://www.garmin.com/xmlschemas/TrainingCenterDatabase/v2">
+  <Activities>
+    <Activity Sport="Other">
+      <Lap StartTime="2024-01-01T00:00:00Z">
+        <Track>
+${trackpoints}
+        </Track>
+      </Lap>
+    </Activity>
+  </Activities>
+</TrainingCenterDatabase>`;
+}
+
+function generateFIT(trackName, points) {
+  const data = [];
+  for (const p of points) {
+    const pt = normalizePoint(p);
+    data.push(Math.round(pt.lat * 1e7) & 0xFFFFFFFF);
+    data.push(Math.round(pt.lon * 1e7) & 0xFFFFFFFF);
+  }
+  return JSON.stringify(data);
+}
+
 function generateFile(format, trackName, points) {
   if (format === 'gpx') return generateGPX(trackName, points);
   if (format === 'kml') return generateKML(trackName, points);
   if (format === 'geojson') return generateGeoJSON(trackName, points);
+  if (format === 'tcx') return generateTCX(trackName, points);
+  if (format === 'fit') return generateFIT(trackName, points);
   return '';
 }
 
@@ -96,6 +143,8 @@ export default function SaveTrackModal({
         gpx: 'application/gpx+xml',
         kml: 'application/vnd.google-earth.kml+xml',
         geojson: 'application/geo+json',
+        tcx: 'application/vnd.garmin.tcx+xml',
+        fit: 'application/octet-stream',
       }[format];
 
       downloadFile(content, `${trackName}.${ext}`, mimeType);

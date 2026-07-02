@@ -104,6 +104,41 @@ def _points_to_geojson(points: List[Point]) -> str:
     return json.dumps(geojson)
 
 
+def _points_to_tcx(points: List[Point]) -> str:
+    """Convert points to TCX format."""
+    trackpoints = "\n".join([
+        f'    <Trackpoint><Position><LatitudeDegrees>{p.lat}</LatitudeDegrees><LongitudeDegrees>{p.lon}</LongitudeDegrees></Position><AltitudeMeters>0</AltitudeMeters><Time>2024-01-01T00:00:00Z</Time></Trackpoint>'
+        for p in points
+    ])
+    return f'''<?xml version="1.0" encoding="UTF-8"?>
+<TrainingCenterDatabase xmlns="http://www.garmin.com/xmlschemas/TrainingCenterDatabase/v2">
+  <Activities>
+    <Activity Sport="Other">
+      <Lap StartTime="2024-01-01T00:00:00Z">
+        <Track>
+{trackpoints}
+        </Track>
+      </Lap>
+    </Activity>
+  </Activities>
+</TrainingCenterDatabase>'''
+
+
+def _points_to_fit(points: List[Point]) -> bytes:
+    """Convert points to FIT format (simplified binary)."""
+    import struct
+    fit_data = bytearray()
+    fit_data.extend(b'.FIT')
+    fit_data.extend(struct.pack('<H', 0))
+    fit_data.extend(struct.pack('<H', len(points) * 26 + 14))
+    for p in points:
+        fit_data.extend(struct.pack('<d', p.lat))
+        fit_data.extend(struct.pack('<d', p.lon))
+        fit_data.extend(struct.pack('<I', 0))
+    fit_data.extend(b'\x00' * 4)
+    return bytes(fit_data)
+
+
 # ── Schemas ────────────────────────────────────────────────────────────────────
 
 class TrackOut(BaseModel):
@@ -270,6 +305,10 @@ async def create_track(
         content = _points_to_kml(body.points).encode("utf-8")
     elif body.format == "geojson":
         content = _points_to_geojson(body.points).encode("utf-8")
+    elif body.format == "tcx":
+        content = _points_to_tcx(body.points).encode("utf-8")
+    elif body.format == "fit":
+        content = _points_to_fit(body.points)
     else:
         raise HTTPException(status_code=400, detail="Unsupported format")
 

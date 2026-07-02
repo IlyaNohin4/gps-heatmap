@@ -50,12 +50,13 @@ export async function getPublicTrack(token) {
 }
 
 export async function createTrackFromPoints(name, points, format = 'gpx') {
+  const normalizePoint = (p) => {
+    if (Array.isArray(p)) return { lat: p[0], lon: p[1] };
+    return { lat: p.lat, lon: p.lng || p.lon };
+  };
   const { data } = await client.post('/api/tracks/create', {
     name,
-    points: points.map((p) => ({
-      lat: p.lat,
-      lon: p.lng || p.lon,
-    })),
+    points: points.map(normalizePoint),
     format,
   });
   return data;

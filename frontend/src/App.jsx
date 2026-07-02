@@ -24,7 +24,6 @@ import { fetchTracks, createTrackFromPoints } from './api/tracks.js';
 import { getMe } from './api/auth.js';
 import { toast } from 'react-toastify';
 import { Search, RotateCcw } from 'lucide-react';
-import useMapStore from './store/mapStore.js';
 
 // Lazy-load the public track page so it doesn't pull leaflet into the main bundle
 const PublicTrackPage = lazy(() => import('./pages/PublicTrackPage.jsx'));

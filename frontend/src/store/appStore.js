@@ -16,6 +16,7 @@ const useAppStore = create(
       setUnitSystem: (system) => set({ unitSystem: system }),
       setLanguage: (language) => set({ language }),
       setSelectedTrack: (id) => set({ selectedTrackId: id, activePanel: null }),
+      setSelectedTrackId: (id) => set({ selectedTrackId: id }),
       setActivePanel: (panel) => set({ activePanel: panel }),
       setTracks: (tracks) => set({ tracks }),
       addTrack: (track) => set((s) => ({ tracks: [track, ...s.tracks] })),

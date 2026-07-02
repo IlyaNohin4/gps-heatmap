@@ -35,7 +35,7 @@ const FORMAT_COLORS = {
 
 export default function TrackCard({ track, isSelected, onClick }) {
   const { t } = useTranslation();
-  const { unitSystem, removeTrack, updateTrack } = useAppStore();
+  const { unitSystem, removeTrack, updateTrack, selectedTrackId, setSelectedTrackId } = useAppStore();
   const [expanded, setExpanded] = useState(false);
   const [published, setPublished] = useState(track.is_public || false);
   const [deleting, setDeleting] = useState(false);
@@ -55,6 +55,9 @@ export default function TrackCard({ track, isSelected, onClick }) {
     try {
       await deleteTrack(track.id);
       removeTrack(track.id);
+      if (selectedTrackId === track.id) {
+        setSelectedTrackId(null);
+      }
       toast.success(t('toast.deleted'));
     } catch {
       toast.error(t('toast.delete_failed'));
