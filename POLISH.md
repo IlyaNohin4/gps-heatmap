@@ -11,7 +11,8 @@
 - [ ] **Display grade_stats in Frontend UI** (ПРИОРИТЕТ)
   - Добавить climbing%, flat%, descent% в карточках треков (LeftIsland)
   - Показать в панели деталей трека
-  - Интегрировать в slope profile chart (данные уже есть в API)
+  - Интегрировать в track detail view
+  - ✓ Slope profile chart уже есть в BottomIsland (рассчитывается из normalized_points)
   - Влияет на: track analytics display
 
 - [ ] **Full integration test** (ПРИОРИТЕТ)
