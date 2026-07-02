@@ -61,7 +61,12 @@ export default function RightIsland() {
     try {
       const resp = await fetch(
         `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=5`,
-        { headers: { 'Accept-Language': 'en' } }
+        {
+          headers: {
+            'Accept-Language': 'en',
+            'User-Agent': 'GPS-Heatmap/1.0 (ilyanogin4@gmail.com)'
+          }
+        }
       );
       setCityResults(await resp.json());
     } catch {
