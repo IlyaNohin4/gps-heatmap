@@ -1,4 +1,5 @@
 import axios from 'axios';
+import useAuthStore from '../store/authStore.js';
 
 // Use VITE_API_URL if explicitly set, otherwise empty string so all /api/*
 // requests go to the same origin and are intercepted by the Vite proxy
@@ -39,7 +40,7 @@ client.interceptors.response.use(
         const raw = localStorage.getItem('gps_auth');
         const hasToken = raw ? JSON.parse(raw)?.state?.token : false;
         if (hasToken) {
-          localStorage.removeItem('gps_auth');
+          useAuthStore.getState().logout();
           window.location.href = '/';
         }
       } catch (_) {}

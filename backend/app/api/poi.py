@@ -1,11 +1,15 @@
 """API endpoints for user-uploaded POI."""
 
-from typing import List
+from typing import List, Optional
+from pathlib import Path
+import io
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from sqlalchemy import func
 from sqlalchemy.orm import Session
+import xml.etree.ElementTree as ET
 
 from app.core.database import get_db
 from app.core.deps import get_current_user
@@ -25,6 +29,7 @@ class POIResponse(BaseModel):
     lon: float
     category: str
     description: str
+    import_name: Optional[str] = None
 
     model_config = {"from_attributes": True}
 
@@ -37,6 +42,15 @@ class CategoryStats(BaseModel):
 class UploadResponse(BaseModel):
     imported: int
     categories: List[CategoryStats]
+
+
+class ImportInfo(BaseModel):
+    name: str
+    count: int
+
+
+class RenameImportRequest(BaseModel):
+    new_name: str
 
 
 @router.post("/upload", response_model=UploadResponse, status_code=status.HTTP_201_CREATED)
@@ -62,6 +76,9 @@ async def upload_poi(
     if not poi_list:
         raise HTTPException(status_code=400, detail="No POI found in file")
 
+    # Extract import name from filename (remove extension)
+    import_name = Path(file.filename).stem
+
     # Save to DB
     for poi_data in poi_list:
         poi = POI(
@@ -72,6 +89,7 @@ async def upload_poi(
             category=poi_data['category'],
             description=poi_data['description'],
             source=poi_data['source'],
+            import_name=import_name,
         )
         db.add(poi)
 
@@ -125,3 +143,92 @@ def delete_poi(
 
     db.delete(poi)
     db.commit()
+
+
+@router.get("/imports", response_model=List[ImportInfo])
+def get_imports(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Get list of imports with POI counts."""
+    imports = db.query(POI.import_name, func.count(POI.id)).filter(
+        POI.user_id == current_user.id
+    ).group_by(POI.import_name).all()
+
+    return [ImportInfo(name=imp[0], count=imp[1]) for imp in imports if imp[0]]
+
+
+@router.patch("/imports/{import_name}", status_code=status.HTTP_200_OK)
+def rename_import(
+    import_name: str,
+    request: RenameImportRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Rename an import."""
+    count = db.query(POI).filter(
+        POI.user_id == current_user.id,
+        POI.import_name == import_name
+    ).update({POI.import_name: request.new_name})
+
+    if count == 0:
+        raise HTTPException(status_code=404, detail="Import not found")
+
+    db.commit()
+
+    return {"status": "ok"}
+
+
+@router.delete("/imports/{import_name}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_import(
+    import_name: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Delete import and all its POI."""
+    count = db.query(POI).filter(
+        POI.user_id == current_user.id,
+        POI.import_name == import_name
+    ).delete()
+
+    if count == 0:
+        raise HTTPException(status_code=404, detail="Import not found")
+
+    db.commit()
+
+
+@router.get("/imports/{import_name}/export")
+def export_import(
+    import_name: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Export import as KML file."""
+    pois = db.query(POI).filter(
+        POI.user_id == current_user.id,
+        POI.import_name == import_name
+    ).all()
+
+    if not pois:
+        raise HTTPException(status_code=404, detail="Import not found")
+
+    # Generate KML
+    kml = ET.Element("kml", xmlns="http://www.opengis.net/kml/2.2")
+    document = ET.SubElement(kml, "Document")
+    ET.SubElement(document, "name").text = import_name
+
+    for poi in pois:
+        placemark = ET.SubElement(document, "Placemark")
+        ET.SubElement(placemark, "name").text = poi.name
+        ET.SubElement(placemark, "description").text = poi.description or ""
+
+        point = ET.SubElement(placemark, "Point")
+        ET.SubElement(point, "coordinates").text = f"{poi.lon},{poi.lat}"
+
+    kml_str = ET.tostring(kml, encoding="unicode")
+
+    return StreamingResponse(
+        iter([kml_str]),
+        media_type="application/vnd.google-earth.kml+xml",
+        headers={"Content-Disposition": f"attachment; filename={import_name}.kml"}
+    )

@@ -27,7 +27,7 @@ export default function RightIsland() {
     mapInstance, activeLayer, setActiveLayer,
     showHeatmap, toggleHeatmap,
     showSpeed, toggleSpeed,
-    showPOI, togglePOI, poiCategories, togglePOICategory,
+    visibleImports,
     showTrackCreator, toggleTrackCreator,
   } = useMapStore();
   const { unitSystem, activePanel, setActivePanel } = useAppStore();
@@ -129,7 +129,7 @@ export default function RightIsland() {
         </button>
         {divider}
         <button
-          style={iconBtn(poiOpen || showPOI)}
+          style={iconBtn(poiOpen)}
           onClick={() => togglePanel('right:poi')}
           title={t('map.poi')}
         >

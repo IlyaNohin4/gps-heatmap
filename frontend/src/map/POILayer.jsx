@@ -3,8 +3,8 @@ import { useMap } from 'react-leaflet';
 import L from 'leaflet';
 
 import useMapStore from '../store/mapStore.js';
+import { fetchPOI } from '../api/poi.js';
 
-// Category colors for display
 const CATEGORY_COLORS = {
   food: '#ff9500',
   water: '#007aff',
@@ -44,8 +44,9 @@ function makeDivIcon(category, color) {
 
 export default function POILayer() {
   const map = useMap();
-  const { userPOI, poiCategories } = useMapStore();
+  const { visibleImports } = useMapStore();
   const groupRef = useRef(null);
+  const poiRef = useRef([]);
 
   // Create layer group on mount
   useEffect(() => {
@@ -54,17 +55,34 @@ export default function POILayer() {
     return () => group.remove();
   }, [map]);
 
-  // Filter POI by selected categories
-  const visiblePOI = useMemo(() => {
-    if (!poiCategories.length) return [];
-    return userPOI.filter((poi) => poiCategories.includes(poi.category || 'other'));
-  }, [userPOI, poiCategories]);
-
-  // Render POI markers
+  // Load all POI and filter by visible imports
   useEffect(() => {
+    const loadPOI = async () => {
+      try {
+        const allPOI = await fetchPOI();
+        poiRef.current = allPOI;
+        renderPOI();
+      } catch (err) {
+        console.error('Failed to load POI:', err);
+      }
+    };
+
+    loadPOI();
+  }, []);
+
+  // Re-render when visible imports change
+  useEffect(() => {
+    renderPOI();
+  }, [visibleImports]);
+
+  function renderPOI() {
     if (!groupRef.current) return;
 
     groupRef.current.clearLayers();
+
+    const visiblePOI = poiRef.current.filter((poi) =>
+      poi.import_name && visibleImports.has(poi.import_name)
+    );
 
     visiblePOI.forEach((poi) => {
       const category = poi.category || 'other';
@@ -81,7 +99,7 @@ export default function POILayer() {
         `)
         .addTo(groupRef.current);
     });
-  }, [visiblePOI]);
+  }
 
   return null;
 }

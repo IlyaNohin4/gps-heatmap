@@ -12,9 +12,9 @@ const useMapStore = create((set, get) => ({
   visibleTrackIds: new Set(),
   // Cache of full track details keyed by track id (includes normalized_points, speed_segments)
   trackDetailCache: {},
-  // User-uploaded POI
-  userPOI: [],
-  uploadedPOICategories: [],
+  // User-uploaded POI imports
+  imports: [],
+  visibleImports: new Set(),
 
   setMapInstance: (mapInstance) => set({ mapInstance }),
   setActiveLayer: (activeLayer) => set({ activeLayer }),
@@ -31,9 +31,18 @@ const useMapStore = create((set, get) => ({
       return { poiCategories: next };
     }),
 
-  // User-uploaded POI
-  setUserPOI: (userPOI) => set({ userPOI }),
-  setUploadedPOICategories: (uploadedPOICategories) => set({ uploadedPOICategories }),
+  // User-uploaded POI imports
+  setImports: (imports) => set({ imports }),
+  toggleImportVisibility: (importName) =>
+    set((s) => {
+      const next = new Set(s.visibleImports);
+      if (next.has(importName)) {
+        next.delete(importName);
+      } else {
+        next.add(importName);
+      }
+      return { visibleImports: next };
+    }),
 
   toggleTrackVisibility: (id) =>
     set((s) => {

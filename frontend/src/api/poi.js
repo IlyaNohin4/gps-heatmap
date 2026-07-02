@@ -23,3 +23,33 @@ export async function fetchPOICategories() {
 export async function deletePOI(id) {
   await client.delete(`/api/poi/${id}`);
 }
+
+export async function getImports() {
+  const { data } = await client.get('/api/poi/imports');
+  return data;
+}
+
+export async function renameImport(oldName, newName) {
+  const { data } = await client.patch(`/api/poi/imports/${oldName}`, {
+    new_name: newName,
+  });
+  return data;
+}
+
+export async function deleteImport(importName) {
+  await client.delete(`/api/poi/imports/${importName}`);
+}
+
+export async function exportImport(importName) {
+  const { data } = await client.get(`/api/poi/imports/${importName}/export`, {
+    responseType: 'blob',
+  });
+  const url = window.URL.createObjectURL(new Blob([data]));
+  const link = document.createElement('a');
+  link.href = url;
+  link.setAttribute('download', `${importName}.kml`);
+  document.body.appendChild(link);
+  link.click();
+  link.parentNode.removeChild(link);
+  window.URL.revokeObjectURL(url);
+}

@@ -1,19 +1,33 @@
-import React, { useRef, useState } from 'react';
-import { Upload, X, Loader } from 'lucide-react';
+import React, { useRef, useState, useEffect } from 'react';
+import { Upload, X, Loader, Eye, EyeOff, Edit2, Download, Trash2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'react-toastify';
 
 import useMapStore from '../../store/mapStore.js';
-import { uploadPOI, fetchPOI, fetchPOICategories } from '../../api/poi.js';
+import { uploadPOI, getImports, renameImport, deleteImport, exportImport } from '../../api/poi.js';
 
 export default function POIImportPanel({ onClose }) {
   const { t } = useTranslation();
-  const {
-    userPOI, uploadedPOICategories, setUserPOI, setUploadedPOICategories,
-    togglePOICategory, poiCategories, togglePOI, showPOI
-  } = useMapStore();
+  const { imports, setImports, visibleImports, toggleImportVisibility } = useMapStore();
   const [uploading, setUploading] = useState(false);
+  const [editingName, setEditingName] = useState(null);
+  const [editingValue, setEditingValue] = useState('');
+  const [deleting, setDeleting] = useState(null);
   const fileInputRef = useRef(null);
+
+  // Load imports on mount
+  useEffect(() => {
+    loadImports();
+  }, []);
+
+  async function loadImports() {
+    try {
+      const data = await getImports();
+      setImports(data);
+    } catch (err) {
+      console.error('Failed to load imports:', err);
+    }
+  }
 
   async function handleFileSelect(e) {
     const file = e.target.files?.[0];
@@ -26,19 +40,9 @@ export default function POIImportPanel({ onClose }) {
 
     setUploading(true);
     try {
-      // Upload file
-      const uploadData = await uploadPOI(file);
-      toast.success(t('poi.imported', { count: uploadData.imported }));
-
-      // Update categories
-      setUploadedPOICategories(uploadData.categories || []);
-
-      // Refresh POI list
-      const poiData = await fetchPOI();
-      setUserPOI(poiData);
-
-      // Auto-enable POI if not already
-      if (!showPOI) togglePOI();
+      await uploadPOI(file);
+      toast.success(t('poi.imported'));
+      await loadImports();
     } catch (err) {
       toast.error(t('poi.upload_failed'));
       console.error('POI upload error:', err);
@@ -48,11 +52,53 @@ export default function POIImportPanel({ onClose }) {
     }
   }
 
+  async function handleRename(oldName) {
+    if (!editingValue.trim()) {
+      setEditingName(null);
+      return;
+    }
+
+    try {
+      await renameImport(oldName, editingValue);
+      toast.success(t('poi.renamed'));
+      await loadImports();
+      setEditingName(null);
+    } catch (err) {
+      toast.error(t('poi.rename_failed'));
+      console.error('Rename error:', err);
+    }
+  }
+
+  async function handleDelete(name) {
+    setDeleting(name);
+    try {
+      await deleteImport(name);
+      toast.success(t('poi.deleted'));
+      await loadImports();
+    } catch (err) {
+      toast.error(t('poi.delete_failed'));
+      console.error('Delete error:', err);
+    } finally {
+      setDeleting(null);
+    }
+  }
+
+  async function handleExport(name) {
+    try {
+      await exportImport(name);
+      toast.success(t('poi.exported'));
+    } catch (err) {
+      toast.error(t('poi.export_failed'));
+      console.error('Export error:', err);
+    }
+  }
+
   return (
     <div className="island" style={{
       position: 'absolute', right: 52, top: '50%', transform: 'translateY(-50%)',
-      width: 240, maxHeight: '70vh', overflowY: 'auto', padding: 10
+      width: 260, maxHeight: '70vh', overflowY: 'auto', padding: 10
     }}>
+      {/* Header */}
       <div style={{
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         marginBottom: 10
@@ -93,7 +139,7 @@ export default function POIImportPanel({ onClose }) {
         ) : (
           <>
             <Upload size={14} />
-            {t('poi.upload_kml_kmz')}
+            Upload KML
           </>
         )}
         <input
@@ -106,67 +152,145 @@ export default function POIImportPanel({ onClose }) {
         />
       </label>
 
-      {/* Categories List */}
-      {uploadedPOICategories.length > 0 && (
-        <div style={{ marginTop: 10, maxHeight: 200, overflowY: 'auto' }}>
+      {/* Imports List */}
+      {imports.length > 0 && (
+        <div style={{ marginTop: 12 }}>
           <div style={{
             fontSize: 10, fontWeight: 700, textTransform: 'uppercase',
-            color: 'var(--text-secondary)', marginBottom: 6
+            color: 'var(--text-secondary)', marginBottom: 8
           }}>
-            {t('poi.categories')}
+            {t('poi.categories')} ({imports.length})
           </div>
-          {uploadedPOICategories.map((cat) => {
-            const active = poiCategories.includes(cat.name);
+
+          {imports.map((imp) => {
+            const isVisible = visibleImports.has(imp.name);
+            const isEditing = editingName === imp.name;
+            const isDeleting = deleting === imp.name;
+
             return (
-              <button
-                key={cat.name}
-                onClick={() => {
-                  togglePOICategory(cat.name);
-                  if (!showPOI) togglePOI();
-                }}
+              <div
+                key={imp.name}
                 style={{
-                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                  width: '100%', padding: '7px 8px', borderRadius: 6,
-                  background: active ? 'rgba(0,122,255,0.1)' : 'none',
-                  border: 'none', cursor: 'pointer', fontSize: 12,
-                  color: active ? 'var(--accent)' : 'var(--text)',
-                  transition: 'background 0.15s',
+                  display: 'flex', alignItems: 'center', gap: 6,
+                  padding: '8px 8px', marginBottom: 6, borderRadius: 6,
+                  background: 'var(--bg)', border: '1px solid var(--border)',
+                  fontSize: 12
                 }}
-                onMouseEnter={(e) => e.currentTarget.style.background = active ? 'rgba(0,122,255,0.1)' : 'var(--bg)'}
-                onMouseLeave={(e) => e.currentTarget.style.background = active ? 'rgba(0,122,255,0.1)' : 'none'}
               >
-                <span>{cat.name}</span>
-                <span style={{ fontSize: 11, opacity: 0.6 }}>({cat.count})</span>
-              </button>
+                {/* Eye toggle */}
+                <button
+                  onClick={() => toggleImportVisibility(imp.name)}
+                  title={isVisible ? 'Hide' : 'Show'}
+                  style={{
+                    background: 'none', border: 'none', cursor: 'pointer',
+                    color: isVisible ? 'var(--accent)' : 'var(--text-secondary)',
+                    display: 'flex', padding: 0
+                  }}
+                >
+                  {isVisible ? <Eye size={14} /> : <EyeOff size={14} />}
+                </button>
+
+                {/* Name */}
+                {isEditing ? (
+                  <input
+                    autoFocus
+                    type="text"
+                    value={editingValue}
+                    onChange={(e) => setEditingValue(e.target.value)}
+                    onBlur={() => handleRename(imp.name)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') handleRename(imp.name);
+                      if (e.key === 'Escape') setEditingName(null);
+                    }}
+                    style={{
+                      flex: 1, border: '1px solid var(--accent)', padding: '4px 6px',
+                      borderRadius: 4, fontSize: 12, background: 'var(--bg)',
+                      color: 'var(--text)'
+                    }}
+                  />
+                ) : (
+                  <span
+                    style={{
+                      flex: 1, cursor: 'pointer', overflow: 'hidden',
+                      textOverflow: 'ellipsis', whiteSpace: 'nowrap'
+                    }}
+                    title={imp.name}
+                  >
+                    {imp.name}
+                  </span>
+                )}
+
+                {/* Count */}
+                <span style={{
+                  fontSize: 10, color: 'var(--text-secondary)',
+                  padding: '2px 4px', background: 'rgba(0,0,0,0.1)',
+                  borderRadius: 3
+                }}>
+                  {imp.count}
+                </span>
+
+                {/* Rename button */}
+                <button
+                  onClick={() => {
+                    setEditingName(imp.name);
+                    setEditingValue(imp.name);
+                  }}
+                  disabled={isEditing || isDeleting}
+                  title="Rename"
+                  style={{
+                    background: 'none', border: 'none', cursor: isEditing || isDeleting ? 'not-allowed' : 'pointer',
+                    color: 'var(--text-secondary)', display: 'flex', padding: 0,
+                    opacity: isEditing || isDeleting ? 0.5 : 1
+                  }}
+                >
+                  <Edit2 size={13} />
+                </button>
+
+                {/* Export button */}
+                <button
+                  onClick={() => handleExport(imp.name)}
+                  disabled={isEditing || isDeleting}
+                  title="Export"
+                  style={{
+                    background: 'none', border: 'none', cursor: isEditing || isDeleting ? 'not-allowed' : 'pointer',
+                    color: 'var(--text-secondary)', display: 'flex', padding: 0,
+                    opacity: isEditing || isDeleting ? 0.5 : 1
+                  }}
+                >
+                  <Download size={13} />
+                </button>
+
+                {/* Delete button */}
+                <button
+                  onClick={() => handleDelete(imp.name)}
+                  disabled={isEditing || isDeleting}
+                  title="Delete"
+                  style={{
+                    background: 'none', border: 'none', cursor: isEditing || isDeleting ? 'not-allowed' : 'pointer',
+                    color: isDeleting ? 'var(--accent)' : 'var(--text-secondary)', display: 'flex', padding: 0,
+                    opacity: isEditing ? 0.5 : 1
+                  }}
+                >
+                  {isDeleting ? (
+                    <Loader size={13} style={{ animation: 'spin 1s linear infinite' }} />
+                  ) : (
+                    <Trash2 size={13} />
+                  )}
+                </button>
+              </div>
             );
           })}
         </div>
       )}
 
       {/* Empty State */}
-      {uploadedPOICategories.length === 0 && (
+      {imports.length === 0 && (
         <div style={{
-          marginTop: 10, fontSize: 12, color: 'var(--text-secondary)',
-          textAlign: 'center', padding: '20px 10px'
+          marginTop: 12, fontSize: 12, color: 'var(--text-secondary)',
+          textAlign: 'center', padding: '16px 8px'
         }}>
           {t('poi.no_data')}
         </div>
-      )}
-
-      {/* Toggle visibility */}
-      {uploadedPOICategories.length > 0 && (
-        <label style={{
-          display: 'flex', alignItems: 'center', gap: 6, marginTop: 10,
-          fontSize: 12, cursor: 'pointer'
-        }}>
-          <input
-            type="checkbox"
-            checked={showPOI}
-            onChange={() => togglePOI()}
-            style={{ width: 14, height: 14, accentColor: 'var(--accent)', cursor: 'pointer' }}
-          />
-          {showPOI ? t('map.on') : t('map.off')}
-        </label>
       )}
     </div>
   );
