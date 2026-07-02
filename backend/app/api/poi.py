@@ -49,11 +49,13 @@ async def upload_poi(
 
     # Read file
     content = await file.read()
+
     if len(content) > MAX_FILE_BYTES:
         raise HTTPException(status_code=413, detail="File exceeds 5 MB limit")
 
     # Parse
     poi_list, error = POIParser.parse(content)
+
     if error:
         raise HTTPException(status_code=400, detail=f"Parse error: {error}")
 
