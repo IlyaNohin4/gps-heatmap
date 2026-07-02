@@ -80,9 +80,8 @@ function TrackAnimator() {
 
 function ActiveTileLayer() {
   const { activeLayer } = useMapStore();
-  const { theme } = useAppStore();
   let layerId = activeLayer;
-  if (layerId === 'carto-auto') layerId = theme === 'dark' ? 'carto-dark' : 'carto-light';
+  if (layerId === 'carto-auto') layerId = 'carto-voyager';
   const cfg = TILE_LAYERS[layerId] || TILE_LAYERS.osm;
   return (
     <TileLayer

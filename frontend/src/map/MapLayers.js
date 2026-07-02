@@ -14,13 +14,8 @@ export const TILE_LAYERS = {
     attribution: '<a href="https://www.cyclosm.org">CyclOSM</a> | © OpenStreetMap contributors',
     maxZoom: 20,
   },
-'carto-light': {
-    url: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
-    attribution: '© <a href="https://carto.com/attributions">CARTO</a> | © OpenStreetMap contributors',
-    maxZoom: 20,
-  },
-  'carto-dark': {
-    url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+  'carto-voyager': {
+    url: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png',
     attribution: '© <a href="https://carto.com/attributions">CARTO</a> | © OpenStreetMap contributors',
     maxZoom: 20,
   },
@@ -48,8 +43,7 @@ export const LAYER_OPTIONS = [
   { id: 'osm',            label: 'OpenStreetMap',    group: 'Street' },
   { id: 'topo',           label: 'OpenTopoMap',      group: 'Street' },
   { id: 'cyclosm',        label: 'CyclOSM',          group: 'Street' },
-{ id: 'carto-light',    label: 'CartoDB Light',    group: 'Style' },
-  { id: 'carto-dark',     label: 'CartoDB Dark',     group: 'Style' },
+  { id: 'carto-voyager',  label: 'CARTO Voyager',    group: 'Style' },
   { id: 'google-street',  label: 'Google Street',    group: 'Google' },
   { id: 'google-satellite', label: 'Google Satellite', group: 'Google' },
   { id: 'esri-satellite', label: 'Esri Satellite',   group: 'Satellite' },
