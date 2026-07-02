@@ -138,19 +138,20 @@ def _collapse_drift(points: List[Dict], distance_threshold: float = 3.0, time_th
 
 ### 2. Speed Outlier Removal (`_remove_speed_outliers`)
 
-Удалить точки где скорость > μ + 3σ (статистический выброс)
+Удалить точки где скорость > 200 км/ч (физический лимит)
 
 ```python
-def _remove_speed_outliers(points: List[Dict]) -> List[Dict]:
+def _remove_speed_outliers(points: List[Dict], max_speed_kmh: float = 200) -> List[Dict]:
     """
-    Remove points with anomalous speed (> mean + 3*stdev).
+    Remove points with impossible speed (> max_speed_kmh).
     GPS jumps and sensor errors create speed spikes.
     """
-    if len(points) < 3:
+    if len(points) < 2:
         return points
     
     # Calculate speeds between consecutive points
-    speeds = []
+    outlier_indices = set()
+    
     for i in range(len(points) - 1):
         dist = haversine(
             points[i]['lat'], points[i]['lon'],
@@ -160,25 +161,124 @@ def _remove_speed_outliers(points: List[Dict]) -> List[Dict]:
         
         if time_diff > 0:
             speed_kmh = (dist / 1000) / (time_diff / 3600)
-            speeds.append(speed_kmh)
-    
-    if len(speeds) < 2:
-        return points
-    
-    mean_speed = statistics.mean(speeds)
-    stdev_speed = statistics.stdev(speeds)
-    threshold = mean_speed + 3 * stdev_speed
-    
-    # Mark outliers
-    outliers = set()
-    for i, speed in enumerate(speeds):
-        if speed > threshold:
-            outliers.add(i)
-            outliers.add(i + 1)  # Mark both endpoints
+            
+            # Mark both endpoints if speed is impossible
+            if speed_kmh > max_speed_kmh:
+                outlier_indices.add(i)
+                outlier_indices.add(i + 1)
     
     # Keep only non-outlier points
-    return [p for i, p in enumerate(points) if i not in outliers]
+    return [p for i, p in enumerate(points) if i not in outlier_indices]
 ```
+
+### 3. Kalman Filter for GPS (`KalmanFilterGPS`)
+
+Сглаживание GPS шума и дрифта с помощью фильтра Калмана.
+
+**Принцип:** объединяет предсказание движения и GPS измерение в оптимальную оценку.
+
+```python
+class KalmanFilterGPS:
+    """
+    1D Kalman filter for lat/lon separately.
+    
+    State: x = [position, velocity]
+    Process: position_next = position + velocity * dt
+    Measurement: GPS reading
+    """
+    
+    def __init__(self, process_variance=0.01, measurement_variance=0.1):
+        """
+        Args:
+            process_variance (Q): погрешность модели движения (default: 0.01)
+            measurement_variance (R): погрешность GPS в градусах (default: 0.1)
+                Note: 0.1 градус ≈ 11 км, so use smaller values like 0.00001 (≈1м)
+        """
+        self.Q = process_variance
+        self.R = measurement_variance
+        
+        # State estimate
+        self.x = 0.0  # position
+        self.v = 0.0  # velocity (deg/sec)
+        
+        # Estimation error
+        self.P = 1.0
+        
+    def update(self, z: float, dt: float) -> float:
+        """
+        Update filter with new measurement.
+        
+        Args:
+            z: GPS measurement (latitude or longitude in degrees)
+            dt: time delta since last update (seconds)
+        
+        Returns:
+            Filtered position estimate
+        """
+        # Predict
+        self.x = self.x + self.v * dt
+        self.P = self.P + self.Q
+        
+        # Update
+        K = self.P / (self.P + self.R)  # Kalman gain
+        self.x = self.x + K * (z - self.x)
+        self.v = self.v + K * (z - self.x) / (dt + 1e-6)
+        self.P = (1 - K) * self.P
+        
+        return self.x
+
+
+def apply_kalman_filter(points: List[Dict], 
+                       process_variance=0.01, 
+                       measurement_variance=0.00001) -> List[Dict]:
+    """
+    Apply Kalman filter to lat/lon separately.
+    
+    Smooths GPS drift and noise while preserving trajectory.
+    """
+    if len(points) < 2:
+        return points
+    
+    # Create separate filters for lat and lon
+    kf_lat = KalmanFilterGPS(process_variance, measurement_variance)
+    kf_lon = KalmanFilterGPS(process_variance, measurement_variance)
+    
+    # Initialize with first point
+    kf_lat.x = points[0]['lat']
+    kf_lon.x = points[0]['lon']
+    
+    result = []
+    prev_time = points[0]['time']
+    
+    for point in points:
+        dt = (point['time'] - prev_time).total_seconds()
+        dt = max(dt, 0.1)  # Avoid division by zero
+        
+        # Filter lat/lon independently
+        filtered_lat = kf_lat.update(point['lat'], dt)
+        filtered_lon = kf_lon.update(point['lon'], dt)
+        
+        result.append({
+            'lat': filtered_lat,
+            'lon': filtered_lon,
+            'elevation': point.get('elevation'),
+            'time': point['time']
+        })
+        
+        prev_time = point['time']
+    
+    return result
+```
+
+**Параметры:**
+- `process_variance` (Q): модель неопределённости движения
+  - Меньше → фильтр доверяет предсказанию больше (менее гладко)
+  - Больше → фильтр доверяет GPS больше (менее гладко)
+  - Default: 0.01 работает для большинства треков
+  
+- `measurement_variance` (R): погрешность GPS
+  - Обычно 5-10м = ~0.00005-0.0001 градусов на широте
+  - Default: 0.00001 (≈1м на экваторе)
 
 ---
 
@@ -298,10 +398,13 @@ async def process_track(file_data: bytes, file_name: str, user_id: int, track_id
     """
     1. Determine format by magic bytes
     2. Parse track (returns 'points' key)
-    3. Normalize points
-    4. Calculate elevation, speed
+    3. Normalize points:
+       a. Collapse GPS drift (cluster nearby stationary points)
+       b. Remove speed outliers (speed > 200 km/h)
+       c. Apply Kalman filter (smooth remaining noise)
+    4. Recalculate metrics (distance, elevation, speed) from normalized_points
     5. Geocode regions (Nominatim + Redis cache)
-    6. Save to DB
+    6. Save to DB (raw_points and normalized_points)
     7. Update task status
     """
     try:
@@ -310,7 +413,14 @@ async def process_track(file_data: bytes, file_name: str, user_id: int, track_id
         
         # Separate raw and normalized points
         raw_points = result['points']
-        normalized_points = normalize(raw_points)
+        
+        # Normalize step by step
+        normalized_points = _collapse_drift(raw_points)
+        normalized_points = _remove_speed_outliers(normalized_points)
+        normalized_points = apply_kalman_filter(normalized_points)
+        
+        # Recalculate metrics from normalized points
+        metrics = recalculate_metrics(normalized_points)
         
         # Determine regions via Nominatim (3 points: start, end, middle)
         regions = await geocode_regions([
@@ -320,17 +430,17 @@ async def process_track(file_data: bytes, file_name: str, user_id: int, track_id
         ])
         
         # Save to DB
-        track.distance_km = result['distance_km']
-        track.duration_sec = result['duration_sec']
-        track.recorded_at = result['recorded_at']
-        track.speed_avg = result['speed_avg']
-        track.speed_max = result['speed_max']
-        track.speed_min = result['speed_min']
-        track.elevation_gain = result['elevation_gain']
-        track.elevation_loss = result['elevation_loss']
-        track.raw_points = raw_points
-        track.normalized_points = normalized_points
-        track.speed_segments = result['speed_segments']
+        track.distance_km = metrics['distance_km']
+        track.duration_sec = metrics['duration_sec']
+        track.recorded_at = metrics['recorded_at']
+        track.speed_avg = metrics['speed_avg']
+        track.speed_max = metrics['speed_max']
+        track.speed_min = metrics['speed_min']
+        track.elevation_gain = metrics['elevation_gain']
+        track.elevation_loss = metrics['elevation_loss']
+        track.raw_points = raw_points          # Original GPS data
+        track.normalized_points = normalized_points  # After filtering + Kalman
+        track.speed_segments = metrics['speed_segments']
         track.regions = regions
         track.geom = create_linestring(normalized_points)
         
@@ -340,6 +450,11 @@ async def process_track(file_data: bytes, file_name: str, user_id: int, track_id
     except Exception as e:
         return {'state': 'FAILURE', 'error': str(e)}
 ```
+
+**Порядок нормализации важен:**
+1. Collapse drift первым — избавляемся от явного шума
+2. Удалить outliers — убираем невозможные скорости (247 км/ч)
+3. Kalman фильтр последним — сглаживает остаток шума
 
 ---
 
