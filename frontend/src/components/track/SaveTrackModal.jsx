@@ -148,10 +148,10 @@ export default function SaveTrackModal({
       }[format];
 
       downloadFile(content, `${trackName}.${ext}`, mimeType);
-      toast.success('Track downloaded');
+      toast.success('✅ Трек скачан/экспортирован');
       onClose();
     } catch (err) {
-      toast.error('Download failed');
+      toast.error('❌ Скачивание ошибка');
       console.error(err);
     }
   };

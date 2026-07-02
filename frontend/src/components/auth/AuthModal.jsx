@@ -161,9 +161,9 @@ export default function AuthModal() {
     try {
       const data = await apiLogin(email, password);
       storeLogin(data.access_token, data.user);
-      toast.success('Welcome back!');
+      toast.success('✅ Логин успех');
     } catch (err) {
-      toast.error(err.response?.data?.detail || 'Login failed');
+      toast.error(`❌ Логин ошибка: ${err.response?.data?.detail || 'Попробуйте снова'}`);
     } finally {
       setLoading(false);
     }
@@ -178,9 +178,9 @@ export default function AuthModal() {
     try {
       const data = await apiRegister(email, password);
       storeLogin(data.access_token, data.user);
-      toast.success('Account created!');
+      toast.success('✅ Регистрация аккаунта успех');
     } catch (err) {
-      toast.error(err.response?.data?.detail || 'Registration failed');
+      toast.error(`❌ Регистрация ошибка: ${err.response?.data?.detail || 'Попробуйте снова'}`);
     } finally {
       setLoading(false);
     }
@@ -192,10 +192,10 @@ export default function AuthModal() {
     setLoading(true);
     try {
       await forgotPassword(forgotEmail);
-      toast.success('Reset link sent — check your inbox');
+      toast.success('✅ Восстановление пароля отправлено');
       setForgotMode(false);
     } catch (err) {
-      toast.error(err.response?.data?.detail || 'Could not send reset email');
+      toast.error(`❌ Ошибка: ${err.response?.data?.detail || 'Не удалось отправить письмо'}`);
     } finally {
       setLoading(false);
     }

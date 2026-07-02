@@ -58,9 +58,9 @@ export default function TrackCard({ track, isSelected, onClick }) {
       if (selectedTrackId === track.id) {
         setSelectedTrackId(null);
       }
-      toast.success(t('toast.deleted'));
+      toast.success('✅ Трек удален');
     } catch {
-      toast.error(t('toast.delete_failed'));
+      toast.error('❌ Удаление трека ошибка');
       setDeleting(false);
     }
   }
@@ -93,9 +93,9 @@ export default function TrackCard({ track, isSelected, onClick }) {
     try {
       const updated = await renameTrack(track.id, trimmed);
       updateTrack(updated);
-      toast.success(t('toast.renamed'));
+      toast.success('✅ Трек переименован');
     } catch {
-      toast.error(t('toast.rename_failed'));
+      toast.error('❌ Переименование ошибка');
     }
     setRenaming(false);
   }

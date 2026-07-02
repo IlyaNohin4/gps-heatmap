@@ -80,10 +80,10 @@ export default function UploadZone({ inputRef: externalInputRef }) {
         await pollUntilDone(taskId, file.name);
       } else if (result.track) {
         addTrack(result.track);
-        toast.success(`Uploaded: ${file.name}`);
+        toast.success(`✅ Трек загружен успешно: ${file.name}`);
       }
     } catch (err) {
-      toast.error(`Upload failed: ${file.name} — ${err.response?.data?.detail || err.message}`);
+      toast.error(`❌ Загрузка трека ошибка: ${file.name}`);
       if (taskId) removeUploadingId(taskId);
       // Continue to next file — don't rethrow
     }
@@ -103,18 +103,18 @@ export default function UploadZone({ inputRef: externalInputRef }) {
             } catch {
               if (status.track) addTrack(status.track);
             }
-            toast.success(`Done: ${filename}`);
+            toast.success(`✅ Трек загружен: ${filename}`);
             resolve();
           } else if (status.state === 'FAILURE' || status.status === 'error' || status.status === 'failed') {
             clearInterval(interval);
             removeUploadingId(taskId);
-            toast.error(`Processing failed: ${filename}`);
+            toast.error(`❌ Загрузка трека ошибка: ${filename}`);
             resolve();
           }
         } catch {
           clearInterval(interval);
           removeUploadingId(taskId);
-          toast.error(`Status check failed for ${filename}`);
+          toast.error(`❌ Загрузка трека ошибка: ${filename}`);
           resolve();
         }
       }, 2000);

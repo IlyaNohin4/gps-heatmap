@@ -76,10 +76,10 @@ export default function TopIsland() {
     if (!oldPass || !newPass) return toast.error(t('toast.password_failed'));
     try {
       await client.post('/api/auth/change-password', { old_password: oldPass, new_password: newPass });
-      toast.success(t('toast.password_changed'));
+      toast.success('✅ Смена пароля успех');
       setOldPass(''); setNewPass(''); setChangePassOpen(false);
     } catch (err) {
-      toast.error(err.response?.data?.detail || t('toast.password_failed'));
+      toast.error(`❌ Смена пароля ошибка: ${err.response?.data?.detail || 'Попробуйте снова'}`);
     }
   }
 
@@ -254,7 +254,7 @@ export default function TopIsland() {
                   <button
                     className="btn-secondary"
                     style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, padding: '7px' }}
-                    onClick={() => { logout(); toast.info(t('toast.signed_out')); }}
+                    onClick={() => { logout(); toast.success('✅ Логаут успех'); }}
                   >
                     <LogOut size={13} /> {t('settings.sign_out')}
                   </button>
