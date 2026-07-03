@@ -309,8 +309,8 @@ export default function TrackCard({ track, isSelected, onClick }) {
               paddingTop: 12,
               borderTop: '1px solid var(--border)',
             }}>
-              <button className="icon-btn" onClick={startRename} title={t('card.rename')} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
-                <Pencil size={13} /> {t('card.rename')}
+              <button className="icon-btn" onClick={startRename} title={t('card.rename')} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '8px 12px', borderRadius: 6, fontSize: 12, background: 'var(--bg)', border: '1px solid var(--border)', cursor: 'pointer', color: 'var(--text)' }}>
+                <Pencil size={14} /> {t('card.rename')}
               </button>
               <a
                 href={getTrackDownloadUrl(track.id)}
@@ -318,18 +318,18 @@ export default function TrackCard({ track, isSelected, onClick }) {
                 onClick={(e) => e.stopPropagation()}
                 className="icon-btn"
                 title={t('card.download')}
-                style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, textDecoration: 'none', color: 'var(--text)' }}
+                style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '8px 12px', borderRadius: 6, fontSize: 12, background: 'var(--bg)', border: '1px solid var(--border)', cursor: 'pointer', textDecoration: 'none', color: 'var(--text)' }}
               >
-                <Download size={13} /> {t('card.download')}
+                <Download size={14} /> {t('card.download')}
               </a>
               <button
                 className="icon-btn"
                 onClick={handleDelete}
                 disabled={deleting}
                 title={confirmDelete ? t('card.confirm_delete') : t('card.delete')}
-                style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, color: confirmDelete ? '#ff3b30' : undefined }}
+                style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '8px 12px', borderRadius: 6, fontSize: 12, background: 'var(--bg)', border: '1px solid var(--border)', cursor: 'pointer', color: confirmDelete ? '#ff3b30' : 'var(--text)' }}
               >
-                <Trash2 size={13} /> {confirmDelete ? t('card.confirm_delete') : t('card.delete')}
+                <Trash2 size={14} /> {confirmDelete ? t('card.confirm_delete') : t('card.delete')}
               </button>
             </div>
           )}
