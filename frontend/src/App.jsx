@@ -22,7 +22,6 @@ import SaveTrackModal from './components/track/SaveTrackModal.jsx';
 
 import { fetchTracks, createTrackFromPoints } from './api/tracks.js';
 import { getMe } from './api/auth.js';
-import { toast } from 'react-toastify';
 import { Search, RotateCcw, Eye, EyeOff } from 'lucide-react';
 
 // Lazy-load the public track page so it doesn't pull leaflet into the main bundle
@@ -121,18 +120,11 @@ function MainPage() {
   }
 
   async function handleShowAll() {
-    toast.info('🔄 Loading all tracks...');
-    console.log('handleShowAll: selectedTrackId before:', selectedTrackId);
     setSelectedTrack(null);
-    console.log('handleShowAll: selectedTrackId after setSelectedTrack(null):', selectedTrackId);
     try {
       const data = await fetchTracks();
       setTracks(data.tracks || data);
-      toast.success('✅ All tracks loaded');
-    } catch (err) {
-      toast.error('❌ Failed to load tracks');
-      console.error('fetchTracks error:', err);
-    }
+    } catch { /* ignore */ }
   }
 
   function handleToggleVisibility() {
