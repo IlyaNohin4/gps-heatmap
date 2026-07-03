@@ -244,70 +244,15 @@ export default function TrackCard({ track, isSelected, onClick }) {
       )}
 
       {expanded && (
-        <div style={{
-          marginTop: 12,
-          paddingTop: 12,
-          borderTop: '1px solid var(--border)',
-          display: 'grid',
-          gridTemplateColumns: '1fr 1fr',
-          gap: '6px 16px',
-        }}>
-          {track.uploaded_at && (
-            <div>
-              <div style={{ fontSize: 10, color: 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: 600 }}>{t('card.uploaded')}</div>
-              <div style={{ fontSize: 12 }}>{formatDate(track.uploaded_at)}</div>
-            </div>
-          )}
-          {track.duration_sec != null && (
-            <div>
-              <div style={{ fontSize: 10, color: 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: 600 }}>{t('card.duration')}</div>
-              <div style={{ fontSize: 12 }}>
-                {(() => {
-                  const h = Math.floor(track.duration_sec / 3600);
-                  const m = Math.floor((track.duration_sec % 3600) / 60);
-                  return h > 0 ? `${h}h ${m}m` : `${m}m`;
-                })()}
-              </div>
-            </div>
-          )}
-          {track.elevation_gain != null && (
-            <div>
-              <div style={{ fontSize: 10, color: 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: 600 }}>{t('card.elev_gain')}</div>
-              <div style={{ fontSize: 12 }}>{Math.round(track.elevation_gain)} m</div>
-            </div>
-          )}
-          {track.elevation_loss != null && (
-            <div>
-              <div style={{ fontSize: 10, color: 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: 600 }}>{t('card.elev_loss')}</div>
-              <div style={{ fontSize: 12 }}>{Math.round(track.elevation_loss)} m</div>
-            </div>
-          )}
-          {track.regions?.length > 0 && (
-            <div style={{ gridColumn: '1/-1' }}>
-              <div style={{ fontSize: 10, color: 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: 600, marginBottom: 4, display: 'flex', alignItems: 'center', gap: 3 }}>
-                <MapPin size={10} /> {t('card.regions')}
-              </div>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
-                {track.regions.map((r, i) => (
-                  <span key={i} style={{
-                    fontSize: 11,
-                    padding: '2px 7px',
-                    background: 'var(--bg)',
-                    borderRadius: 6,
-                    border: '1px solid var(--border)',
-                  }}>{r}</span>
-                ))}
-              </div>
-            </div>
-          )}
-
+        <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--border)' }}>
           {!shouldShowTrackInfo() && (
             <div style={{
               display: 'flex',
+              justifyContent: 'center',
               gap: 2,
-              marginTop: 12,
-              paddingTop: 12,
-              borderTop: '1px solid var(--border)',
+              marginBottom: 12,
+              paddingBottom: 12,
+              borderBottom: '1px solid var(--border)',
             }}>
               <button className="icon-btn" onClick={startRename} title={t('card.rename')}>
                 <Pencil size={14} />
@@ -333,6 +278,61 @@ export default function TrackCard({ track, isSelected, onClick }) {
               </button>
             </div>
           )}
+
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: '1fr 1fr',
+            gap: '6px 16px',
+          }}>
+            {track.uploaded_at && (
+              <div>
+                <div style={{ fontSize: 10, color: 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: 600 }}>{t('card.uploaded')}</div>
+                <div style={{ fontSize: 12 }}>{formatDate(track.uploaded_at)}</div>
+              </div>
+            )}
+            {track.duration_sec != null && (
+              <div>
+                <div style={{ fontSize: 10, color: 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: 600 }}>{t('card.duration')}</div>
+                <div style={{ fontSize: 12 }}>
+                  {(() => {
+                    const h = Math.floor(track.duration_sec / 3600);
+                    const m = Math.floor((track.duration_sec % 3600) / 60);
+                    return h > 0 ? `${h}h ${m}m` : `${m}m`;
+                  })()}
+                </div>
+              </div>
+            )}
+            {track.elevation_gain != null && (
+              <div>
+                <div style={{ fontSize: 10, color: 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: 600 }}>{t('card.elev_gain')}</div>
+                <div style={{ fontSize: 12 }}>{Math.round(track.elevation_gain)} m</div>
+              </div>
+            )}
+            {track.elevation_loss != null && (
+              <div>
+                <div style={{ fontSize: 10, color: 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: 600 }}>{t('card.elev_loss')}</div>
+                <div style={{ fontSize: 12 }}>{Math.round(track.elevation_loss)} m</div>
+              </div>
+            )}
+            {track.regions?.length > 0 && (
+              <div style={{ gridColumn: '1/-1' }}>
+                <div style={{ fontSize: 10, color: 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: 600, marginBottom: 4, display: 'flex', alignItems: 'center', gap: 3 }}>
+                  <MapPin size={10} /> {t('card.regions')}
+                </div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                  {track.regions.map((r, i) => (
+                    <span key={i} style={{
+                      fontSize: 11,
+                      padding: '2px 7px',
+                      background: 'var(--bg)',
+                      borderRadius: 6,
+                      border: '1px solid var(--border)',
+                    }}>{r}</span>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       )}
     </div>
