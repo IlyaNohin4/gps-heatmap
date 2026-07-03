@@ -105,31 +105,6 @@ function MainPage() {
     return () => observer.disconnect();
   }, []);
 
-  // When track is selected, hide all other tracks; when deselected, show all
-  useEffect(() => {
-    if (!selectedTrackId || !tracks.length) return;
-
-    // Show only the selected track, hide all others
-    tracks.forEach((track) => {
-      const isVisible = visibleTrackIds.has(track.id);
-      if (track.id === selectedTrackId && !isVisible) {
-        toggleTrackVisibility(track.id);
-      } else if (track.id !== selectedTrackId && isVisible) {
-        toggleTrackVisibility(track.id);
-      }
-    });
-
-    // Update button state to reflect that not all tracks are visible
-    setAllTracksVisible(false);
-  }, [selectedTrackId, tracks.length, toggleTrackVisibility]);
-
-  // When track is deselected, update button state to show all
-  useEffect(() => {
-    if (!selectedTrackId) {
-      setAllTracksVisible(true);
-    }
-  }, [selectedTrackId]);
-
   function handleUploadClick() {
     uploadInputRef.current?.click();
   }
