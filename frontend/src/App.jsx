@@ -128,13 +128,15 @@ function MainPage() {
   }
 
   function handleToggleVisibility() {
+    // If a track is selected, just deselect it
+    if (selectedTrackId) {
+      setSelectedTrack(null);
+      return;
+    }
+
+    // If no track selected, toggle visibility of all tracks
     const next = !allTracksVisible;
     setAllTracksVisible(next);
-
-    // When showing all tracks, deselect the current track
-    if (next) {
-      setSelectedTrack(null);
-    }
 
     tracks.forEach((track) => {
       const isVisible = visibleTrackIds.has(track.id);
