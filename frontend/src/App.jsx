@@ -121,11 +121,18 @@ function MainPage() {
   }
 
   async function handleShowAll() {
+    toast.info('🔄 Loading all tracks...');
+    console.log('handleShowAll: selectedTrackId before:', selectedTrackId);
     setSelectedTrack(null);
+    console.log('handleShowAll: selectedTrackId after setSelectedTrack(null):', selectedTrackId);
     try {
       const data = await fetchTracks();
       setTracks(data.tracks || data);
-    } catch { /* ignore */ }
+      toast.success('✅ All tracks loaded');
+    } catch (err) {
+      toast.error('❌ Failed to load tracks');
+      console.error('fetchTracks error:', err);
+    }
   }
 
   function handleToggleVisibility() {
