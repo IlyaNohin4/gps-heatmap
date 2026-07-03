@@ -131,6 +131,11 @@ function MainPage() {
     const next = !allTracksVisible;
     setAllTracksVisible(next);
 
+    // When showing all tracks, deselect the current track
+    if (next) {
+      setSelectedTrack(null);
+    }
+
     tracks.forEach((track) => {
       const isVisible = visibleTrackIds.has(track.id);
       if (next && !isVisible) {
