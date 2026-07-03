@@ -304,34 +304,32 @@ export default function TrackCard({ track, isSelected, onClick }) {
           {!shouldShowTrackInfo() && (
             <div style={{
               display: 'flex',
-              gap: 8,
+              gap: 2,
               marginTop: 12,
               paddingTop: 12,
               borderTop: '1px solid var(--border)',
             }}>
-              <button onClick={startRename} title={t('card.rename')} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '8px 12px', borderRadius: 6, fontSize: 12, background: 'var(--bg)', border: '1px solid var(--border)', cursor: 'pointer', color: 'var(--text)', transition: 'background 0.15s' }} onMouseEnter={(e) => e.currentTarget.style.background = 'var(--border)'} onMouseLeave={(e) => e.currentTarget.style.background = 'var(--bg)'}>
-                <Pencil size={16} /> {t('card.rename')}
+              <button className="icon-btn" onClick={startRename} title={t('card.rename')}>
+                <Pencil size={14} />
               </button>
               <a
                 href={getTrackDownloadUrl(track.id)}
                 download
                 onClick={(e) => e.stopPropagation()}
+                className="icon-btn"
                 title={t('card.download')}
-                style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '8px 12px', borderRadius: 6, fontSize: 12, background: 'var(--bg)', border: '1px solid var(--border)', cursor: 'pointer', textDecoration: 'none', color: 'var(--text)', transition: 'background 0.15s' }}
-                onMouseEnter={(e) => e.currentTarget.style.background = 'var(--border)'}
-                onMouseLeave={(e) => e.currentTarget.style.background = 'var(--bg)'}
+                style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', textDecoration: 'none', color: 'var(--text)' }}
               >
-                <Download size={16} /> {t('card.download')}
+                <Download size={14} />
               </a>
               <button
+                className="icon-btn"
                 onClick={handleDelete}
                 disabled={deleting}
                 title={confirmDelete ? t('card.confirm_delete') : t('card.delete')}
-                style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '8px 12px', borderRadius: 6, fontSize: 12, background: 'var(--bg)', border: '1px solid var(--border)', cursor: 'pointer', color: confirmDelete ? '#ff3b30' : 'var(--text)', transition: 'background 0.15s' }}
-                onMouseEnter={(e) => e.currentTarget.style.background = 'var(--border)'}
-                onMouseLeave={(e) => e.currentTarget.style.background = 'var(--bg)'}
+                style={{ color: confirmDelete ? '#ff3b30' : undefined }}
               >
-                <Trash2 size={16} /> {confirmDelete ? t('card.confirm_delete') : t('card.delete')}
+                <Trash2 size={14} />
               </button>
             </div>
           )}
