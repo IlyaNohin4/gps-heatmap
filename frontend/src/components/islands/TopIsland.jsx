@@ -192,8 +192,6 @@ export default function TopIsland() {
               </select>
             </div>
 
-            <div style={sectionLabel}>Track Display</div>
-
             <div style={row}>
               <span style={{ fontSize: 13, color: 'var(--text)' }}>Track Info</span>
               <div style={chipGroup}>
