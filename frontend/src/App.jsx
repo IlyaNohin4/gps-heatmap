@@ -105,6 +105,29 @@ function MainPage() {
     return () => observer.disconnect();
   }, []);
 
+  // When track is selected, hide all other tracks; when deselected, show all
+  useEffect(() => {
+    if (selectedTrackId) {
+      // Show only the selected track, hide all others
+      tracks.forEach((track) => {
+        const isVisible = visibleTrackIds.has(track.id);
+        if (track.id === selectedTrackId && !isVisible) {
+          toggleTrackVisibility(track.id);
+        } else if (track.id !== selectedTrackId && isVisible) {
+          toggleTrackVisibility(track.id);
+        }
+      });
+    } else {
+      // Show all tracks when deselected
+      tracks.forEach((track) => {
+        const isVisible = visibleTrackIds.has(track.id);
+        if (!isVisible) {
+          toggleTrackVisibility(track.id);
+        }
+      });
+    }
+  }, [selectedTrackId, tracks, visibleTrackIds, toggleTrackVisibility]);
+
   function handleUploadClick() {
     uploadInputRef.current?.click();
   }
