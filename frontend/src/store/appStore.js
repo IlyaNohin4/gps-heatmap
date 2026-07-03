@@ -11,6 +11,7 @@ const useAppStore = create(
       activePanel: null,
       tracks: [],
       isUploadingIds: new Set(),
+      expandedTrackInfo: 'partial', // 'off' | 'partial' | 'on'
 
       setTheme: (theme) => set({ theme }),
       setUnitSystem: (system) => set({ unitSystem: system }),
@@ -19,6 +20,7 @@ const useAppStore = create(
       setSelectedTrackId: (id) => set({ selectedTrackId: id }),
       setActivePanel: (panel) => set({ activePanel: panel }),
       setTracks: (tracks) => set({ tracks }),
+      setExpandedTrackInfo: (mode) => set({ expandedTrackInfo: mode }),
       addTrack: (track) => set((s) => ({ tracks: [track, ...s.tracks] })),
       removeTrack: (id) =>
         set((s) => ({ tracks: s.tracks.filter((t) => t.id !== id) })),

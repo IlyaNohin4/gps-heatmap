@@ -36,7 +36,7 @@ const FORMAT_COLORS = {
 
 export default function TrackCard({ track, isSelected, onClick }) {
   const { t } = useTranslation();
-  const { unitSystem, removeTrack, updateTrack, selectedTrackId, setSelectedTrackId } = useAppStore();
+  const { unitSystem, expandedTrackInfo, removeTrack, updateTrack, selectedTrackId, setSelectedTrackId } = useAppStore();
   const [expanded, setExpanded] = useState(false);
   const [published, setPublished] = useState(track.is_public || false);
   const [deleting, setDeleting] = useState(false);
@@ -104,6 +104,13 @@ export default function TrackCard({ track, isSelected, onClick }) {
   function cancelRename(e) {
     e.stopPropagation();
     setRenaming(false);
+  }
+
+  function shouldShowTrackInfo() {
+    if (expandedTrackInfo === 'off') return false;
+    if (expandedTrackInfo === 'partial') return isSelected;
+    if (expandedTrackInfo === 'on') return true;
+    return false;
   }
 
   const fmt = track.file_format?.toLowerCase();
@@ -189,23 +196,26 @@ export default function TrackCard({ track, isSelected, onClick }) {
 
       {/* Row 2: meta chips + action buttons */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', minWidth: 0 }}>
-          {track.recorded_at && (
-            <span style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 12, color: 'var(--text-secondary)' }}>
-              <Calendar size={11} /> {formatDate(track.recorded_at)}
-            </span>
-          )}
-          {track.distance_km !== undefined && (
-            <span style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 12, color: 'var(--text-secondary)' }}>
-              <Route size={11} /> {distanceLabel(track.distance_km, unitSystem)}
-            </span>
-          )}
-          {track.speed_avg !== undefined && (
-            <span style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 12, color: 'var(--text-secondary)' }}>
-              <Gauge size={11} /> {speedLabel(track.speed_avg, unitSystem)}
-            </span>
-          )}
-        </div>
+        {shouldShowTrackInfo() && (
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', minWidth: 0 }}>
+            {track.recorded_at && (
+              <span style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 12, color: 'var(--text-secondary)' }}>
+                <Calendar size={11} /> {formatDate(track.recorded_at)}
+              </span>
+            )}
+            {track.distance_km !== undefined && (
+              <span style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 12, color: 'var(--text-secondary)' }}>
+                <Route size={11} /> {distanceLabel(track.distance_km, unitSystem)}
+              </span>
+            )}
+            {track.speed_avg !== undefined && (
+              <span style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 12, color: 'var(--text-secondary)' }}>
+                <Gauge size={11} /> {speedLabel(track.speed_avg, unitSystem)}
+              </span>
+            )}
+          </div>
+        )}
+        {!shouldShowTrackInfo() && <div />}
 
         {/* Action buttons: rename, download, delete */}
         <div style={{ display: 'flex', gap: 2, flexShrink: 0 }}>

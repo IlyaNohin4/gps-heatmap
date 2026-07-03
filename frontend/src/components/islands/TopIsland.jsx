@@ -20,7 +20,7 @@ const LANGUAGES = [
 ];
 
 export default function TopIsland() {
-  const { theme, unitSystem, language, setTheme, setUnitSystem, setLanguage, activePanel, setActivePanel } = useAppStore();
+  const { theme, unitSystem, language, expandedTrackInfo, setTheme, setUnitSystem, setLanguage, setExpandedTrackInfo, activePanel, setActivePanel } = useAppStore();
   const { isAuthenticated, user, logout, setUser } = useAuthStore();
   const { t, i18n } = useTranslation();
   const open = activePanel === 'top';
@@ -190,6 +190,35 @@ export default function TopIsland() {
                   <option key={l.code} value={l.code}>{l.label}</option>
                 ))}
               </select>
+            </div>
+
+            <div style={sectionLabel}>Track Display</div>
+
+            <div style={row}>
+              <span style={{ fontSize: 13, color: 'var(--text)' }}>Track Info</span>
+              <div style={chipGroup}>
+                <button
+                  style={chip(expandedTrackInfo === 'off')}
+                  onClick={() => setExpandedTrackInfo('off')}
+                  title="Hide track info"
+                >
+                  Off
+                </button>
+                <button
+                  style={chip(expandedTrackInfo === 'partial')}
+                  onClick={() => setExpandedTrackInfo('partial')}
+                  title="Show on selection"
+                >
+                  On Selection
+                </button>
+                <button
+                  style={chip(expandedTrackInfo === 'on')}
+                  onClick={() => setExpandedTrackInfo('on')}
+                  title="Always show"
+                >
+                  Always
+                </button>
+              </div>
             </div>
 
             {isAuthenticated && (
