@@ -118,7 +118,17 @@ function MainPage() {
         toggleTrackVisibility(track.id);
       }
     });
+
+    // Update button state to reflect that not all tracks are visible
+    setAllTracksVisible(false);
   }, [selectedTrackId, tracks.length, toggleTrackVisibility]);
+
+  // When track is deselected, update button state to show all
+  useEffect(() => {
+    if (!selectedTrackId) {
+      setAllTracksVisible(true);
+    }
+  }, [selectedTrackId]);
 
   function handleUploadClick() {
     uploadInputRef.current?.click();
