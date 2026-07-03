@@ -41,7 +41,7 @@ const SPEED_LEGEND = [
 // ---- Main App Page ----
 function MainPage() {
   const { isAuthenticated, setUser } = useAuthStore();
-  const { theme, setTracks, setTheme, setUnitSystem, setLanguage, selectedTrackId, setSelectedTrackId, unitSystem, tracks } = useAppStore();
+  const { theme, setTracks, setTheme, setUnitSystem, setLanguage, selectedTrackId, setSelectedTrackId, setSelectedTrack, unitSystem, tracks } = useAppStore();
   const {
     mapInstance, showSpeed, showTrackCreator, toggleTrackCreator,
     trackCreatorState, setTrackCreatorState, undoWaypoint, redoWaypoint, clearTrackCreatorState,
@@ -121,7 +121,7 @@ function MainPage() {
   }
 
   async function handleShowAll() {
-    setSelectedTrackId(null);
+    setSelectedTrack(null);
     try {
       const data = await fetchTracks();
       setTracks(data.tracks || data);
