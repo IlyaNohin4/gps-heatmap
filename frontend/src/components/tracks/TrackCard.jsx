@@ -194,9 +194,9 @@ export default function TrackCard({ track, isSelected, onClick }) {
         </div>
       </div>
 
-      {/* Row 2: meta chips + action buttons */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
-        {shouldShowTrackInfo() && (
+      {/* Row 2: meta chips + action buttons (only when info is shown) */}
+      {shouldShowTrackInfo() && (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', minWidth: 0 }}>
             {track.recorded_at && (
               <span style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 12, color: 'var(--text-secondary)' }}>
@@ -214,35 +214,34 @@ export default function TrackCard({ track, isSelected, onClick }) {
               </span>
             )}
           </div>
-        )}
-        {!shouldShowTrackInfo() && <div />}
 
-        {/* Action buttons: rename, download, delete */}
-        <div style={{ display: 'flex', gap: 2, flexShrink: 0 }}>
-          <button className="icon-btn" onClick={startRename} title={t('card.rename')}>
-            <Pencil size={13} />
-          </button>
-          <a
-            href={getTrackDownloadUrl(track.id)}
-            download
-            onClick={(e) => e.stopPropagation()}
-            className="icon-btn"
-            title={t('card.download')}
-            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', textDecoration: 'none', color: 'var(--text)' }}
-          >
-            <Download size={13} />
-          </a>
-          <button
-            className="icon-btn"
-            onClick={handleDelete}
-            disabled={deleting}
-            title={confirmDelete ? t('card.confirm_delete') : t('card.delete')}
-            style={{ color: confirmDelete ? '#ff3b30' : undefined }}
-          >
-            <Trash2 size={13} />
-          </button>
+          {/* Action buttons: rename, download, delete */}
+          <div style={{ display: 'flex', gap: 2, flexShrink: 0 }}>
+            <button className="icon-btn" onClick={startRename} title={t('card.rename')}>
+              <Pencil size={13} />
+            </button>
+            <a
+              href={getTrackDownloadUrl(track.id)}
+              download
+              onClick={(e) => e.stopPropagation()}
+              className="icon-btn"
+              title={t('card.download')}
+              style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', textDecoration: 'none', color: 'var(--text)' }}
+            >
+              <Download size={13} />
+            </a>
+            <button
+              className="icon-btn"
+              onClick={handleDelete}
+              disabled={deleting}
+              title={confirmDelete ? t('card.confirm_delete') : t('card.delete')}
+              style={{ color: confirmDelete ? '#ff3b30' : undefined }}
+            >
+              <Trash2 size={13} />
+            </button>
+          </div>
         </div>
-      </div>
+      )}
 
       {expanded && (
         <div style={{
@@ -299,6 +298,39 @@ export default function TrackCard({ track, isSelected, onClick }) {
                   }}>{r}</span>
                 ))}
               </div>
+            </div>
+          )}
+
+          {!shouldShowTrackInfo() && (
+            <div style={{
+              display: 'flex',
+              gap: 8,
+              marginTop: 12,
+              paddingTop: 12,
+              borderTop: '1px solid var(--border)',
+            }}>
+              <button className="icon-btn" onClick={startRename} title={t('card.rename')} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+                <Pencil size={13} /> {t('card.rename')}
+              </button>
+              <a
+                href={getTrackDownloadUrl(track.id)}
+                download
+                onClick={(e) => e.stopPropagation()}
+                className="icon-btn"
+                title={t('card.download')}
+                style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, textDecoration: 'none', color: 'var(--text)' }}
+              >
+                <Download size={13} /> {t('card.download')}
+              </a>
+              <button
+                className="icon-btn"
+                onClick={handleDelete}
+                disabled={deleting}
+                title={confirmDelete ? t('card.confirm_delete') : t('card.delete')}
+                style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, color: confirmDelete ? '#ff3b30' : undefined }}
+              >
+                <Trash2 size={13} /> {confirmDelete ? t('card.confirm_delete') : t('card.delete')}
+              </button>
             </div>
           )}
         </div>
