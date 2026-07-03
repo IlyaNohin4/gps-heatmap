@@ -45,35 +45,6 @@ function MapClickHandler() {
   return null;
 }
 
-// Animates map to selected track with smooth flyToBounds
-function TrackAnimator() {
-  const map = useMap();
-  const selectedTrackId = useAppStore((s) => s.selectedTrackId);
-  const trackDetailCache = useMapStore((s) => s.trackDetailCache);
-
-  useEffect(() => {
-    if (!selectedTrackId || !map) return;
-
-    const track = trackDetailCache[selectedTrackId];
-    if (!track?.normalized_points || track.normalized_points.length === 0) return;
-
-    // Calculate bounds from normalized_points
-    const bounds = track.normalized_points.reduce(
-      (acc, pt) => {
-        if (!pt.lat || !pt.lon) return acc;
-        return acc.extend([pt.lat, pt.lon]);
-      },
-      L.latLngBounds(null)
-    );
-
-    if (bounds.isValid()) {
-      map.flyToBounds(bounds, MAP_ANIMATIONS.trackSelection);
-    }
-  }, [selectedTrackId, trackDetailCache, map]);
-
-  return null;
-}
-
 function ActiveTileLayer() {
   const { activeLayer } = useMapStore();
   let layerId = activeLayer;
@@ -140,7 +111,6 @@ function MapLayers() {
       <ActiveTileLayer />
       <MapController />
       <MapClickHandler />
-      <TrackAnimator />
 
       {/* Plain coloured polylines (default) */}
       {!showSpeed && (

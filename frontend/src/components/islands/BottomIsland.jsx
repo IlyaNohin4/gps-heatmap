@@ -1,11 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { TrendingUp, Gauge, Route, Clock, Mountain, ChevronDown, ChevronUp } from 'lucide-react';
+import { TrendingUp, Gauge, Route, Clock, Mountain, ChevronDown, ChevronUp, ZoomIn, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts';
+import L from 'leaflet';
 import useAppStore from '../../store/appStore.js';
+import useMapStore from '../../store/mapStore.js';
 import { getTrack } from '../../api/tracks.js';
+import { MAP_ANIMATIONS } from '../../config/mapAnimations.js';
 
 const TABS = ['Elevation', 'Speed', 'Slope'];
 
@@ -57,7 +60,8 @@ function CustomTooltip({ active, payload, label, tab, unitSystem }) {
 
 export default function BottomIsland() {
   const { t } = useTranslation();
-  const { selectedTrackId, unitSystem } = useAppStore();
+  const { selectedTrackId, unitSystem, setSelectedTrackId } = useAppStore();
+  const { mapInstance, trackDetailCache } = useMapStore();
   const [trackData, setTrackData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('Elevation');
@@ -72,6 +76,29 @@ export default function BottomIsland() {
       .catch(() => setTrackData(null))
       .finally(() => setLoading(false));
   }, [selectedTrackId]);
+
+  function handleZoomToTrack() {
+    if (!mapInstance || !selectedTrackId) return;
+
+    const trackData = trackDetailCache[selectedTrackId];
+    if (!trackData?.normalized_points || trackData.normalized_points.length === 0) return;
+
+    const bounds = trackData.normalized_points.reduce(
+      (acc, pt) => {
+        if (!pt.lat || !pt.lon) return acc;
+        return acc.extend([pt.lat, pt.lon]);
+      },
+      L.latLngBounds(null)
+    );
+
+    if (bounds.isValid()) {
+      mapInstance.flyToBounds(bounds, MAP_ANIMATIONS.trackSelection);
+    }
+  }
+
+  function handleDeselectTrack() {
+    setSelectedTrackId(null);
+  }
 
   const track = trackData;
 
@@ -185,6 +212,28 @@ export default function BottomIsland() {
               <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>
                 {track.name || 'Track'}
               </span>
+            )}
+            {selectedTrackId && (
+              <>
+                <button
+                  onClick={handleZoomToTrack}
+                  style={{ display: 'flex', alignItems: 'center', color: 'var(--text-secondary)', background: 'none', border: 'none', cursor: 'pointer', borderRadius: 8, padding: 4, transition: 'color 0.15s' }}
+                  onMouseEnter={(e) => e.currentTarget.style.color = 'var(--accent)'}
+                  onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-secondary)'}
+                  title={t('card.zoom_to_track') || 'Zoom to track'}
+                >
+                  <ZoomIn size={16} />
+                </button>
+                <button
+                  onClick={handleDeselectTrack}
+                  style={{ display: 'flex', alignItems: 'center', color: 'var(--text-secondary)', background: 'none', border: 'none', cursor: 'pointer', borderRadius: 8, padding: 4, transition: 'color 0.15s' }}
+                  onMouseEnter={(e) => e.currentTarget.style.color = 'var(--accent)'}
+                  onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-secondary)'}
+                  title={t('card.deselect') || 'Deselect track'}
+                >
+                  <X size={16} />
+                </button>
+              </>
             )}
             <button
               onClick={() => setExpanded((v) => !v)}

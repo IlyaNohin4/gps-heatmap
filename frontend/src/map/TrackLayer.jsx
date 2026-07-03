@@ -43,11 +43,6 @@ const TrackLayer = memo(function TrackLayer({ tracks, selectedTrackId }) {
 
       line.bindTooltip(track.name || 'Track', { sticky: true, offset: [0, -4] });
       line.addTo(group);
-
-      // Fit map to selected track
-      if (isSelected && latlngs.length > 0) {
-        map.flyToBounds(line.getBounds(), { padding: [40, 40], maxZoom: 16, animate: true, duration: 2.5 });
-      }
     });
   }, [tracks, selectedTrackId, map]);
 
