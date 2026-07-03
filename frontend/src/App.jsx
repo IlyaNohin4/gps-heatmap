@@ -107,26 +107,18 @@ function MainPage() {
 
   // When track is selected, hide all other tracks; when deselected, show all
   useEffect(() => {
-    if (selectedTrackId) {
-      // Show only the selected track, hide all others
-      tracks.forEach((track) => {
-        const isVisible = visibleTrackIds.has(track.id);
-        if (track.id === selectedTrackId && !isVisible) {
-          toggleTrackVisibility(track.id);
-        } else if (track.id !== selectedTrackId && isVisible) {
-          toggleTrackVisibility(track.id);
-        }
-      });
-    } else {
-      // Show all tracks when deselected
-      tracks.forEach((track) => {
-        const isVisible = visibleTrackIds.has(track.id);
-        if (!isVisible) {
-          toggleTrackVisibility(track.id);
-        }
-      });
-    }
-  }, [selectedTrackId, tracks, visibleTrackIds, toggleTrackVisibility]);
+    if (!selectedTrackId || !tracks.length) return;
+
+    // Show only the selected track, hide all others
+    tracks.forEach((track) => {
+      const isVisible = visibleTrackIds.has(track.id);
+      if (track.id === selectedTrackId && !isVisible) {
+        toggleTrackVisibility(track.id);
+      } else if (track.id !== selectedTrackId && isVisible) {
+        toggleTrackVisibility(track.id);
+      }
+    });
+  }, [selectedTrackId, tracks.length, toggleTrackVisibility]);
 
   function handleUploadClick() {
     uploadInputRef.current?.click();
