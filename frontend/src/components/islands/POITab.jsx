@@ -1,15 +1,17 @@
-import React, { useState, useEffect } from 'react';
-import { Plus, MapPin, Trash2 } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Plus, MapPin, Trash2, Upload, X as XIcon, Loader } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { useTranslation } from 'react-i18next';
 import useMapStore from '../../store/mapStore.js';
-import { fetchPOI, deletePOI } from '../../api/poi.js';
+import { fetchPOI, deletePOI, uploadPOI } from '../../api/poi.js';
 
 export default function POITab() {
   const { t } = useTranslation();
   const { pois, setPOIs, setPoiCreationMode, poiCreationMode, mapInstance } = useMapStore();
   const [loading, setLoading] = useState(false);
   const [deleting, setDeleting] = useState(null);
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef(null);
 
   useEffect(() => {
     loadPOIs();
@@ -25,6 +27,29 @@ export default function POITab() {
       console.error(err);
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function handleFileSelect(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.name.match(/\.(kml|kmz)$/i)) {
+      toast.error('Only KML and KMZ files are supported');
+      return;
+    }
+
+    setUploading(true);
+    try {
+      await uploadPOI(file);
+      toast.success('POI imported successfully');
+      await loadPOIs();
+    } catch (err) {
+      toast.error(err.response?.data?.detail || 'Failed to import POI');
+      console.error(err);
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
     }
   }
 
@@ -64,25 +89,56 @@ export default function POITab() {
           <MapPin size={16} color="var(--accent)" />
           <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>POI</span>
         </div>
-        <button
-          onClick={handleToggleCreation}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            width: 32,
-            height: 32,
-            background: poiCreationMode ? 'var(--accent)' : 'var(--bg)',
-            border: '1px solid var(--border)',
-            borderRadius: 8,
-            cursor: 'pointer',
-            color: poiCreationMode ? '#fff' : 'var(--text)',
-            transition: 'all 0.15s',
-          }}
-          title="Create POI (right-click on map)"
-        >
-          <Plus size={16} />
-        </button>
+        <div style={{ display: 'flex', gap: 6 }}>
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            disabled={uploading}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              width: 32,
+              height: 32,
+              background: 'var(--bg)',
+              border: '1px solid var(--border)',
+              borderRadius: 8,
+              cursor: uploading ? 'not-allowed' : 'pointer',
+              color: 'var(--text)',
+              transition: 'all 0.15s',
+              opacity: uploading ? 0.5 : 1,
+            }}
+            title="Import KML/KMZ file"
+          >
+            {uploading ? <Loader size={16} style={{ animation: 'spin 1s linear infinite' }} /> : <Upload size={16} />}
+          </button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".kml,.kmz"
+            onChange={handleFileSelect}
+            disabled={uploading}
+            style={{ display: 'none' }}
+          />
+          <button
+            onClick={handleToggleCreation}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              width: 32,
+              height: 32,
+              background: poiCreationMode ? 'var(--accent)' : 'var(--bg)',
+              border: '1px solid var(--border)',
+              borderRadius: 8,
+              cursor: 'pointer',
+              color: poiCreationMode ? '#fff' : 'var(--text)',
+              transition: 'all 0.15s',
+            }}
+            title="Create POI (right-click on map)"
+          >
+            <Plus size={16} />
+          </button>
+        </div>
       </div>
 
       {/* POI List */}

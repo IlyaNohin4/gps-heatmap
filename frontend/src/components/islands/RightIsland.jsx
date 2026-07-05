@@ -1,14 +1,13 @@
 import React, { useRef } from 'react';
 import {
   Plus, Minus, Search, Navigation, Layers, Info, X,
-  Flame, Gauge, MapPin, PenLine, ChevronRight,
+  Flame, Gauge, PenLine, ChevronRight,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import useMapStore from '../../store/mapStore.js';
 import useAppStore from '../../store/appStore.js';
 import { LAYER_OPTIONS } from '../../map/MapLayers.js';
 import { MAP_ANIMATIONS } from '../../config/mapAnimations.js';
-import POIImportPanel from '../poi/POIImportPanel.jsx';
 
 // Speed breakpoints: [max_kmh, label_km, label_mi, color]
 const SPEED_LEGEND = [
@@ -26,7 +25,6 @@ export default function RightIsland() {
     mapInstance, activeLayer, setActiveLayer,
     showHeatmap, toggleHeatmap,
     showSpeed, toggleSpeed,
-    visibleImports,
     showTrackCreator, toggleTrackCreator,
   } = useMapStore();
   const { unitSystem, activePanel, setActivePanel, setSelectedTrackId } = useAppStore();
@@ -34,7 +32,6 @@ export default function RightIsland() {
   const cityOpen   = activePanel === 'right:city';
   const layersOpen = activePanel === 'right:layers';
   const attrOpen   = activePanel === 'right:attr';
-  const poiOpen    = activePanel === 'right:poi';
 
   function togglePanel(name) {
     setActivePanel(activePanel === name ? null : name);
@@ -130,14 +127,6 @@ export default function RightIsland() {
         </button>
         {divider}
         <button
-          style={iconBtn(poiOpen)}
-          onClick={() => togglePanel('right:poi')}
-          title={t('map.poi')}
-        >
-          <MapPin size={16} />
-        </button>
-        {divider}
-        <button
           style={iconBtn(showTrackCreator)}
           onClick={() => {
             toggleTrackCreator();
@@ -212,10 +201,6 @@ export default function RightIsland() {
         </div>
       )}
 
-      {/* POI import panel */}
-      {poiOpen && (
-        <POIImportPanel onClose={() => togglePanel('right:poi')} />
-      )}
 
       {/* Attribution popover */}
       {attrOpen && (
