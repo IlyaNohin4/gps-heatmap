@@ -88,7 +88,7 @@ export default function POIDeleteModal({ poi, isOpen, onClose, onDeleted }) {
             style={{
               flex: 1,
               padding: '10px 12px',
-              borderRadius: 'var(--radius-input)',
+              borderRadius: 8,
               border: 'none',
               background: 'rgb(255, 59, 48)',
               color: '#fff',
