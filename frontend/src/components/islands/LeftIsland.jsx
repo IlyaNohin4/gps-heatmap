@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { Search, Filter, Plus, X, ChevronLeft, ChevronRight, MapPin, Route } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import Slider from 'rc-slider';
@@ -53,6 +53,8 @@ export default function LeftIsland({ onUploadClick, loading }) {
   const [sort, setSort] = useState('newest');
   const [formatFilter, setFormatFilter] = useState('all');
   const [speedRange, setSpeedRange] = useState([0, 200]);
+
+  const handleCollapse = useCallback(() => setSidebarOpen(false), []);
 
   const filtered = useMemo(() => {
     let list = [...tracks];
@@ -305,7 +307,7 @@ export default function LeftIsland({ onUploadClick, loading }) {
         {/* POI Tab */}
         {currentTab === 'poi' && (
           <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
-            <POITab onCollapse={() => setSidebarOpen(false)} />
+            <POITab onCollapse={handleCollapse} />
           </div>
         )}
       </div>}
