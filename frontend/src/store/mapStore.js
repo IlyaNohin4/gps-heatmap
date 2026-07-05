@@ -8,6 +8,8 @@ const useMapStore = create((set, get) => ({
   showSpeed: false,
   showPOI: false,
   poiCategories: [],
+  poiCreationMode: false,
+  pois: [],
   showTrackCreator: false,
   visibleTrackIds: new Set(),
   // Cache of full track details keyed by track id (includes normalized_points, speed_segments)
@@ -33,6 +35,10 @@ const useMapStore = create((set, get) => ({
   toggleSpeed: () => set((s) => ({ showSpeed: !s.showSpeed, showHeatmap: false })),
   togglePOI: () => set((s) => ({ showPOI: !s.showPOI })),
   toggleTrackCreator: () => set((s) => ({ showTrackCreator: !s.showTrackCreator })),
+  setPoiCreationMode: (mode) => set({ poiCreationMode: mode }),
+  setPOIs: (pois) => set({ pois }),
+  addPOI: (poi) => set((s) => ({ pois: [poi, ...s.pois] })),
+  removePOI: (id) => set((s) => ({ pois: s.pois.filter((p) => p.id !== id) })),
   setPOICategories: (poiCategories) => set({ poiCategories }),
   togglePOICategory: (id) =>
     set((s) => {

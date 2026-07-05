@@ -19,6 +19,8 @@ import SpeedLayer from '../map/SpeedLayer.jsx';
 import VisitLayer from '../map/VisitLayer.jsx';
 import POILayer from '../map/POILayer.jsx';
 import TrackCreator from '../map/TrackCreator.jsx';
+import POIContextMenu from '../components/poi/POIContextMenu.jsx';
+import POICreationModal from '../components/poi/POICreationModal.jsx';
 
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
@@ -42,6 +44,19 @@ function MapController() {
 function MapClickHandler() {
   const setActivePanel = useAppStore((s) => s.setActivePanel);
   useMapEvents({ click: () => setActivePanel(null) });
+  return null;
+}
+
+// Handles right-click on map for POI creation
+function POIContextMenuHandler({ poiCreationMode, onContextMenu }) {
+  useMapEvents({
+    contextmenu: (e) => {
+      if (poiCreationMode) {
+        e.originalEvent.preventDefault();
+        onContextMenu(e.latlng.lat, e.latlng.lng, e.originalEvent.clientX, e.originalEvent.clientY);
+      }
+    },
+  });
   return null;
 }
 
@@ -141,15 +156,66 @@ function MapLayers() {
 }
 
 export default function MapContainer() {
+  const [contextMenu, setContextMenu] = useState(null);
+  const [creatingPOI, setCreatingPOI] = useState(null);
+  const poiCreationMode = useMapStore((s) => s.poiCreationMode);
+
+  const handleContextMenu = (lat, lon, x, y) => {
+    setContextMenu({ lat, lon, x, y });
+  };
+
+  const handleCreatePOI = () => {
+    if (contextMenu) {
+      setCreatingPOI({ lat: contextMenu.lat, lon: contextMenu.lon });
+      setContextMenu(null);
+    }
+  };
+
+  const handleCloseMenu = () => {
+    setContextMenu(null);
+  };
+
+  const handleSuccessPOI = (poi) => {
+    setCreatingPOI(null);
+    // Refresh POI list in Zustand store
+    useMapStore.getState().addPOI(poi);
+  };
+
   return (
-    <LeafletMap
-      center={[48.8566, 2.3522]}
-      zoom={4}
-      style={{ position: 'fixed', inset: 0, zIndex: 0 }}
-      zoomControl={false}
-      attributionControl={false}
-    >
-      <MapLayers />
-    </LeafletMap>
+    <>
+      <LeafletMap
+        center={[48.8566, 2.3522]}
+        zoom={4}
+        style={{ position: 'fixed', inset: 0, zIndex: 0 }}
+        zoomControl={false}
+        attributionControl={false}
+      >
+        <MapLayers />
+        <POIContextMenuHandler
+          poiCreationMode={poiCreationMode}
+          onContextMenu={handleContextMenu}
+        />
+      </LeafletMap>
+
+      {contextMenu && (
+        <POIContextMenu
+          lat={contextMenu.lat}
+          lon={contextMenu.lon}
+          x={contextMenu.x}
+          y={contextMenu.y}
+          onCreateClick={handleCreatePOI}
+          onCancel={handleCloseMenu}
+        />
+      )}
+
+      {creatingPOI && (
+        <POICreationModal
+          lat={creatingPOI.lat}
+          lon={creatingPOI.lon}
+          onClose={() => setCreatingPOI(null)}
+          onSuccess={handleSuccessPOI}
+        />
+      )}
+    </>
   );
 }
