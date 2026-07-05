@@ -96,7 +96,7 @@ export default function LeftIsland({ onUploadClick, loading }) {
       transform: 'translateY(-50%)',
       zIndex: 1000,
       width: sidebarOpen ? 300 : 'auto',
-      maxHeight: 'calc(100vh - 240px)',
+      maxHeight: 'calc(100vh - 260px)',
       display: 'flex',
       flexDirection: 'column',
     }}>
@@ -118,7 +118,7 @@ export default function LeftIsland({ onUploadClick, loading }) {
         flexDirection: 'column',
         overflow: 'hidden',
         height: '100%',
-        maxHeight: 'calc(100vh - 240px)',
+        maxHeight: 'calc(100vh - 260px)',
       }}>
         {/* Tabs */}
         <div style={{
