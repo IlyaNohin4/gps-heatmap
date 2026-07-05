@@ -173,9 +173,9 @@ export default function LeftIsland({ onUploadClick, loading }) {
 
         {/* Tracks Tab */}
         {currentTab === 'tracks' && (
-        <>
+        <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, overflow: 'hidden' }}>
         {/* Search bar */}
-        <div style={{ padding: '10px 10px 0', display: 'flex', gap: 6 }}>
+        <div style={{ padding: '10px 10px 0', display: 'flex', gap: 6, flexShrink: 0 }}>
           <div style={{ position: 'relative', flex: 1 }}>
             <Search size={14} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }} />
             <input
@@ -209,7 +209,7 @@ export default function LeftIsland({ onUploadClick, loading }) {
 
         {/* Filter panel */}
         {filterOpen && (
-          <div style={{ padding: '10px 12px', borderBottom: '1px solid var(--border)', animation: 'fadeIn 0.3s ease-out' }}>
+          <div style={{ padding: '10px 12px', borderBottom: '1px solid var(--border)', animation: 'fadeIn 0.3s ease-out', flexShrink: 0 }}>
             <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-secondary)', marginBottom: 6, textTransform: 'uppercase' }}>{t('tracks.sort')}</div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 10 }}>
               {(['newest', 'oldest', 'longest', 'shortest', 'fastest', 'slowest']).map((v) => (
@@ -230,7 +230,7 @@ export default function LeftIsland({ onUploadClick, loading }) {
         )}
 
         {/* Track list */}
-        <div style={{ flex: 1, overflowY: 'auto', padding: '8px 10px 4px' }}>
+        <div style={{ flex: 1, overflowY: 'auto', padding: '8px 10px 4px', minHeight: 0 }}>
           {loading ? (
             [1, 2, 3].map((i) => <SkeletonCard key={i} />)
           ) : filtered.length === 0 ? (
@@ -253,7 +253,7 @@ export default function LeftIsland({ onUploadClick, loading }) {
         </div>
 
         {/* Bottom actions - Tracks tab only */}
-        <div style={{ padding: '8px 10px 10px', borderTop: '1px solid var(--border)' }}>
+        <div style={{ padding: '8px 10px 10px', borderTop: '1px solid var(--border)', flexShrink: 0 }}>
           <button
             className="btn-secondary"
             style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '8px' }}
@@ -262,7 +262,7 @@ export default function LeftIsland({ onUploadClick, loading }) {
             <Plus size={14} /> {t('tracks.add_track')}
           </button>
         </div>
-        </>
+        </div>
         )}
 
         {/* POI Tab */}
