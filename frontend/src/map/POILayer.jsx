@@ -44,9 +44,8 @@ function makeDivIcon(category, color) {
 
 export default function POILayer() {
   const map = useMap();
-  const { visibleImports } = useMapStore();
+  const { visibleImports, pois } = useMapStore();
   const groupRef = useRef(null);
-  const poiRef = useRef([]);
 
   // Create layer group on mount
   useEffect(() => {
@@ -55,37 +54,27 @@ export default function POILayer() {
     return () => group.remove();
   }, [map]);
 
-  // Load all POI and filter by visible imports
-  useEffect(() => {
-    const loadPOI = async () => {
-      try {
-        const allPOI = await fetchPOI();
-        poiRef.current = allPOI;
-        renderPOI();
-      } catch (err) {
-        console.error('Failed to load POI:', err);
-      }
-    };
-
-    loadPOI();
-  }, []);
-
-  // Re-render when visible imports change
+  // Re-render when POI or visible imports change
   useEffect(() => {
     renderPOI();
-  }, [visibleImports]);
+  }, [pois, visibleImports]);
 
   function renderPOI() {
     if (!groupRef.current) return;
 
     groupRef.current.clearLayers();
 
-    const visiblePOI = poiRef.current.filter((poi) =>
-      poi.import_name && visibleImports.has(poi.import_name)
-    );
+    // Show manual POI (source='manual') and imported POI (from visible imports)
+    const visiblePOI = pois.filter((poi) => {
+      // Always show manual POI
+      if (poi.source === 'manual') return true;
+      // Show imported POI only if import is visible
+      if (poi.import_name && visibleImports.has(poi.import_name)) return true;
+      return false;
+    });
 
     visiblePOI.forEach((poi) => {
-      const category = poi.category || 'other';
+      const category = poi.category?.toLowerCase() || 'other';
       const color = CATEGORY_COLORS[category] || CATEGORY_COLORS.other;
       const icon = makeDivIcon(category, color);
 
