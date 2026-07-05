@@ -254,7 +254,7 @@ export default function UploadZone({ inputRef: externalInputRef, onTrackFiles, o
                 flexDirection: 'column',
                 alignItems: 'center',
                 gap: 12,
-                background: 'rgba(255, 255, 255, 0.95)',
+                background: 'rgba(255, 255, 255, 0.75)',
                 padding: '40px 60px',
                 borderRadius: 12,
               }}
@@ -298,7 +298,7 @@ export default function UploadZone({ inputRef: externalInputRef, onTrackFiles, o
                 flexDirection: 'column',
                 alignItems: 'center',
                 gap: 12,
-                background: 'rgba(255, 255, 255, 0.95)',
+                background: 'rgba(255, 255, 255, 0.75)',
                 padding: '40px 60px',
                 borderRadius: 12,
               }}
