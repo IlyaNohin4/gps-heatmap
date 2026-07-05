@@ -1,5 +1,16 @@
 # Polish / known issues
 
+- [x] **RESOLVED** — LeftIsland POI tab delay when switching tabs (Performance, 2026-07-05)
+  - **Проблема:** При клике на вкладку POI происходило 1.1s зависание браузера
+  - **Причина:** Условный рендер POITab вызывал синхронный mount и render ВСЕ POI одновременно
+  - **Решение:** Откатили conditional rendering, вернули display:none/flex
+  - **Как это работает:** Оба таба (Tracks, POI) всегда в DOM, смонтированы при загрузке (асинхронно). Переключение = просто display change, не React render
+  - **Результат:** Мгновенное открытие POI таба ⚡
+  - **DevTools Profile:** Было performSyncWorkOnRoot 1.1s jank, теперь только CSS change
+  - **Trade-off:** +50KB памяти за -1.1s задержку. Отличный результат!
+
+---
+
 - [x] **RESOLVED** — Нормализатор не фильтрует GPS-выбросы скорости (Phase 2)
   - Решение: Hard limit 200 km/h (физический максимум для велосипеда)
   - Результат: Все невозможные скорости (247 km/h) отсекаются
