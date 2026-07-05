@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useMemo } from 'react';
 import { Plus, Upload, X as XIcon, Loader, Search, ChevronLeft, Eye, EyeOff } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { useTranslation } from 'react-i18next';
@@ -8,7 +8,7 @@ import POICard from '../poi/POICard.jsx';
 import POIRenameModal from '../poi/POIRenameModal.jsx';
 import POIDeleteModal from '../poi/POIDeleteModal.jsx';
 
-export default function POITab({ onCollapse }) {
+export default React.memo(function POITab({ onCollapse }) {
   const { t } = useTranslation();
   const { pois, setPOIs, setPoiCreationMode, poiCreationMode, mapInstance, showPOI, togglePOI } = useMapStore();
   const [loading, setLoading] = useState(false);
@@ -83,12 +83,14 @@ export default function POITab({ onCollapse }) {
     mapInstance.flyTo([poi.lat, poi.lon], 16, { duration: 1.2, easeLinearity: 0.25 });
   }
 
-  const filteredPOIs = pois.filter((poi) => {
-    if (!search.trim()) return true;
-    const q = search.toLowerCase();
-    return (poi.name || '').toLowerCase().includes(q) ||
-           (poi.category || '').toLowerCase().includes(q);
-  });
+  const filteredPOIs = useMemo(() => {
+    return pois.filter((poi) => {
+      if (!search.trim()) return true;
+      const q = search.toLowerCase();
+      return (poi.name || '').toLowerCase().includes(q) ||
+             (poi.category || '').toLowerCase().includes(q);
+    });
+  }, [pois, search]);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
@@ -215,4 +217,4 @@ export default function POITab({ onCollapse }) {
       />
     </div>
   );
-}
+});

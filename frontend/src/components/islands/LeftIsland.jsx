@@ -172,7 +172,8 @@ export default function LeftIsland({ onUploadClick, loading }) {
         </div>
 
         {/* Tracks Tab */}
-        <div style={{ display: currentTab === 'tracks' ? 'flex' : 'none', flexDirection: 'column', flex: 1, minHeight: 0 }}>
+        {currentTab === 'tracks' && (
+        <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
         {/* Search bar */}
         <div style={{ padding: '10px 10px 0', display: 'flex', gap: 6, flexShrink: 0 }}>
           <div style={{ position: 'relative', flex: 1 }}>
@@ -299,6 +300,7 @@ export default function LeftIsland({ onUploadClick, loading }) {
           </button>
         </div>
         </div>
+        )}
 
         {/* POI Tab */}
         {currentTab === 'poi' && (
