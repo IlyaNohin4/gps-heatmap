@@ -33,7 +33,7 @@ const TrackLayer = memo(function TrackLayer({ tracks, selectedTrackId }) {
 
       const latlngs = pts.map((p) => [p.lat, p.lon]);
       const isSelected = track.id === selectedTrackId;
-      const color = colorForIndex(idx);
+      const color = isSelected ? '#007aff' : colorForIndex(idx);
 
       const line = L.polyline(latlngs, {
         color,
