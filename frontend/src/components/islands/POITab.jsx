@@ -5,14 +5,18 @@ import { useTranslation } from 'react-i18next';
 import useMapStore from '../../store/mapStore.js';
 import { fetchPOI, deletePOI, uploadPOI } from '../../api/poi.js';
 import POICard from '../poi/POICard.jsx';
+import POIRenameModal from '../poi/POIRenameModal.jsx';
+import POIDeleteModal from '../poi/POIDeleteModal.jsx';
 
 export default function POITab({ onCollapse }) {
   const { t } = useTranslation();
   const { pois, setPOIs, setPoiCreationMode, poiCreationMode, mapInstance, showPOI, togglePOI } = useMapStore();
   const [loading, setLoading] = useState(false);
-  const [deleting, setDeleting] = useState(null);
   const [uploading, setUploading] = useState(false);
   const [search, setSearch] = useState('');
+  const [showRenameModal, setShowRenameModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [selectedPOI, setSelectedPOI] = useState(null);
   const fileInputRef = useRef(null);
 
   useEffect(() => {
@@ -59,17 +63,23 @@ export default function POITab({ onCollapse }) {
     setPoiCreationMode(!poiCreationMode);
   }
 
-  async function handleDeletePOI(id) {
-    setDeleting(id);
-    try {
-      await deletePOI(id);
-      useMapStore.getState().removePOI(id);
-      toast.success('POI deleted');
-    } catch (err) {
-      toast.error('Failed to delete POI');
-    } finally {
-      setDeleting(null);
-    }
+  function handleOpenRenameModal(poi) {
+    setSelectedPOI(poi);
+    setShowRenameModal(true);
+  }
+
+  function handleOpenDeleteModal(poi) {
+    setSelectedPOI(poi);
+    setShowDeleteModal(true);
+  }
+
+  function handleRenamed(updatedPOI) {
+    const updated = pois.map((p) => (p.id === updatedPOI.id ? updatedPOI : p));
+    setPOIs(updated);
+  }
+
+  function handleDeleted(poiId) {
+    useMapStore.getState().removePOI(poiId);
   }
 
   function handleZoomToPOI(poi) {
@@ -140,9 +150,9 @@ export default function POITab({ onCollapse }) {
             <POICard
               key={poi.id}
               poi={poi}
-              isDeleting={deleting === poi.id}
               onZoom={() => handleZoomToPOI(poi)}
-              onDelete={() => handleDeletePOI(poi.id)}
+              onRename={() => handleOpenRenameModal(poi)}
+              onDelete={() => handleOpenDeleteModal(poi)}
             />
           ))
         )}
@@ -192,6 +202,21 @@ export default function POITab({ onCollapse }) {
           ✓ Left-click on map to create
         </div>
       )}
+
+      {/* Modals */}
+      <POIRenameModal
+        poi={selectedPOI}
+        isOpen={showRenameModal}
+        onClose={() => setShowRenameModal(false)}
+        onRenamed={handleRenamed}
+      />
+
+      <POIDeleteModal
+        poi={selectedPOI}
+        isOpen={showDeleteModal}
+        onClose={() => setShowDeleteModal(false)}
+        onDeleted={handleDeleted}
+      />
     </div>
   );
 }

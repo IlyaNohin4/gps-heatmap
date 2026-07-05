@@ -1,7 +1,7 @@
 import React from 'react';
-import { Trash2 } from 'lucide-react';
+import { Trash2, Pencil } from 'lucide-react';
 
-export default function POICard({ poi, isDeleting, onZoom, onDelete }) {
+export default function POICard({ poi, isDeleting, onZoom, onDelete, onRename }) {
   return (
     <div
       style={{
@@ -53,6 +53,37 @@ export default function POICard({ poi, isDeleting, onZoom, onDelete }) {
           {poi.category || 'Other'}
         </div>
       </div>
+
+      {/* Rename button */}
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          onRename?.();
+        }}
+        disabled={isDeleting}
+        style={{
+          background: 'none',
+          border: 'none',
+          cursor: isDeleting ? 'not-allowed' : 'pointer',
+          color: 'var(--text-secondary)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '4px',
+          opacity: isDeleting ? 0.5 : 1,
+          transition: 'color 0.15s',
+          flexShrink: 0,
+        }}
+        onMouseEnter={(e) => {
+          if (!isDeleting) e.currentTarget.style.color = 'var(--accent)';
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.color = 'var(--text-secondary)';
+        }}
+        title="Rename POI"
+      >
+        <Pencil size={14} />
+      </button>
 
       {/* Delete button */}
       <button

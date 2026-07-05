@@ -31,6 +31,11 @@ export async function fetchPOICategories() {
   return data;
 }
 
+export async function updatePOI(id, updates) {
+  const { data } = await client.patch(`/api/poi/${id}`, updates);
+  return data;
+}
+
 export async function deletePOI(id) {
   await client.delete(`/api/poi/${id}`);
 }
