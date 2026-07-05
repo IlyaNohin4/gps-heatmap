@@ -260,7 +260,7 @@ export default function UploadZone({ inputRef: externalInputRef, onTrackFiles, o
                 color: 'rgba(0, 122, 255, 0.8)',
                 textTransform: 'uppercase',
                 letterSpacing: 1,
-                background: 'rgba(0, 0, 0, 0.3)',
+                background: 'rgba(255, 255, 255, 0.9)',
                 padding: '4px 12px',
                 borderRadius: 6,
               }}
@@ -272,9 +272,9 @@ export default function UploadZone({ inputRef: externalInputRef, onTrackFiles, o
               style={{
                 fontSize: 18,
                 fontWeight: 700,
-                color: '#fff',
+                color: 'var(--text)',
                 textAlign: 'center',
-                background: 'rgba(0, 0, 0, 0.4)',
+                background: 'rgba(255, 255, 255, 0.95)',
                 padding: '8px 16px',
                 borderRadius: 8,
               }}
@@ -284,8 +284,8 @@ export default function UploadZone({ inputRef: externalInputRef, onTrackFiles, o
             <div
               style={{
                 fontSize: 12,
-                color: '#fff',
-                background: 'rgba(0, 0, 0, 0.3)',
+                color: 'var(--text)',
+                background: 'rgba(255, 255, 255, 0.9)',
                 padding: '4px 10px',
                 borderRadius: 6,
               }}
@@ -314,10 +314,10 @@ export default function UploadZone({ inputRef: externalInputRef, onTrackFiles, o
                 top: 16,
                 fontSize: 14,
                 fontWeight: 700,
-                color: '#fff',
+                color: 'var(--text)',
                 textTransform: 'uppercase',
                 letterSpacing: 1,
-                background: 'rgba(0, 0, 0, 0.3)',
+                background: 'rgba(255, 255, 255, 0.9)',
                 padding: '4px 12px',
                 borderRadius: 6,
               }}
@@ -329,9 +329,9 @@ export default function UploadZone({ inputRef: externalInputRef, onTrackFiles, o
               style={{
                 fontSize: 18,
                 fontWeight: 700,
-                color: '#fff',
+                color: 'var(--text)',
                 textAlign: 'center',
-                background: 'rgba(0, 0, 0, 0.4)',
+                background: 'rgba(255, 255, 255, 0.95)',
                 padding: '8px 16px',
                 borderRadius: 8,
               }}
@@ -341,8 +341,8 @@ export default function UploadZone({ inputRef: externalInputRef, onTrackFiles, o
             <div
               style={{
                 fontSize: 12,
-                color: '#fff',
-                background: 'rgba(0, 0, 0, 0.3)',
+                color: 'var(--text)',
+                background: 'rgba(255, 255, 255, 0.9)',
                 padding: '4px 10px',
                 borderRadius: 6,
               }}
