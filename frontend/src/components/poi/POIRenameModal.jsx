@@ -4,13 +4,20 @@ import { toast } from 'react-toastify';
 import { X } from 'lucide-react';
 import { updatePOI } from '../../api/poi.js';
 
+const CATEGORIES = [
+  'Food', 'Medical', 'Transport', 'Accommodation', 'Tourism',
+  'Amenities', 'Bicycle', 'Public Transport', 'Other'
+];
+
 export default function POIRenameModal({ poi, isOpen, onClose, onRenamed }) {
   const [nameValue, setNameValue] = useState(poi?.name || '');
+  const [categoryValue, setCategoryValue] = useState(poi?.category || '');
   const [renaming, setRenaming] = useState(false);
 
   useEffect(() => {
     if (isOpen && poi) {
       setNameValue(poi.name || '');
+      setCategoryValue(poi.category || '');
     }
   }, [isOpen, poi]);
 
@@ -19,19 +26,23 @@ export default function POIRenameModal({ poi, isOpen, onClose, onRenamed }) {
       toast.error('POI name cannot be empty');
       return;
     }
-    if (nameValue === poi.name) {
+    if (nameValue === poi.name && categoryValue === poi.category) {
       toast.info('No changes made');
       return;
     }
 
     setRenaming(true);
     try {
-      await updatePOI(poi.id, { name: nameValue });
-      toast.success('POI renamed');
-      onRenamed?.({ ...poi, name: nameValue });
+      const updates = {};
+      if (nameValue !== poi.name) updates.name = nameValue;
+      if (categoryValue !== poi.category) updates.category = categoryValue;
+
+      await updatePOI(poi.id, updates);
+      toast.success('POI updated');
+      onRenamed?.({ ...poi, name: nameValue, category: categoryValue });
       onClose();
     } catch (err) {
-      toast.error(err.response?.data?.detail || 'Failed to rename POI');
+      toast.error(err.response?.data?.detail || 'Failed to update POI');
     } finally {
       setRenaming(false);
     }
@@ -56,6 +67,7 @@ export default function POIRenameModal({ poi, isOpen, onClose, onRenamed }) {
           maxWidth: 360,
           width: '90%',
           animation: 'fadeIn 0.2s ease-out',
+          background: '#ffffff',
         }}
         onClick={(e) => e.stopPropagation()}
       >
@@ -81,34 +93,64 @@ export default function POIRenameModal({ poi, isOpen, onClose, onRenamed }) {
         {/* Message */}
         <div style={{ marginBottom: 16 }}>
           <p style={{ margin: 0, fontSize: 13, color: 'var(--text-secondary)' }}>
-            Enter new name for the POI
+            Edit POI details
           </p>
         </div>
 
-        {/* Input */}
-        <input
-          type="text"
-          value={nameValue}
-          onChange={(e) => setNameValue(e.target.value)}
-          placeholder="New POI name"
-          disabled={renaming}
-          autoFocus
-          style={{
-            width: '100%',
-            padding: '10px 12px',
-            borderRadius: 'var(--radius-input)',
-            border: '1px solid var(--border)',
-            background: 'var(--bg-input)',
-            color: 'var(--text)',
-            marginBottom: 20,
-            boxSizing: 'border-box',
-            fontSize: 13,
-          }}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') handleRename();
-            if (e.key === 'Escape') onClose();
-          }}
-        />
+        {/* Name Input */}
+        <div style={{ marginBottom: 12 }}>
+          <label style={{ fontSize: 12, color: 'var(--text-secondary)', fontWeight: 600, display: 'block', marginBottom: 4 }}>
+            Name
+          </label>
+          <input
+            type="text"
+            value={nameValue}
+            onChange={(e) => setNameValue(e.target.value)}
+            placeholder="POI name"
+            disabled={renaming}
+            autoFocus
+            style={{
+              width: '100%',
+              padding: '10px 12px',
+              borderRadius: 8,
+              border: '1px solid var(--border)',
+              background: 'var(--bg-input)',
+              color: 'var(--text)',
+              boxSizing: 'border-box',
+              fontSize: 13,
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') handleRename();
+              if (e.key === 'Escape') onClose();
+            }}
+          />
+        </div>
+
+        {/* Category Select */}
+        <div style={{ marginBottom: 20 }}>
+          <label style={{ fontSize: 12, color: 'var(--text-secondary)', fontWeight: 600, display: 'block', marginBottom: 4 }}>
+            Category
+          </label>
+          <select
+            value={categoryValue}
+            onChange={(e) => setCategoryValue(e.target.value)}
+            disabled={renaming}
+            style={{
+              width: '100%',
+              padding: '10px 12px',
+              borderRadius: 8,
+              border: '1px solid var(--border)',
+              background: 'var(--bg-input)',
+              color: 'var(--text)',
+              boxSizing: 'border-box',
+              fontSize: 13,
+            }}
+          >
+            {CATEGORIES.map((cat) => (
+              <option key={cat} value={cat}>{cat}</option>
+            ))}
+          </select>
+        </div>
 
         {/* Buttons */}
         <div style={{ display: 'flex', gap: 8 }}>
@@ -122,12 +164,12 @@ export default function POIRenameModal({ poi, isOpen, onClose, onRenamed }) {
           </button>
           <button
             onClick={handleRename}
-            disabled={renaming || nameValue === poi.name}
+            disabled={renaming || (nameValue === poi.name && categoryValue === poi.category)}
             className="btn-primary"
             style={{
               flex: 1,
-              opacity: renaming || nameValue === poi.name ? 0.6 : 1,
-              cursor: renaming || nameValue === poi.name ? 'not-allowed' : 'pointer',
+              opacity: renaming || (nameValue === poi.name && categoryValue === poi.category) ? 0.6 : 1,
+              cursor: renaming || (nameValue === poi.name && categoryValue === poi.category) ? 'not-allowed' : 'pointer',
             }}
           >
             {renaming ? 'Saving...' : 'Save'}

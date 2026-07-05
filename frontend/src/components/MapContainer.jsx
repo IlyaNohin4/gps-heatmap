@@ -21,6 +21,7 @@ import POILayer from '../map/POILayer.jsx';
 import TrackCreator from '../map/TrackCreator.jsx';
 import POIContextMenu from '../components/poi/POIContextMenu.jsx';
 import POICreationModal from '../components/poi/POICreationModal.jsx';
+import CoordinatesContextMenu from '../components/map/CoordinatesContextMenu.jsx';
 
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
@@ -47,8 +48,8 @@ function MapClickHandler() {
   return null;
 }
 
-// Handles left-click on map for POI creation (when mode is active)
-function POIContextMenuHandler({ poiCreationMode, onContextMenu }) {
+// Handles left-click on map for POI creation (when mode is active) and right-click for coordinates
+function POIContextMenuHandler({ poiCreationMode, onContextMenu, onCoordinatesMenu }) {
   useMapEvents({
     click: (e) => {
       if (poiCreationMode) {
@@ -57,6 +58,7 @@ function POIContextMenuHandler({ poiCreationMode, onContextMenu }) {
     },
     contextmenu: (e) => {
       e.originalEvent.preventDefault();
+      onCoordinatesMenu(e.latlng.lat, e.latlng.lng, e.originalEvent.clientX, e.originalEvent.clientY);
     },
   });
   return null;
@@ -131,7 +133,7 @@ function MapLayers() {
 
       {/* Plain coloured polylines (default) */}
       {!showSpeed && (
-        <TrackLayer tracks={visibleTracks} selectedTrackId={selectedTrackId} />
+        <TrackLayer tracks={visibleTracks} selectedTrackId={selectedTrackId} showHeatmap={showHeatmap} />
       )}
 
       {/* Speed gradient segments */}
@@ -159,6 +161,7 @@ function MapLayers() {
 
 export default function MapContainer() {
   const [contextMenu, setContextMenu] = useState(null);
+  const [coordsMenu, setCoordsMenu] = useState(null);
   const [creatingPOI, setCreatingPOI] = useState(null);
   const poiCreationMode = useMapStore((s) => s.poiCreationMode);
 
@@ -196,6 +199,7 @@ export default function MapContainer() {
         <POIContextMenuHandler
           poiCreationMode={poiCreationMode}
           onContextMenu={handleContextMenu}
+          onCoordinatesMenu={(lat, lon, x, y) => setCoordsMenu({ lat, lon, x, y })}
         />
       </LeafletMap>
 
@@ -217,6 +221,26 @@ export default function MapContainer() {
           onClose={() => setCreatingPOI(null)}
           onSuccess={handleSuccessPOI}
         />
+      )}
+
+      {coordsMenu && (
+        <>
+          <div
+            style={{
+              position: 'fixed',
+              inset: 0,
+              zIndex: 1999,
+            }}
+            onClick={() => setCoordsMenu(null)}
+          />
+          <CoordinatesContextMenu
+            lat={coordsMenu.lat}
+            lon={coordsMenu.lon}
+            x={coordsMenu.x}
+            y={coordsMenu.y}
+            onClose={() => setCoordsMenu(null)}
+          />
+        </>
       )}
     </>
   );

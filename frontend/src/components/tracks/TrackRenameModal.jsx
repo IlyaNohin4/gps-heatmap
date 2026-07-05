@@ -56,6 +56,7 @@ export default function TrackRenameModal({ track, isOpen, onClose, onRenamed }) 
           maxWidth: 360,
           width: '90%',
           animation: 'fadeIn 0.2s ease-out',
+          background: '#ffffff',
         }}
         onClick={(e) => e.stopPropagation()}
       >
@@ -96,7 +97,7 @@ export default function TrackRenameModal({ track, isOpen, onClose, onRenamed }) 
           style={{
             width: '100%',
             padding: '10px 12px',
-            borderRadius: 'var(--radius-input)',
+            borderRadius: 8,
             border: '1px solid var(--border)',
             background: 'var(--bg-input)',
             color: 'var(--text)',

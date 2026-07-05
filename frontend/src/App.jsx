@@ -19,6 +19,7 @@ import RightIsland from './components/islands/RightIsland.jsx';
 import BottomIsland from './components/islands/BottomIsland.jsx';
 import { TrackCreatorPanel } from './map/TrackCreator.jsx';
 import SaveTrackModal from './components/track/SaveTrackModal.jsx';
+import LoadingIndicator from './components/LoadingIndicator.jsx';
 
 import { fetchTracks, createTrackFromPoints, uploadTrack } from './api/tracks.js';
 import { uploadPOI, fetchPOI } from './api/poi.js';
@@ -89,7 +90,15 @@ function MainPage() {
     setTracksLoading(true);
     fetchTracks()
       .then((data) => {
-        if (!cancelled) setTracks(Array.isArray(data) ? data : (data.tracks || []));
+        const trackList = Array.isArray(data) ? data : (data.tracks || []);
+        if (!cancelled) {
+          setTracks(trackList);
+          // Preload all track details for heatmap visualization
+          const { ensureTrackDetail } = useMapStore.getState();
+          trackList.forEach((track) => {
+            ensureTrackDetail(track.id);
+          });
+        }
       })
       .catch(() => {})
       .finally(() => { if (!cancelled) setTracksLoading(false); });
@@ -222,6 +231,7 @@ function MainPage() {
       <LeftIsland onUploadClick={handleUploadClick} loading={tracksLoading} />
       <RightIsland />
       {selectedTrackId && <BottomIsland />}
+      <LoadingIndicator isLoading={tracksLoading} />
       {/* Speed legend — left bottom corner */}
       {showSpeed && (
         <div className="island" style={{ position: 'fixed', left: 16, bottom: 16, padding: '8px 12px', minWidth: 120, zIndex: 900 }}>

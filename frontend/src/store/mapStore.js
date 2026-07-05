@@ -6,7 +6,7 @@ const useMapStore = create((set, get) => ({
   activeLayer: 'osm',
   showHeatmap: false,
   showSpeed: false,
-  showPOI: true,
+  showPOI: false,
   poiCategories: [],
   poiCreationMode: false,
   pois: [],

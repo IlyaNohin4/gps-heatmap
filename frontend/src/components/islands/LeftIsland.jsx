@@ -7,6 +7,7 @@ import TrackCard from '../tracks/TrackCard.jsx';
 import POITab from './POITab.jsx';
 import useAppStore from '../../store/appStore.js';
 import useMapStore from '../../store/mapStore.js';
+import { getTrack } from '../../api/tracks.js';
 
 const FORMAT_OPTIONS = [
   { value: 'all',     label: 'All' },
@@ -43,7 +44,7 @@ function SkeletonCard() {
 export default function LeftIsland({ onUploadClick, loading }) {
   const { t } = useTranslation();
   const { tracks, selectedTrackId, setSelectedTrack, isUploadingIds, activePanel, setActivePanel } = useAppStore();
-  const { showTrackCreator, toggleTrackCreator } = useMapStore();
+  const { showTrackCreator, toggleTrackCreator, mapInstance } = useMapStore();
   const [open, setOpen] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [currentTab, setCurrentTab] = useState('tracks'); // 'tracks' or 'poi'
@@ -242,8 +243,45 @@ export default function LeftIsland({ onUploadClick, loading }) {
                 track={track}
                 isSelected={track.id === selectedTrackId}
                 onClick={() => {
-                  setSelectedTrack(track.id === selectedTrackId ? null : track.id);
-                  if (showTrackCreator && track.id !== selectedTrackId) toggleTrackCreator();
+                  const isDeselecting = track.id === selectedTrackId;
+                  setSelectedTrack(isDeselecting ? null : track.id);
+                  if (showTrackCreator && !isDeselecting) toggleTrackCreator();
+
+                  // Auto-zoom to track when selected
+                  if (!isDeselecting && mapInstance) {
+                    const pts = track.normalized_points || track.raw_points || [];
+                    if (pts.length > 0) {
+                      const bounds = pts.reduce((acc, p) => {
+                        if (!acc) return [[p.lat, p.lon], [p.lat, p.lon]];
+                        return [
+                          [Math.min(acc[0][0], p.lat), Math.min(acc[0][1], p.lon)],
+                          [Math.max(acc[1][0], p.lat), Math.max(acc[1][1], p.lon)],
+                        ];
+                      }, null);
+                      if (bounds) {
+                        mapInstance.fitBounds(bounds, { padding: [64, 64], duration: 0.8 });
+                      }
+                    } else {
+                      // Load track details if points not available
+                      getTrack(track.id)
+                        .then((data) => {
+                          const pts = data.normalized_points || data.raw_points || [];
+                          if (pts.length > 0) {
+                            const bounds = pts.reduce((acc, p) => {
+                              if (!acc) return [[p.lat, p.lon], [p.lat, p.lon]];
+                              return [
+                                [Math.min(acc[0][0], p.lat), Math.min(acc[0][1], p.lon)],
+                                [Math.max(acc[1][0], p.lat), Math.max(acc[1][1], p.lon)],
+                              ];
+                            }, null);
+                            if (bounds) {
+                              mapInstance.fitBounds(bounds, { padding: [64, 64], duration: 0.8 });
+                            }
+                          }
+                        })
+                        .catch(() => {});
+                    }
+                  }
                 }}
               />
             ))

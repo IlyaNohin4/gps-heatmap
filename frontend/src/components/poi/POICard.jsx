@@ -5,26 +5,18 @@ export default function POICard({ poi, isDeleting, onZoom, onDelete, onRename })
   return (
     <div
       style={{
-        borderRadius: 8,
-        padding: '8px 12px',
+        borderRadius: 12,
+        padding: '8px 14px',
         background: 'var(--surface)',
         border: '1px solid var(--border)',
         cursor: 'pointer',
         transition: 'all 0.15s',
-        marginBottom: 6,
+        marginBottom: 8,
         display: 'flex',
         alignItems: 'center',
         gap: 8,
       }}
       onClick={onZoom}
-      onMouseEnter={(e) => {
-        e.currentTarget.style.background = 'var(--bg)';
-        e.currentTarget.style.borderColor = 'var(--accent)';
-      }}
-      onMouseLeave={(e) => {
-        e.currentTarget.style.background = 'var(--surface)';
-        e.currentTarget.style.borderColor = 'var(--border)';
-      }}
     >
       {/* Icon + Text */}
       <div style={{ flex: 1, minWidth: 0 }}>
@@ -56,30 +48,12 @@ export default function POICard({ poi, isDeleting, onZoom, onDelete, onRename })
 
       {/* Rename button */}
       <button
+        className="icon-btn"
         onClick={(e) => {
           e.stopPropagation();
           onRename?.();
         }}
         disabled={isDeleting}
-        style={{
-          background: 'none',
-          border: 'none',
-          cursor: isDeleting ? 'not-allowed' : 'pointer',
-          color: 'var(--text-secondary)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          padding: '4px',
-          opacity: isDeleting ? 0.5 : 1,
-          transition: 'color 0.15s',
-          flexShrink: 0,
-        }}
-        onMouseEnter={(e) => {
-          if (!isDeleting) e.currentTarget.style.color = 'var(--accent)';
-        }}
-        onMouseLeave={(e) => {
-          e.currentTarget.style.color = 'var(--text-secondary)';
-        }}
         title="Rename POI"
       >
         <Pencil size={14} />
@@ -87,30 +61,12 @@ export default function POICard({ poi, isDeleting, onZoom, onDelete, onRename })
 
       {/* Delete button */}
       <button
+        className="icon-btn"
         onClick={(e) => {
           e.stopPropagation();
           onDelete();
         }}
         disabled={isDeleting}
-        style={{
-          background: 'none',
-          border: 'none',
-          cursor: isDeleting ? 'not-allowed' : 'pointer',
-          color: 'var(--text-secondary)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          padding: '4px',
-          opacity: isDeleting ? 0.5 : 1,
-          transition: 'color 0.15s',
-          flexShrink: 0,
-        }}
-        onMouseEnter={(e) => {
-          if (!isDeleting) e.currentTarget.style.color = 'rgb(255, 59, 48)';
-        }}
-        onMouseLeave={(e) => {
-          e.currentTarget.style.color = 'var(--text-secondary)';
-        }}
         title={isDeleting ? 'Deleting...' : 'Delete POI'}
       >
         <Trash2 size={14} />

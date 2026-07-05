@@ -219,7 +219,7 @@ export default function TrackCard({ track, isSelected, onClick }) {
               </a>
               <button
                 className="icon-btn"
-                onClick={handleOpenModal}
+                onClick={handleOpenDeleteModal}
                 title={t('card.delete')}
               >
                 <Trash2 size={14} />
