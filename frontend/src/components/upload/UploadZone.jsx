@@ -197,7 +197,7 @@ export default function UploadZone({ inputRef: externalInputRef, onTrackFiles, o
       <input
         ref={inputRef}
         type="file"
-        accept={ACCEPTED.join(',')}
+        accept={[...TRACK_FORMATS, ...POI_FORMATS].join(',')}
         multiple
         style={{ display: 'none' }}
         onChange={handleInputChange}
