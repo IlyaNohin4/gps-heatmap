@@ -253,21 +253,17 @@ export default function UploadZone({ inputRef: externalInputRef, onTrackFiles, o
           >
             <div
               style={{
-                position: 'absolute',
-                top: 16,
-                fontSize: 14,
-                fontWeight: 700,
-                color: 'rgba(0, 122, 255, 0.8)',
-                textTransform: 'uppercase',
-                letterSpacing: 1,
-                background: 'rgba(255, 255, 255, 0.9)',
-                padding: '4px 12px',
-                borderRadius: 6,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: 72,
+                height: 72,
+                borderRadius: 12,
+                background: 'rgba(255, 255, 255, 0.95)',
               }}
             >
-              ТРЕКИ
+              <Upload size={48} color="rgba(0, 122, 255, 0.9)" />
             </div>
-            <Upload size={48} color="rgba(0, 122, 255, 0.9)" />
             <div
               style={{
                 fontSize: 18,
@@ -310,21 +306,17 @@ export default function UploadZone({ inputRef: externalInputRef, onTrackFiles, o
           >
             <div
               style={{
-                position: 'absolute',
-                top: 16,
-                fontSize: 14,
-                fontWeight: 700,
-                color: 'var(--text)',
-                textTransform: 'uppercase',
-                letterSpacing: 1,
-                background: 'rgba(255, 255, 255, 0.9)',
-                padding: '4px 12px',
-                borderRadius: 6,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: 72,
+                height: 72,
+                borderRadius: 12,
+                background: 'rgba(255, 255, 255, 0.95)',
               }}
             >
-              ПОИ
+              <Upload size={48} color="rgba(255, 149, 0, 0.9)" />
             </div>
-            <Upload size={48} color="rgba(255, 149, 0, 0.9)" />
             <div
               style={{
                 fontSize: 18,
