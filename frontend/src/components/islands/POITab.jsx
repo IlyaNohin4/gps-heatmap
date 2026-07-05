@@ -62,8 +62,8 @@ export default function POITab() {
     setDeleting(id);
     try {
       await deletePOI(id);
+      useMapStore.getState().removePOI(id);
       toast.success('POI deleted');
-      await loadPOIs();
     } catch (err) {
       toast.error('Failed to delete POI');
     } finally {
