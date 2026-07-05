@@ -85,18 +85,6 @@ export default function POITab() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      {/* Header */}
-      <div style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: 8,
-        padding: '12px 14px',
-        borderBottom: '1px solid var(--border)',
-      }}>
-        <MapPin size={16} color="var(--accent)" />
-        <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>POI</span>
-      </div>
-
       {/* Search bar */}
       <div style={{ padding: '10px 10px 0', display: 'flex', gap: 6 }}>
         <div style={{ position: 'relative', flex: 1 }}>
@@ -105,7 +93,7 @@ export default function POITab() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search POI..."
-            style={{ borderRadius: '8px', paddingLeft: 30, paddingRight: search ? 30 : 12 }}
+            style={{ borderRadius: 'var(--radius-search)', paddingLeft: 30, paddingRight: search ? 30 : 12 }}
           />
           {search && (
             <button onClick={() => setSearch('')} style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', display: 'flex' }}>
