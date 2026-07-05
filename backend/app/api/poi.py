@@ -53,6 +53,46 @@ class RenameImportRequest(BaseModel):
     new_name: str
 
 
+class CreatePOIRequest(BaseModel):
+    name: str
+    lat: float
+    lon: float
+    category: str
+    description: Optional[str] = None
+
+
+@router.post("/create", response_model=POIResponse, status_code=status.HTTP_201_CREATED)
+async def create_poi(
+    request: CreatePOIRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Create a single POI point on the map."""
+
+    # Validate coordinates
+    if not (-90 <= request.lat <= 90):
+        raise HTTPException(status_code=400, detail="Latitude must be between -90 and 90")
+    if not (-180 <= request.lon <= 180):
+        raise HTTPException(status_code=400, detail="Longitude must be between -180 and 180")
+
+    # Create POI
+    poi = POI(
+        user_id=current_user.id,
+        name=request.name,
+        lat=request.lat,
+        lon=request.lon,
+        category=request.category,
+        description=request.description,
+        source='manual',
+        import_name=None,
+    )
+    db.add(poi)
+    db.commit()
+    db.refresh(poi)
+
+    return poi
+
+
 @router.post("/upload", response_model=UploadResponse, status_code=status.HTTP_201_CREATED)
 async def upload_poi(
     file: UploadFile = File(...),

@@ -1,5 +1,16 @@
 import client from './client.js';
 
+export async function createPOI(name, lat, lon, category, description = null) {
+  const { data } = await client.post('/api/poi/create', {
+    name,
+    lat,
+    lon,
+    category,
+    description,
+  });
+  return data;
+}
+
 export async function uploadPOI(file) {
   const formData = new FormData();
   formData.append('file', file);
