@@ -121,7 +121,7 @@ export default function POITab() {
             fontSize: 12,
           }}>
             No POI yet<br />
-            Click the + button then right-click on map
+            Click the + button then left-click on map
           </div>
         ) : filteredPOIs.length === 0 ? (
           <div style={{
@@ -232,7 +232,7 @@ export default function POITab() {
           fontWeight: 600,
           textAlign: 'center',
         }}>
-          ✓ Right-click on map to create
+          ✓ Left-click on map to create
         </div>
       )}
     </div>
