@@ -1,4 +1,4 @@
-import React, { useState, useRef, useMemo } from 'react';
+import React, { useState, useRef, useMemo, useCallback } from 'react';
 import { Plus, Upload, X as XIcon, Loader, Search, ChevronLeft, Eye, EyeOff } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { useTranslation } from 'react-i18next';
@@ -55,33 +55,37 @@ export default React.memo(function POITab({ onCollapse }) {
     }
   }
 
-  function handleToggleCreation() {
+  const handleToggleCreation = useCallback(() => {
     setPoiCreationMode(!poiCreationMode);
-  }
+  }, [poiCreationMode, setPoiCreationMode]);
 
-  function handleOpenRenameModal(poi) {
-    setSelectedPOI(poi);
-    setShowRenameModal(true);
-  }
-
-  function handleOpenDeleteModal(poi) {
-    setSelectedPOI(poi);
-    setShowDeleteModal(true);
-  }
-
-  function handleRenamed(updatedPOI) {
+  const handleRenamed = useCallback((updatedPOI) => {
     const updated = pois.map((p) => (p.id === updatedPOI.id ? updatedPOI : p));
     setPOIs(updated);
-  }
+  }, [pois, setPOIs]);
 
-  function handleDeleted(poiId) {
+  const handleDeleted = useCallback((poiId) => {
     useMapStore.getState().removePOI(poiId);
-  }
+  }, []);
 
-  function handleZoomToPOI(poi) {
+  const handleZoomToPOI = useCallback((poi) => {
     if (!mapInstance) return;
     mapInstance.flyTo([poi.lat, poi.lon], 16, { duration: 1.2, easeLinearity: 0.25 });
-  }
+  }, [mapInstance]);
+
+  const handleOpenRenameModalCb = useCallback((poi) => {
+    setSelectedPOI(poi);
+    setShowRenameModal(true);
+  }, []);
+
+  const handleOpenDeleteModalCb = useCallback((poi) => {
+    setSelectedPOI(poi);
+    setShowDeleteModal(true);
+  }, []);
+
+  const handleCloseRenameModal = useCallback(() => setShowRenameModal(false), []);
+
+  const handleCloseDeleteModal = useCallback(() => setShowDeleteModal(false), []);
 
   const filteredPOIs = useMemo(() => {
     return pois.filter((poi) => {
@@ -149,8 +153,8 @@ export default React.memo(function POITab({ onCollapse }) {
               key={poi.id}
               poi={poi}
               onZoom={() => handleZoomToPOI(poi)}
-              onRename={() => handleOpenRenameModal(poi)}
-              onDelete={() => handleOpenDeleteModal(poi)}
+              onRename={() => handleOpenRenameModalCb(poi)}
+              onDelete={() => handleOpenDeleteModalCb(poi)}
             />
           ))
         )}
@@ -205,14 +209,14 @@ export default React.memo(function POITab({ onCollapse }) {
       <POIRenameModal
         poi={selectedPOI}
         isOpen={showRenameModal}
-        onClose={() => setShowRenameModal(false)}
+        onClose={handleCloseRenameModal}
         onRenamed={handleRenamed}
       />
 
       <POIDeleteModal
         poi={selectedPOI}
         isOpen={showDeleteModal}
-        onClose={() => setShowDeleteModal(false)}
+        onClose={handleCloseDeleteModal}
         onDeleted={handleDeleted}
       />
     </div>
