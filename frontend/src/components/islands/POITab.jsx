@@ -84,9 +84,9 @@ export default function POITab() {
   });
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
       {/* Search bar */}
-      <div style={{ padding: '10px 10px 0', display: 'flex', gap: 6 }}>
+      <div style={{ padding: '10px 10px 0', display: 'flex', gap: 6, flexShrink: 0 }}>
         <div style={{ position: 'relative', flex: 1 }}>
           <Search size={14} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }} />
           <input
@@ -108,6 +108,7 @@ export default function POITab() {
         flex: 1,
         overflowY: 'auto',
         padding: '8px 0',
+        minHeight: 0,
       }}>
         {loading ? (
           <div style={{ padding: '16px 14px', textAlign: 'center', color: 'var(--text-secondary)', fontSize: 12 }}>
@@ -193,7 +194,7 @@ export default function POITab() {
       </div>
 
       {/* Bottom actions */}
-      <div style={{ padding: '8px 10px 10px', borderTop: '1px solid var(--border)', display: 'flex', gap: 8 }}>
+      <div style={{ padding: '8px 10px 10px', borderTop: '1px solid var(--border)', display: 'flex', gap: 8, flexShrink: 0 }}>
         <button
           onClick={() => fileInputRef.current?.click()}
           disabled={uploading}
@@ -231,6 +232,7 @@ export default function POITab() {
           color: 'var(--accent)',
           fontWeight: 600,
           textAlign: 'center',
+          flexShrink: 0,
         }}>
           ✓ Left-click on map to create
         </div>
