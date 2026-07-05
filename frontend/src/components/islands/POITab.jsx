@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Plus, MapPin, Trash2, Upload, X as XIcon, Loader, Search, ChevronLeft } from 'lucide-react';
+import { Plus, Upload, X as XIcon, Loader, Search, ChevronLeft } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { useTranslation } from 'react-i18next';
 import useMapStore from '../../store/mapStore.js';
 import { fetchPOI, deletePOI, uploadPOI } from '../../api/poi.js';
+import POICard from '../poi/POICard.jsx';
 
 export default function POITab({ onCollapse }) {
   const { t } = useTranslation();
@@ -116,7 +117,7 @@ export default function POITab({ onCollapse }) {
       <div style={{
         flex: 1,
         overflowY: 'auto',
-        padding: '8px 0',
+        padding: '8px 10px 4px',
         minHeight: 0,
       }}>
         {loading ? (
@@ -144,60 +145,13 @@ export default function POITab({ onCollapse }) {
           </div>
         ) : (
           filteredPOIs.map((poi) => (
-            <div
+            <POICard
               key={poi.id}
-              style={{
-                padding: '8px 14px',
-                marginBottom: 4,
-                display: 'flex',
-                alignItems: 'center',
-                gap: 8,
-                cursor: 'pointer',
-                transition: 'background 0.15s',
-              }}
-              onMouseEnter={(e) => e.currentTarget.style.background = 'var(--bg)'}
-              onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-              onClick={() => handleZoomToPOI(poi)}
-            >
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{
-                  fontSize: 13,
-                  fontWeight: 600,
-                  color: 'var(--text)',
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  whiteSpace: 'nowrap',
-                }}>
-                  📍 {poi.name}
-                </div>
-                <div style={{
-                  fontSize: 11,
-                  color: 'var(--text-secondary)',
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  whiteSpace: 'nowrap',
-                }}>
-                  {poi.category}
-                </div>
-              </div>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleDeletePOI(poi.id);
-                }}
-                disabled={deleting === poi.id}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  cursor: deleting === poi.id ? 'not-allowed' : 'pointer',
-                  color: 'var(--text-secondary)',
-                  display: 'flex',
-                  opacity: deleting === poi.id ? 0.5 : 1,
-                }}
-              >
-                <Trash2 size={14} />
-              </button>
-            </div>
+              poi={poi}
+              isDeleting={deleting === poi.id}
+              onZoom={() => handleZoomToPOI(poi)}
+              onDelete={() => handleDeletePOI(poi.id)}
+            />
           ))
         )}
       </div>
