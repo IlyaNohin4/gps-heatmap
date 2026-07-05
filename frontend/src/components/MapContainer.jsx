@@ -51,8 +51,7 @@ function MapClickHandler() {
 function POIContextMenuHandler({ poiCreationMode, onContextMenu }) {
   useMapEvents({
     click: (e) => {
-      // Only handle left-click (button 0)
-      if (poiCreationMode && e.originalEvent.button === 0) {
+      if (poiCreationMode) {
         onContextMenu(e.latlng.lat, e.latlng.lng, e.originalEvent.clientX, e.originalEvent.clientY);
       }
     },
