@@ -61,6 +61,12 @@ class CreatePOIRequest(BaseModel):
     description: Optional[str] = None
 
 
+class UpdatePOIRequest(BaseModel):
+    name: Optional[str] = None
+    category: Optional[str] = None
+    description: Optional[str] = None
+
+
 @router.post("/create", response_model=POIResponse, status_code=status.HTTP_201_CREATED)
 async def create_poi(
     request: CreatePOIRequest,
@@ -83,8 +89,6 @@ async def create_poi(
         lon=request.lon,
         category=request.category,
         description=request.description,
-        source='manual',
-        import_name=None,
     )
     db.add(poi)
     db.commit()
@@ -168,6 +172,30 @@ def get_categories(
     categories = db.query(POI.category, func.count(POI.id)).filter(POI.user_id == current_user.id).group_by(POI.category).all()
 
     return [CategoryStats(name=c[0], count=c[1]) for c in categories]
+
+
+@router.patch("/{poi_id}", response_model=POIResponse)
+def update_poi(
+    poi_id: int,
+    request: UpdatePOIRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Update a POI."""
+    poi = db.query(POI).filter(POI.id == poi_id, POI.user_id == current_user.id).first()
+    if not poi:
+        raise HTTPException(status_code=404, detail="POI not found")
+
+    if request.name is not None:
+        poi.name = request.name
+    if request.category is not None:
+        poi.category = request.category
+    if request.description is not None:
+        poi.description = request.description
+
+    db.commit()
+    db.refresh(poi)
+    return poi
 
 
 @router.delete("/{poi_id}", status_code=status.HTTP_204_NO_CONTENT)
