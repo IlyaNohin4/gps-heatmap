@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Search, Filter, Plus, X, ChevronLeft, ChevronRight, MapPin } from 'lucide-react';
+import { Search, Filter, Plus, X, ChevronLeft, ChevronRight, MapPin, Route } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import Slider from 'rc-slider';
 import 'rc-slider/assets/index.css';
@@ -138,10 +138,14 @@ export default function LeftIsland({ onUploadClick, loading }) {
               fontSize: 13,
               fontWeight: 600,
               cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 4,
               transition: 'all 0.15s',
             }}
           >
-            Tracks
+            <Route size={14} /> Tracks
           </button>
           <button
             onClick={() => setCurrentTab('poi')}

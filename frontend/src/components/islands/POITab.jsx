@@ -11,6 +11,7 @@ export default function POITab() {
   const [loading, setLoading] = useState(false);
   const [deleting, setDeleting] = useState(null);
   const [uploading, setUploading] = useState(false);
+  const [search, setSearch] = useState('');
   const fileInputRef = useRef(null);
 
   useEffect(() => {
@@ -75,69 +76,42 @@ export default function POITab() {
     mapInstance.flyTo([poi.lat, poi.lon], 16, { duration: 1.2, easeLinearity: 0.25 });
   }
 
+  const filteredPOIs = pois.filter((poi) => {
+    if (!search.trim()) return true;
+    const q = search.toLowerCase();
+    return (poi.name || '').toLowerCase().includes(q) ||
+           (poi.category || '').toLowerCase().includes(q);
+  });
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      {/* Header with Create button */}
+      {/* Header */}
       <div style={{
         display: 'flex',
         alignItems: 'center',
-        justifyContent: 'space-between',
+        gap: 8,
         padding: '12px 14px',
         borderBottom: '1px solid var(--border)',
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <MapPin size={16} color="var(--accent)" />
-          <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>POI</span>
-        </div>
-        <div style={{ display: 'flex', gap: 6 }}>
-          <button
-            onClick={() => fileInputRef.current?.click()}
-            disabled={uploading}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              width: 32,
-              height: 32,
-              background: 'var(--bg)',
-              border: '1px solid var(--border)',
-              borderRadius: 8,
-              cursor: uploading ? 'not-allowed' : 'pointer',
-              color: 'var(--text)',
-              transition: 'all 0.15s',
-              opacity: uploading ? 0.5 : 1,
-            }}
-            title="Import KML/KMZ file"
-          >
-            {uploading ? <Loader size={16} style={{ animation: 'spin 1s linear infinite' }} /> : <Upload size={16} />}
-          </button>
+        <MapPin size={16} color="var(--accent)" />
+        <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>POI</span>
+      </div>
+
+      {/* Search bar */}
+      <div style={{ padding: '10px 10px 0', display: 'flex', gap: 6 }}>
+        <div style={{ position: 'relative', flex: 1 }}>
+          <Search size={14} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }} />
           <input
-            ref={fileInputRef}
-            type="file"
-            accept=".kml,.kmz"
-            onChange={handleFileSelect}
-            disabled={uploading}
-            style={{ display: 'none' }}
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search POI..."
+            style={{ borderRadius: '8px', paddingLeft: 30, paddingRight: search ? 30 : 12 }}
           />
-          <button
-            onClick={handleToggleCreation}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              width: 32,
-              height: 32,
-              background: poiCreationMode ? 'var(--accent)' : 'var(--bg)',
-              border: '1px solid var(--border)',
-              borderRadius: 8,
-              cursor: 'pointer',
-              color: poiCreationMode ? '#fff' : 'var(--text)',
-              transition: 'all 0.15s',
-            }}
-            title="Create POI (right-click on map)"
-          >
-            <Plus size={16} />
-          </button>
+          {search && (
+            <button onClick={() => setSearch('')} style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', display: 'flex' }}>
+              <XIcon size={13} />
+            </button>
+          )}
         </div>
       </div>
 
@@ -161,8 +135,17 @@ export default function POITab() {
             No POI yet<br />
             Click the + button then right-click on map
           </div>
+        ) : filteredPOIs.length === 0 ? (
+          <div style={{
+            padding: '20px 14px',
+            textAlign: 'center',
+            color: 'var(--text-secondary)',
+            fontSize: 12,
+          }}>
+            No results found
+          </div>
         ) : (
-          pois.map((poi) => (
+          filteredPOIs.map((poi) => (
             <div
               key={poi.id}
               style={{
@@ -187,7 +170,7 @@ export default function POITab() {
                   textOverflow: 'ellipsis',
                   whiteSpace: 'nowrap',
                 }}>
-                  {poi.name}
+                  📍 {poi.name}
                 </div>
                 <div style={{
                   fontSize: 11,
@@ -221,18 +204,47 @@ export default function POITab() {
         )}
       </div>
 
+      {/* Bottom actions */}
+      <div style={{ padding: '8px 10px 10px', borderTop: '1px solid var(--border)', display: 'flex', gap: 8 }}>
+        <button
+          onClick={() => fileInputRef.current?.click()}
+          disabled={uploading}
+          className="btn-secondary"
+          style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '8px', opacity: uploading ? 0.6 : 1 }}
+          title="Import KML/KMZ file"
+        >
+          {uploading ? <Loader size={14} style={{ animation: 'spin 1s linear infinite' }} /> : <Upload size={14} />}
+          Import
+        </button>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".kml,.kmz"
+          onChange={handleFileSelect}
+          disabled={uploading}
+          style={{ display: 'none' }}
+        />
+        <button
+          onClick={handleToggleCreation}
+          className={poiCreationMode ? 'btn-primary' : 'btn-secondary'}
+          style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '8px' }}
+          title="Create POI (right-click on map)"
+        >
+          <Plus size={14} /> Create
+        </button>
+      </div>
+
       {/* Status indicator */}
       {poiCreationMode && (
         <div style={{
-          padding: '8px 14px',
+          padding: '6px 14px',
           background: 'rgba(0, 122, 255, 0.1)',
-          borderTop: '1px solid var(--border)',
-          fontSize: 11,
+          fontSize: 10,
           color: 'var(--accent)',
           fontWeight: 600,
           textAlign: 'center',
         }}>
-          ✓ Creation mode active - right-click on map
+          ✓ Right-click on map to create
         </div>
       )}
     </div>
