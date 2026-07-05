@@ -246,47 +246,38 @@ export default function UploadZone({ inputRef: externalInputRef, onTrackFiles, o
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              flexDirection: 'column',
-              gap: 12,
-              position: 'relative',
             }}
           >
             <div
               style={{
                 display: 'flex',
+                flexDirection: 'column',
                 alignItems: 'center',
-                justifyContent: 'center',
-                width: 72,
-                height: 72,
-                borderRadius: 12,
+                gap: 12,
                 background: 'rgba(255, 255, 255, 0.95)',
+                padding: '40px 60px',
+                borderRadius: 12,
               }}
             >
               <Upload size={48} color="rgba(0, 122, 255, 0.9)" />
-            </div>
-            <div
-              style={{
-                fontSize: 18,
-                fontWeight: 700,
-                color: 'var(--text)',
-                textAlign: 'center',
-                background: 'rgba(255, 255, 255, 0.95)',
-                padding: '8px 16px',
-                borderRadius: 8,
-              }}
-            >
-              Drop Tracks Here
-            </div>
-            <div
-              style={{
-                fontSize: 12,
-                color: 'var(--text)',
-                background: 'rgba(255, 255, 255, 0.9)',
-                padding: '4px 10px',
-                borderRadius: 6,
-              }}
-            >
-              GPX, KML, TCX, FIT, GeoJSON
+              <div
+                style={{
+                  fontSize: 18,
+                  fontWeight: 700,
+                  color: 'var(--text)',
+                  textAlign: 'center',
+                }}
+              >
+                Drop Tracks Here
+              </div>
+              <div
+                style={{
+                  fontSize: 12,
+                  color: 'var(--text)',
+                }}
+              >
+                GPX, KML, TCX, FIT, GeoJSON
+              </div>
             </div>
           </div>
 
@@ -299,47 +290,38 @@ export default function UploadZone({ inputRef: externalInputRef, onTrackFiles, o
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              flexDirection: 'column',
-              gap: 12,
-              position: 'relative',
             }}
           >
             <div
               style={{
                 display: 'flex',
+                flexDirection: 'column',
                 alignItems: 'center',
-                justifyContent: 'center',
-                width: 72,
-                height: 72,
-                borderRadius: 12,
+                gap: 12,
                 background: 'rgba(255, 255, 255, 0.95)',
+                padding: '40px 60px',
+                borderRadius: 12,
               }}
             >
               <Upload size={48} color="rgba(255, 149, 0, 0.9)" />
-            </div>
-            <div
-              style={{
-                fontSize: 18,
-                fontWeight: 700,
-                color: 'var(--text)',
-                textAlign: 'center',
-                background: 'rgba(255, 255, 255, 0.95)',
-                padding: '8px 16px',
-                borderRadius: 8,
-              }}
-            >
-              Drop POI Here
-            </div>
-            <div
-              style={{
-                fontSize: 12,
-                color: 'var(--text)',
-                background: 'rgba(255, 255, 255, 0.9)',
-                padding: '4px 10px',
-                borderRadius: 6,
-              }}
-            >
-              KML, KMZ
+              <div
+                style={{
+                  fontSize: 18,
+                  fontWeight: 700,
+                  color: 'var(--text)',
+                  textAlign: 'center',
+                }}
+              >
+                Drop POI Here
+              </div>
+              <div
+                style={{
+                  fontSize: 12,
+                  color: 'var(--text)',
+                }}
+              >
+                KML, KMZ
+              </div>
             </div>
           </div>
         </div>
