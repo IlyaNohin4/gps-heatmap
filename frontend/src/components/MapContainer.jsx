@@ -55,6 +55,9 @@ function POIContextMenuHandler({ poiCreationMode, onContextMenu }) {
         onContextMenu(e.latlng.lat, e.latlng.lng, e.originalEvent.clientX, e.originalEvent.clientY);
       }
     },
+    contextmenu: (e) => {
+      e.originalEvent.preventDefault();
+    },
   });
   return null;
 }
