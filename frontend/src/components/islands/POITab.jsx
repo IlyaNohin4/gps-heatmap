@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Plus, Upload, X as XIcon, Loader, Search, ChevronLeft } from 'lucide-react';
+import { Plus, Upload, X as XIcon, Loader, Search, ChevronLeft, Eye, EyeOff } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { useTranslation } from 'react-i18next';
 import useMapStore from '../../store/mapStore.js';
@@ -8,7 +8,7 @@ import POICard from '../poi/POICard.jsx';
 
 export default function POITab({ onCollapse }) {
   const { t } = useTranslation();
-  const { pois, setPOIs, setPoiCreationMode, poiCreationMode, mapInstance } = useMapStore();
+  const { pois, setPOIs, setPoiCreationMode, poiCreationMode, mapInstance, showPOI, togglePOI } = useMapStore();
   const [loading, setLoading] = useState(false);
   const [deleting, setDeleting] = useState(null);
   const [uploading, setUploading] = useState(false);
@@ -88,6 +88,13 @@ export default function POITab({ onCollapse }) {
     <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
       {/* Search bar */}
       <div style={{ padding: '10px 10px 0', display: 'flex', gap: 6, flexShrink: 0 }}>
+        <button
+          className="icon-btn"
+          onClick={togglePOI}
+          title={showPOI ? 'Hide all POI' : 'Show all POI'}
+        >
+          {showPOI ? <Eye size={14} /> : <EyeOff size={14} />}
+        </button>
         <div style={{ position: 'relative', flex: 1 }}>
           <Search size={14} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }} />
           <input
