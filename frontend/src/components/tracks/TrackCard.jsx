@@ -8,7 +8,8 @@ import {
 import useAppStore from '../../store/appStore.js';
 import { togglePublish, getTrackDownloadUrl } from '../../api/tracks.js';
 import { NOTIFICATIONS } from '../../config/notifications.js';
-import TrackManagementModal from './TrackManagementModal.jsx';
+import TrackDeleteModal from './TrackDeleteModal.jsx';
+import TrackRenameModal from './TrackRenameModal.jsx';
 
 function formatDate(iso) {
   if (!iso) return '—';
@@ -40,7 +41,8 @@ export default function TrackCard({ track, isSelected, onClick }) {
   const { unitSystem, expandedTrackInfo, removeTrack, updateTrack, selectedTrackId, setSelectedTrackId } = useAppStore();
   const [expanded, setExpanded] = useState(false);
   const [published, setPublished] = useState(track.is_public || false);
-  const [showManagementModal, setShowManagementModal] = useState(false);
+  const [showRenameModal, setShowRenameModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
 
   async function handlePublish(e) {
     e.stopPropagation();
@@ -53,22 +55,25 @@ export default function TrackCard({ track, isSelected, onClick }) {
     }
   }
 
-  function handleOpenModal(e) {
+  function handleOpenRenameModal(e) {
     e.stopPropagation();
-    setShowManagementModal(true);
+    setShowRenameModal(true);
   }
 
-  function handleModalRenamed(updatedTrack) {
+  function handleOpenDeleteModal(e) {
+    e.stopPropagation();
+    setShowDeleteModal(true);
+  }
+
+  function handleRenamed(updatedTrack) {
     updateTrack(updatedTrack);
-    toast.success(NOTIFICATIONS.TRACK_RENAMED);
   }
 
-  function handleModalDeleted(trackId) {
+  function handleDeleted(trackId) {
     removeTrack(trackId);
     if (selectedTrackId === trackId) {
       setSelectedTrackId(null);
     }
-    toast.success(NOTIFICATIONS.TRACK_DELETED);
   }
 
   function shouldShowTrackInfo() {
@@ -164,7 +169,7 @@ export default function TrackCard({ track, isSelected, onClick }) {
 
           {/* Action buttons: rename, download, delete */}
           <div style={{ display: 'flex', gap: 2, flexShrink: 0 }}>
-            <button className="icon-btn" onClick={handleOpenModal} title={t('card.rename')}>
+            <button className="icon-btn" onClick={handleOpenRenameModal} title={t('card.rename')}>
               <Pencil size={13} />
             </button>
             <a
@@ -179,7 +184,7 @@ export default function TrackCard({ track, isSelected, onClick }) {
             </a>
             <button
               className="icon-btn"
-              onClick={handleOpenModal}
+              onClick={handleOpenDeleteModal}
               title={t('card.delete')}
             >
               <Trash2 size={13} />
@@ -199,7 +204,7 @@ export default function TrackCard({ track, isSelected, onClick }) {
               paddingBottom: 12,
               borderBottom: '1px solid var(--border)',
             }}>
-              <button className="icon-btn" onClick={handleOpenModal} title={t('card.rename')}>
+              <button className="icon-btn" onClick={handleOpenRenameModal} title={t('card.rename')}>
                 <Pencil size={14} />
               </button>
               <a
@@ -279,13 +284,20 @@ export default function TrackCard({ track, isSelected, onClick }) {
         </div>
       )}
 
-      {/* Management Modal */}
-      <TrackManagementModal
+      {/* Rename Modal */}
+      <TrackRenameModal
         track={track}
-        isOpen={showManagementModal}
-        onClose={() => setShowManagementModal(false)}
-        onRenamed={handleModalRenamed}
-        onDeleted={handleModalDeleted}
+        isOpen={showRenameModal}
+        onClose={() => setShowRenameModal(false)}
+        onRenamed={handleRenamed}
+      />
+
+      {/* Delete Modal */}
+      <TrackDeleteModal
+        track={track}
+        isOpen={showDeleteModal}
+        onClose={() => setShowDeleteModal(false)}
+        onDeleted={handleDeleted}
       />
     </div>
   );
