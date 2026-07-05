@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Plus, MapPin, Trash2, Upload, X as XIcon, Loader } from 'lucide-react';
+import { Plus, MapPin, Trash2, Upload, X as XIcon, Loader, Search } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { useTranslation } from 'react-i18next';
 import useMapStore from '../../store/mapStore.js';
