@@ -95,8 +95,22 @@ export default function UploadOverlay({ onTrackFiles, onPOIFiles }) {
           justifyContent: 'center',
           flexDirection: 'column',
           gap: 12,
+          position: 'relative',
         }}
       >
+        <div
+          style={{
+            position: 'absolute',
+            top: 16,
+            fontSize: 14,
+            fontWeight: 700,
+            color: 'rgba(0, 122, 255, 0.5)',
+            textTransform: 'uppercase',
+            letterSpacing: 1,
+          }}
+        >
+          ТРЕКИ
+        </div>
         <Upload size={48} color="rgba(0, 122, 255, 0.7)" />
         <div
           style={{
@@ -129,8 +143,22 @@ export default function UploadOverlay({ onTrackFiles, onPOIFiles }) {
           justifyContent: 'center',
           flexDirection: 'column',
           gap: 12,
+          position: 'relative',
         }}
       >
+        <div
+          style={{
+            position: 'absolute',
+            top: 16,
+            fontSize: 14,
+            fontWeight: 700,
+            color: 'rgba(255, 149, 0, 0.5)',
+            textTransform: 'uppercase',
+            letterSpacing: 1,
+          }}
+        >
+          ПОИ
+        </div>
         <Upload size={48} color="rgba(255, 149, 0, 0.7)" />
         <div
           style={{
