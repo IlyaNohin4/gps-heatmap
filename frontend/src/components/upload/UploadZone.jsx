@@ -5,7 +5,8 @@ import useAppStore from '../../store/appStore.js';
 import { uploadTrack, pollTaskStatus, fetchTracks } from '../../api/tracks.js';
 import { NOTIFICATIONS } from '../../config/notifications.js';
 
-const ACCEPTED = ['.gpx', '.kml', '.tcx', '.fit', '.geojson'];
+const TRACK_FORMATS = ['.gpx', '.kml', '.tcx', '.fit', '.geojson'];
+const POI_FORMATS = ['.kml', '.kmz'];
 const MAX_SIZE = 20 * 1024 * 1024; // 20MB
 
 function getExt(filename) {
@@ -13,7 +14,7 @@ function getExt(filename) {
   return '.' + parts[parts.length - 1];
 }
 
-export default function UploadZone({ inputRef: externalInputRef }) {
+export default function UploadZone({ inputRef: externalInputRef, onTrackFiles, onPOIFiles }) {
   const { addTrack, addUploadingId, removeUploadingId } = useAppStore();
   const [dragging, setDragging] = useState(false);
   // Queue progress: { current, total } | null
@@ -142,7 +143,35 @@ export default function UploadZone({ inputRef: externalInputRef }) {
       dragCounter.current = 0;
       setDragging(false);
       const files = Array.from(e.dataTransfer.files);
-      if (files.length) processFiles(files);
+      if (!files.length) return;
+
+      // Determine drop zone (left half = tracks, right half = POI)
+      const x = e.clientX;
+      const half = window.innerWidth / 2;
+      const isLeft = x < half;
+
+      // Filter files by type
+      const trackFiles = files.filter(f => {
+        const ext = getExt(f.name);
+        return TRACK_FORMATS.includes(ext);
+      });
+      const poiFiles = files.filter(f => {
+        const ext = getExt(f.name);
+        return POI_FORMATS.includes(ext);
+      });
+
+      // Route to appropriate handlers
+      if (isLeft && trackFiles.length) {
+        processFiles(trackFiles);
+      } else if (!isLeft && poiFiles.length) {
+        onPOIFiles?.(poiFiles);
+      } else if (trackFiles.length) {
+        // If no zone determined or POI zone but track files, process tracks
+        processFiles(trackFiles);
+      } else if (poiFiles.length) {
+        // If no zone determined or track zone but POI files, process POI
+        onPOIFiles?.(poiFiles);
+      }
     }
 
     window.addEventListener('dragenter', onDragEnter);
@@ -199,32 +228,108 @@ export default function UploadZone({ inputRef: externalInputRef }) {
         </div>
       )}
 
-      {/* Drag-and-drop overlay */}
+      {/* Drag-and-drop overlay — 50/50 split */}
       {dragging && (
         <div style={{
           position: 'fixed',
           inset: 0,
           zIndex: 10000,
-          background: 'rgba(0,122,255,0.12)',
-          backdropFilter: 'blur(2px)',
           display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
           pointerEvents: 'none',
         }}>
-          <div className="island" style={{
-            padding: '40px 60px',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            gap: 12,
-          }}>
-            <Upload size={40} color="var(--accent)" />
-            <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--text)' }}>
-              Drop GPS files here
+          {/* Left half: Tracks */}
+          <div
+            style={{
+              flex: 1,
+              background: 'rgba(0, 122, 255, 0.15)',
+              border: '3px dashed rgba(0, 122, 255, 0.5)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexDirection: 'column',
+              gap: 12,
+              position: 'relative',
+            }}
+          >
+            <div
+              style={{
+                position: 'absolute',
+                top: 16,
+                fontSize: 14,
+                fontWeight: 700,
+                color: 'rgba(0, 122, 255, 0.5)',
+                textTransform: 'uppercase',
+                letterSpacing: 1,
+              }}
+            >
+              ТРЕКИ
             </div>
-            <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
-              GPX, KML, TCX, FIT, GeoJSON · max 20MB
+            <Upload size={48} color="rgba(0, 122, 255, 0.7)" />
+            <div
+              style={{
+                fontSize: 18,
+                fontWeight: 700,
+                color: 'rgba(0, 122, 255, 0.8)',
+                textAlign: 'center',
+              }}
+            >
+              Drop Tracks Here
+            </div>
+            <div
+              style={{
+                fontSize: 12,
+                color: 'rgba(0, 122, 255, 0.6)',
+              }}
+            >
+              GPX, KML, TCX, FIT, GeoJSON
+            </div>
+          </div>
+
+          {/* Right half: POI */}
+          <div
+            style={{
+              flex: 1,
+              background: 'rgba(255, 149, 0, 0.15)',
+              border: '3px dashed rgba(255, 149, 0, 0.5)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexDirection: 'column',
+              gap: 12,
+              position: 'relative',
+            }}
+          >
+            <div
+              style={{
+                position: 'absolute',
+                top: 16,
+                fontSize: 14,
+                fontWeight: 700,
+                color: 'rgba(255, 149, 0, 0.5)',
+                textTransform: 'uppercase',
+                letterSpacing: 1,
+              }}
+            >
+              ПОИ
+            </div>
+            <Upload size={48} color="rgba(255, 149, 0, 0.7)" />
+            <div
+              style={{
+                fontSize: 18,
+                fontWeight: 700,
+                color: 'rgba(255, 149, 0, 0.8)',
+                textAlign: 'center',
+              }}
+            >
+              Drop POI Here
+            </div>
+            <div
+              style={{
+                fontSize: 12,
+                color: 'rgba(255, 149, 0, 0.6)',
+              }}
+            >
+              KML, KMZ
             </div>
           </div>
         </div>

@@ -13,7 +13,6 @@ import useMapStore from './store/mapStore.js';
 import MapContainer from './components/MapContainer.jsx';
 import AuthModal from './components/auth/AuthModal.jsx';
 import UploadZone from './components/upload/UploadZone.jsx';
-import UploadOverlay from './components/upload/UploadOverlay.jsx';
 import TopIsland from './components/islands/TopIsland.jsx';
 import LeftIsland from './components/islands/LeftIsland.jsx';
 import RightIsland from './components/islands/RightIsland.jsx';
@@ -300,8 +299,7 @@ function MainPage() {
       />
 
       <AuthModal />
-      <UploadZone inputRef={uploadInputRef} />
-      <UploadOverlay onTrackFiles={handleTrackFilesFromOverlay} onPOIFiles={handlePOIFilesFromOverlay} />
+      <UploadZone inputRef={uploadInputRef} onTrackFiles={handleTrackFilesFromOverlay} onPOIFiles={handlePOIFilesFromOverlay} />
       <ToastContainer
         position="bottom-right"
         autoClose={3500}
