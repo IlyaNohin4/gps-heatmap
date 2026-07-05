@@ -1,9 +1,10 @@
 import React, { useState, useMemo } from 'react';
-import { Search, Filter, Plus, X, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Search, Filter, Plus, X, ChevronLeft, ChevronRight, MapPin } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import Slider from 'rc-slider';
 import 'rc-slider/assets/index.css';
 import TrackCard from '../tracks/TrackCard.jsx';
+import POITab from './POITab.jsx';
 import useAppStore from '../../store/appStore.js';
 import useMapStore from '../../store/mapStore.js';
 
@@ -45,6 +46,7 @@ export default function LeftIsland({ onUploadClick, loading }) {
   const { showTrackCreator, toggleTrackCreator } = useMapStore();
   const [open, setOpen] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [currentTab, setCurrentTab] = useState('tracks'); // 'tracks' or 'poi'
   const [search, setSearch] = useState('');
   const filterOpen = activePanel === 'left:filter';
   const [sort, setSort] = useState('newest');
@@ -117,6 +119,56 @@ export default function LeftIsland({ onUploadClick, loading }) {
         overflow: 'hidden',
         maxHeight: 'calc(100vh - 120px)',
       }}>
+        {/* Tabs */}
+        <div style={{
+          display: 'flex',
+          padding: '8px 8px 0',
+          gap: 4,
+          borderBottom: '1px solid var(--border)',
+        }}>
+          <button
+            onClick={() => setCurrentTab('tracks')}
+            style={{
+              flex: 1,
+              padding: '8px 10px',
+              border: 'none',
+              borderRadius: '8px 8px 0 0',
+              background: currentTab === 'tracks' ? 'var(--accent)' : 'var(--bg)',
+              color: currentTab === 'tracks' ? '#fff' : 'var(--text-secondary)',
+              fontSize: 13,
+              fontWeight: 600,
+              cursor: 'pointer',
+              transition: 'all 0.15s',
+            }}
+          >
+            Tracks
+          </button>
+          <button
+            onClick={() => setCurrentTab('poi')}
+            style={{
+              flex: 1,
+              padding: '8px 10px',
+              border: 'none',
+              borderRadius: '8px 8px 0 0',
+              background: currentTab === 'poi' ? 'var(--accent)' : 'var(--bg)',
+              color: currentTab === 'poi' ? '#fff' : 'var(--text-secondary)',
+              fontSize: 13,
+              fontWeight: 600,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 4,
+              transition: 'all 0.15s',
+            }}
+          >
+            <MapPin size={14} /> POI
+          </button>
+        </div>
+
+        {/* Tracks Tab */}
+        {currentTab === 'tracks' && (
+        <>
         {/* Search bar */}
         <div style={{ padding: '10px 10px 0', display: 'flex', gap: 6 }}>
           <div style={{ position: 'relative', flex: 1 }}>
@@ -195,7 +247,7 @@ export default function LeftIsland({ onUploadClick, loading }) {
           )}
         </div>
 
-        {/* Bottom actions */}
+        {/* Bottom actions - Tracks tab only */}
         <div style={{ padding: '8px 10px 10px', borderTop: '1px solid var(--border)' }}>
           <button
             className="btn-secondary"
@@ -205,6 +257,11 @@ export default function LeftIsland({ onUploadClick, loading }) {
             <Plus size={14} /> {t('tracks.add_track')}
           </button>
         </div>
+        </>
+        )}
+
+        {/* POI Tab */}
+        {currentTab === 'poi' && <POITab />}
       </div>}
     </div>
   );
