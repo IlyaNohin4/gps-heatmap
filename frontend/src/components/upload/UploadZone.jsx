@@ -7,6 +7,7 @@ import { NOTIFICATIONS } from '../../config/notifications.js';
 
 const TRACK_FORMATS = ['.gpx', '.kml', '.tcx', '.fit', '.geojson'];
 const POI_FORMATS = ['.kml', '.kmz'];
+const ACCEPTED = [...TRACK_FORMATS, ...POI_FORMATS];
 const MAX_SIZE = 20 * 1024 * 1024; // 20MB
 
 function getExt(filename) {
