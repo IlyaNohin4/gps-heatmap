@@ -88,13 +88,6 @@ export default function POITab({ onCollapse }) {
     <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
       {/* Search bar */}
       <div style={{ padding: '10px 10px 0', display: 'flex', gap: 6, flexShrink: 0 }}>
-        <button
-          className="icon-btn"
-          onClick={togglePOI}
-          title={showPOI ? 'Hide all POI' : 'Show all POI'}
-        >
-          {showPOI ? <Eye size={14} /> : <EyeOff size={14} />}
-        </button>
         <div style={{ position: 'relative', flex: 1 }}>
           <Search size={14} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }} />
           <input
@@ -109,6 +102,13 @@ export default function POITab({ onCollapse }) {
             </button>
           )}
         </div>
+        <button
+          className="icon-btn"
+          onClick={togglePOI}
+          title={showPOI ? 'Hide all POI' : 'Show all POI'}
+        >
+          {showPOI ? <Eye size={14} /> : <EyeOff size={14} />}
+        </button>
         {onCollapse && (
           <button
             className="icon-btn"
