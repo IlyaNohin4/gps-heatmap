@@ -175,8 +175,7 @@ function LeftIslandContent({ onUploadClick, loading }) {
         </div>
 
         {/* Tracks Tab */}
-        {currentTab === 'tracks' && (
-        <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
+        <div style={{ display: currentTab === 'tracks' ? 'flex' : 'none', flexDirection: 'column', flex: 1, minHeight: 0 }}>
         {/* Search bar */}
         <div style={{ padding: '10px 10px 0', display: 'flex', gap: 6, flexShrink: 0 }}>
           <div style={{ position: 'relative', flex: 1 }}>
@@ -303,14 +302,11 @@ function LeftIslandContent({ onUploadClick, loading }) {
           </button>
         </div>
         </div>
-        )}
 
         {/* POI Tab */}
-        {currentTab === 'poi' && (
-          <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
-            <POITab onCollapse={handleCollapse} />
-          </div>
-        )}
+        <div style={{ display: currentTab === 'poi' ? 'flex' : 'none', flexDirection: 'column', flex: 1, minHeight: 0 }}>
+          <POITab onCollapse={handleCollapse} />
+        </div>
       </div>}
     </div>
   );
