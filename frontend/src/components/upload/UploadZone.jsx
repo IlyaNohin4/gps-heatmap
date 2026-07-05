@@ -257,20 +257,26 @@ export default function UploadZone({ inputRef: externalInputRef, onTrackFiles, o
                 top: 16,
                 fontSize: 14,
                 fontWeight: 700,
-                color: 'rgba(0, 122, 255, 0.5)',
+                color: 'rgba(0, 122, 255, 0.8)',
                 textTransform: 'uppercase',
                 letterSpacing: 1,
+                background: 'rgba(0, 0, 0, 0.3)',
+                padding: '4px 12px',
+                borderRadius: 6,
               }}
             >
               ТРЕКИ
             </div>
-            <Upload size={48} color="rgba(0, 122, 255, 0.7)" />
+            <Upload size={48} color="rgba(0, 122, 255, 0.9)" />
             <div
               style={{
                 fontSize: 18,
                 fontWeight: 700,
-                color: 'rgba(0, 122, 255, 0.8)',
+                color: '#fff',
                 textAlign: 'center',
+                background: 'rgba(0, 0, 0, 0.4)',
+                padding: '8px 16px',
+                borderRadius: 8,
               }}
             >
               Drop Tracks Here
@@ -278,7 +284,10 @@ export default function UploadZone({ inputRef: externalInputRef, onTrackFiles, o
             <div
               style={{
                 fontSize: 12,
-                color: 'rgba(0, 122, 255, 0.6)',
+                color: '#fff',
+                background: 'rgba(0, 0, 0, 0.3)',
+                padding: '4px 10px',
+                borderRadius: 6,
               }}
             >
               GPX, KML, TCX, FIT, GeoJSON
@@ -305,20 +314,26 @@ export default function UploadZone({ inputRef: externalInputRef, onTrackFiles, o
                 top: 16,
                 fontSize: 14,
                 fontWeight: 700,
-                color: 'rgba(255, 149, 0, 0.5)',
+                color: '#fff',
                 textTransform: 'uppercase',
                 letterSpacing: 1,
+                background: 'rgba(0, 0, 0, 0.3)',
+                padding: '4px 12px',
+                borderRadius: 6,
               }}
             >
               ПОИ
             </div>
-            <Upload size={48} color="rgba(255, 149, 0, 0.7)" />
+            <Upload size={48} color="rgba(255, 149, 0, 0.9)" />
             <div
               style={{
                 fontSize: 18,
                 fontWeight: 700,
-                color: 'rgba(255, 149, 0, 0.8)',
+                color: '#fff',
                 textAlign: 'center',
+                background: 'rgba(0, 0, 0, 0.4)',
+                padding: '8px 16px',
+                borderRadius: 8,
               }}
             >
               Drop POI Here
@@ -326,7 +341,10 @@ export default function UploadZone({ inputRef: externalInputRef, onTrackFiles, o
             <div
               style={{
                 fontSize: 12,
-                color: 'rgba(255, 149, 0, 0.6)',
+                color: '#fff',
+                background: 'rgba(0, 0, 0, 0.3)',
+                padding: '4px 10px',
+                borderRadius: 6,
               }}
             >
               KML, KMZ
