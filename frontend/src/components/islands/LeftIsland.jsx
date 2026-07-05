@@ -96,7 +96,7 @@ export default function LeftIsland({ onUploadClick, loading }) {
       transform: 'translateY(-50%)',
       zIndex: 1000,
       width: sidebarOpen ? 300 : 'auto',
-      maxHeight: 'calc(100vh - 120px)',
+      maxHeight: 'calc(100vh - 220px)',
       display: 'flex',
       flexDirection: 'column',
     }}>
