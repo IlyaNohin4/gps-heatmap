@@ -28,7 +28,7 @@ class POIResponse(BaseModel):
     lat: float
     lon: float
     category: str
-    description: str
+    description: Optional[str] = None
     import_name: Optional[str] = None
 
     model_config = {"from_attributes": True}
