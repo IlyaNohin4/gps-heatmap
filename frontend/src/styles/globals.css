@@ -241,7 +241,7 @@ input:focus, select:focus, textarea:focus {
 
 /* Panel Animation Classes */
 .panel-animate-in-left {
-  /* animation: fadeSlideInLeft 0.3s ease-out forwards; */ /* TEMP DISABLED FOR DEBUG */
+  animation: fadeSlideInLeft 0.3s ease-out forwards;
 }
 
 .panel-animate-in-right {
