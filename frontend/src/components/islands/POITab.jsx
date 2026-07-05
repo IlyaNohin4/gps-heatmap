@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useRef } from 'react';
 import { Plus, Upload, X as XIcon, Loader, Search, ChevronLeft, Eye, EyeOff } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { useTranslation } from 'react-i18next';
@@ -18,10 +18,6 @@ export default function POITab({ onCollapse }) {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [selectedPOI, setSelectedPOI] = useState(null);
   const fileInputRef = useRef(null);
-
-  useEffect(() => {
-    loadPOIs();
-  }, []);
 
   async function loadPOIs() {
     setLoading(true);

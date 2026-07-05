@@ -104,6 +104,17 @@ function MainPage() {
       })
       .catch(() => {})
       .finally(() => { if (!cancelled) setTracksLoading(false); });
+
+    // Load POI once on page load (not on tab switch)
+    fetchPOI()
+      .then((data) => {
+        if (!cancelled) {
+          const { setPOIs } = useMapStore.getState();
+          setPOIs(data);
+        }
+      })
+      .catch(() => {});
+
     return () => { cancelled = true; };
   }, [isAuthenticated, setTracks]);
 
