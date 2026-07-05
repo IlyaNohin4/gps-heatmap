@@ -47,12 +47,11 @@ function MapClickHandler() {
   return null;
 }
 
-// Handles right-click on map for POI creation
+// Handles left-click on map for POI creation (when mode is active)
 function POIContextMenuHandler({ poiCreationMode, onContextMenu }) {
   useMapEvents({
-    contextmenu: (e) => {
+    click: (e) => {
       if (poiCreationMode) {
-        e.originalEvent.preventDefault();
         onContextMenu(e.latlng.lat, e.latlng.lng, e.originalEvent.clientX, e.originalEvent.clientY);
       }
     },
