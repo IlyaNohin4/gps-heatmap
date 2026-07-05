@@ -41,7 +41,7 @@ function SkeletonCard() {
   );
 }
 
-export default function LeftIsland({ onUploadClick, loading }) {
+function LeftIslandContent({ onUploadClick, loading }) {
   const { t } = useTranslation();
   const { tracks, selectedTrackId, setSelectedTrack, isUploadingIds, activePanel, setActivePanel } = useAppStore();
   const { showTrackCreator, toggleTrackCreator, mapInstance } = useMapStore();
@@ -54,6 +54,7 @@ export default function LeftIsland({ onUploadClick, loading }) {
   const [formatFilter, setFormatFilter] = useState('all');
   const [speedRange, setSpeedRange] = useState([0, 200]);
 
+  const handleSetCurrentTab = useCallback((tab) => setCurrentTab(tab), []);
   const handleCollapse = useCallback(() => setSidebarOpen(false), []);
 
   const filtered = useMemo(() => {
@@ -130,7 +131,7 @@ export default function LeftIsland({ onUploadClick, loading }) {
           borderBottom: '1px solid var(--border)',
         }}>
           <button
-            onClick={() => setCurrentTab('tracks')}
+            onClick={() => handleSetCurrentTab('tracks')}
             style={{
               flex: 1,
               padding: '8px 10px',
@@ -151,7 +152,7 @@ export default function LeftIsland({ onUploadClick, loading }) {
             <Route size={14} /> Tracks
           </button>
           <button
-            onClick={() => setCurrentTab('poi')}
+            onClick={() => handleSetCurrentTab('poi')}
             style={{
               flex: 1,
               padding: '8px 10px',
@@ -314,3 +315,5 @@ export default function LeftIsland({ onUploadClick, loading }) {
     </div>
   );
 }
+
+export default React.memo(LeftIslandContent);
