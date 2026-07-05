@@ -13,6 +13,7 @@ import useMapStore from './store/mapStore.js';
 import MapContainer from './components/MapContainer.jsx';
 import AuthModal from './components/auth/AuthModal.jsx';
 import UploadZone from './components/upload/UploadZone.jsx';
+import UploadOverlay from './components/upload/UploadOverlay.jsx';
 import TopIsland from './components/islands/TopIsland.jsx';
 import LeftIsland from './components/islands/LeftIsland.jsx';
 import RightIsland from './components/islands/RightIsland.jsx';
@@ -20,7 +21,8 @@ import BottomIsland from './components/islands/BottomIsland.jsx';
 import { TrackCreatorPanel } from './map/TrackCreator.jsx';
 import SaveTrackModal from './components/track/SaveTrackModal.jsx';
 
-import { fetchTracks, createTrackFromPoints } from './api/tracks.js';
+import { fetchTracks, createTrackFromPoints, uploadTrack } from './api/tracks.js';
+import { uploadPOI, fetchPOI } from './api/poi.js';
 import { getMe } from './api/auth.js';
 import { Search, RotateCcw, Eye, EyeOff } from 'lucide-react';
 
@@ -107,6 +109,34 @@ function MainPage() {
 
   function handleUploadClick() {
     uploadInputRef.current?.click();
+  }
+
+  async function handleTrackFilesFromOverlay(files) {
+    const { toast } = await import('react-toastify');
+    for (const file of files) {
+      try {
+        await uploadTrack(file, null);
+        const data = await fetchTracks();
+        setTracks(data.tracks || data);
+        toast.success(`Track "${file.name}" uploaded`);
+      } catch (err) {
+        toast.error(`Failed to upload "${file.name}"`);
+      }
+    }
+  }
+
+  async function handlePOIFilesFromOverlay(files) {
+    const { toast } = await import('react-toastify');
+    for (const file of files) {
+      try {
+        await uploadPOI(file);
+        const pois = await fetchPOI();
+        useMapStore.getState().setPOIs(pois);
+        toast.success(`POI imported from "${file.name}"`);
+      } catch (err) {
+        toast.error(`Failed to import POI from "${file.name}"`);
+      }
+    }
   }
 
   async function handleFindInArea() {
@@ -271,6 +301,7 @@ function MainPage() {
 
       <AuthModal />
       <UploadZone inputRef={uploadInputRef} />
+      <UploadOverlay onTrackFiles={handleTrackFilesFromOverlay} onPOIFiles={handlePOIFilesFromOverlay} />
       <ToastContainer
         position="bottom-right"
         autoClose={3500}
