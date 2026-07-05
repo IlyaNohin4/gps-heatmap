@@ -122,7 +122,7 @@ export default function LeftIsland({ onUploadClick, loading }) {
         {/* Tabs */}
         <div style={{
           display: 'flex',
-          padding: '8px 8px 0',
+          padding: '8px 8px 8px',
           gap: 4,
           borderBottom: '1px solid var(--border)',
         }}>
