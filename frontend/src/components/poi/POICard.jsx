@@ -1,7 +1,7 @@
 import React from 'react';
 import { Trash2, Pencil } from 'lucide-react';
 
-export default function POICard({ poi, isDeleting, onZoom, onDelete, onRename }) {
+export default React.memo(function POICard({ poi, isDeleting, onZoom, onDelete, onRename }) {
   return (
     <div
       style={{
@@ -73,4 +73,4 @@ export default function POICard({ poi, isDeleting, onZoom, onDelete, onRename })
       </button>
     </div>
   );
-}
+});

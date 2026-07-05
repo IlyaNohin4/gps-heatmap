@@ -93,10 +93,12 @@ function MainPage() {
         const trackList = Array.isArray(data) ? data : (data.tracks || []);
         if (!cancelled) {
           setTracks(trackList);
-          // Preload all track details for heatmap visualization
-          const { ensureTrackDetail } = useMapStore.getState();
-          trackList.forEach((track) => {
-            ensureTrackDetail(track.id);
+          // Preload all track details when browser is idle (no UI blocking)
+          requestIdleCallback(() => {
+            const { ensureTrackDetail } = useMapStore.getState();
+            trackList.forEach((track) => {
+              ensureTrackDetail(track.id);
+            });
           });
         }
       })

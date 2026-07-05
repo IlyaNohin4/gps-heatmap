@@ -36,7 +36,7 @@ const FORMAT_COLORS = {
   geojson: '#ff3b30',
 };
 
-export default function TrackCard({ track, isSelected, onClick }) {
+export default React.memo(function TrackCard({ track, isSelected, onClick }) {
   const { t } = useTranslation();
   const { unitSystem, expandedTrackInfo, removeTrack, updateTrack, selectedTrackId, setSelectedTrackId } = useAppStore();
   const [expanded, setExpanded] = useState(false);
@@ -301,4 +301,4 @@ export default function TrackCard({ track, isSelected, onClick }) {
       />
     </div>
   );
-}
+});
