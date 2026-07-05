@@ -64,13 +64,10 @@ export default function POILayer() {
 
     groupRef.current.clearLayers();
 
-    // Show manual POI (source='manual') and imported POI (from visible imports)
+    // Show all POI (user-created and imported)
     const visiblePOI = pois.filter((poi) => {
-      // Always show manual POI
-      if (poi.source === 'manual') return true;
-      // Show imported POI only if import is visible
-      if (poi.import_name && visibleImports.has(poi.import_name)) return true;
-      return false;
+      // Show all user POI regardless of source
+      return true;
     });
 
     visiblePOI.forEach((poi) => {
