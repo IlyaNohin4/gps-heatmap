@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { toast } from 'react-toastify';
 import { Trash2, X } from 'lucide-react';
 import { deleteTrack, renameTrack } from '../../api/tracks.js';
@@ -8,8 +9,6 @@ export default function TrackManagementModal({ track, isOpen, onClose, onRenamed
   const [renaming, setRenaming] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
-
-  if (!isOpen || !track) return null;
 
   async function handleRename() {
     if (!nameValue.trim()) {
@@ -48,7 +47,9 @@ export default function TrackManagementModal({ track, isOpen, onClose, onRenamed
     }
   }
 
-  return (
+  if (!isOpen || !track) return null;
+
+  const content = (
     <div style={{
       position: 'fixed',
       inset: 0,
@@ -195,4 +196,6 @@ export default function TrackManagementModal({ track, isOpen, onClose, onRenamed
       </div>
     </div>
   );
+
+  return createPortal(content, document.body);
 }
