@@ -266,7 +266,11 @@ export default function LeftIsland({ onUploadClick, loading }) {
         )}
 
         {/* POI Tab */}
-        {currentTab === 'poi' && <POITab />}
+        {currentTab === 'poi' && (
+        <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, overflow: 'hidden' }}>
+          <POITab />
+        </div>
+        )}
       </div>}
     </div>
   );
