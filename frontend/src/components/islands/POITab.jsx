@@ -85,7 +85,7 @@ export default function POITab({ onCollapse }) {
   });
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
       {/* Search bar */}
       <div style={{ padding: '10px 10px 0', display: 'flex', gap: 6, flexShrink: 0 }}>
         <div style={{ position: 'relative', flex: 1 }}>
@@ -114,33 +114,18 @@ export default function POITab({ onCollapse }) {
       </div>
 
       {/* POI List */}
-      <div style={{
-        flex: 1,
-        overflowY: 'auto',
-        padding: '8px 10px 4px',
-        minHeight: 0,
-      }}>
+      <div style={{ flex: 1, overflowY: 'auto', padding: '8px 10px 4px', minHeight: 0 }}>
         {loading ? (
           <div style={{ padding: '16px 14px', textAlign: 'center', color: 'var(--text-secondary)', fontSize: 12 }}>
             Loading POI...
           </div>
         ) : pois.length === 0 ? (
-          <div style={{
-            padding: '20px 14px',
-            textAlign: 'center',
-            color: 'var(--text-secondary)',
-            fontSize: 12,
-          }}>
+          <div style={{ padding: '20px 14px', textAlign: 'center', color: 'var(--text-secondary)', fontSize: 12 }}>
             No POI yet<br />
             Click the + button then left-click on map
           </div>
         ) : filteredPOIs.length === 0 ? (
-          <div style={{
-            padding: '20px 14px',
-            textAlign: 'center',
-            color: 'var(--text-secondary)',
-            fontSize: 12,
-          }}>
+          <div style={{ padding: '20px 14px', textAlign: 'center', color: 'var(--text-secondary)', fontSize: 12 }}>
             No results found
           </div>
         ) : (
@@ -180,7 +165,7 @@ export default function POITab({ onCollapse }) {
           onClick={handleToggleCreation}
           className={poiCreationMode ? 'btn-primary' : 'btn-secondary'}
           style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '8px' }}
-          title="Create POI (right-click on map)"
+          title="Create POI"
         >
           <Plus size={14} /> Create
         </button>
