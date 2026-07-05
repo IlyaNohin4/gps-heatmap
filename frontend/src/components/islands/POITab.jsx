@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Plus, MapPin, Trash2, Upload, X as XIcon, Loader, Search } from 'lucide-react';
+import { Plus, MapPin, Trash2, Upload, X as XIcon, Loader, Search, ChevronLeft } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { useTranslation } from 'react-i18next';
 import useMapStore from '../../store/mapStore.js';
 import { fetchPOI, deletePOI, uploadPOI } from '../../api/poi.js';
 
-export default function POITab() {
+export default function POITab({ onCollapse }) {
   const { t } = useTranslation();
   const { pois, setPOIs, setPoiCreationMode, poiCreationMode, mapInstance } = useMapStore();
   const [loading, setLoading] = useState(false);
@@ -101,6 +101,15 @@ export default function POITab() {
             </button>
           )}
         </div>
+        {onCollapse && (
+          <button
+            className="icon-btn"
+            onClick={onCollapse}
+            title="Collapse sidebar"
+          >
+            <ChevronLeft size={15} />
+          </button>
+        )}
       </div>
 
       {/* POI List */}

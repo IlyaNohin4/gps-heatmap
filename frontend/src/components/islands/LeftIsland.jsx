@@ -265,7 +265,7 @@ export default function LeftIsland({ onUploadClick, loading }) {
 
         {/* POI Tab */}
         <div style={{ display: currentTab === 'poi' ? 'flex' : 'none', flexDirection: 'column', flex: 1, minHeight: 0, overflow: 'hidden' }}>
-          <POITab />
+          <POITab onCollapse={() => setSidebarOpen(false)} />
         </div>
       </div>}
     </div>
