@@ -214,10 +214,8 @@ export default function TrackCard({ track, isSelected, onClick }) {
               </a>
               <button
                 className="icon-btn"
-                onClick={handleDelete}
-                disabled={deleting}
-                title={confirmDelete ? t('card.confirm_delete') : t('card.delete')}
-                style={{ color: confirmDelete ? '#ff3b30' : undefined }}
+                onClick={handleOpenModal}
+                title={t('card.delete')}
               >
                 <Trash2 size={14} />
               </button>
