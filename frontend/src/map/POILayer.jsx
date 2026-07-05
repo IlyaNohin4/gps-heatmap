@@ -64,11 +64,8 @@ export default function POILayer() {
 
     groupRef.current.clearLayers();
 
-    // Show all POI (user-created and imported)
-    const visiblePOI = pois.filter((poi) => {
-      // Show all user POI regardless of source
-      return true;
-    });
+    // Show all POI with source='user'
+    const visiblePOI = pois.filter((poi) => poi.source === 'user' || !poi.source);
 
     visiblePOI.forEach((poi) => {
       const category = poi.category?.toLowerCase() || 'other';

@@ -15,6 +15,6 @@ class POI(Base):
     lon = Column(Float, nullable=False)
     category = Column(String(100), index=True)
     description = Column(Text)
-    source = Column(String(50), default='uploaded')
+    source = Column(String(50), default='user')
     import_name = Column(String(255))
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
