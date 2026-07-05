@@ -117,6 +117,7 @@ export default function LeftIsland({ onUploadClick, loading }) {
         display: 'flex',
         flexDirection: 'column',
         overflow: 'hidden',
+        height: '100%',
         maxHeight: 'calc(100vh - 120px)',
       }}>
         {/* Tabs */}
