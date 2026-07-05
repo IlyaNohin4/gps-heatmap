@@ -54,7 +54,10 @@ function LeftIslandContent({ onUploadClick, loading }) {
   const [formatFilter, setFormatFilter] = useState('all');
   const [speedRange, setSpeedRange] = useState([0, 200]);
 
-  const handleSetCurrentTab = useCallback((tab) => setCurrentTab(tab), []);
+  const handleSetCurrentTab = useCallback((tab) => {
+    // Defer state update to allow browser to respond faster
+    setTimeout(() => setCurrentTab(tab), 0);
+  }, []);
   const handleCollapse = useCallback(() => setSidebarOpen(false), []);
 
   const filtered = useMemo(() => {
