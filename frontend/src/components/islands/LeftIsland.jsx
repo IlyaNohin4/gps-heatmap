@@ -116,7 +116,6 @@ export default function LeftIsland({ onUploadClick, loading }) {
       {sidebarOpen && <div className="island panel-animate-in-left" style={{
         display: 'flex',
         flexDirection: 'column',
-        overflow: 'hidden',
         height: '100%',
         maxHeight: 'calc(100vh - 320px)',
       }}>
@@ -172,7 +171,7 @@ export default function LeftIsland({ onUploadClick, loading }) {
         </div>
 
         {/* Tracks Tab */}
-        <div style={{ display: currentTab === 'tracks' ? 'flex' : 'none', flexDirection: 'column', flex: 1, minHeight: 0, overflow: 'hidden' }}>
+        <div style={{ display: currentTab === 'tracks' ? 'flex' : 'none', flexDirection: 'column', flex: 1, minHeight: 0 }}>
         {/* Search bar */}
         <div style={{ padding: '10px 10px 0', display: 'flex', gap: 6, flexShrink: 0 }}>
           <div style={{ position: 'relative', flex: 1 }}>
@@ -264,7 +263,7 @@ export default function LeftIsland({ onUploadClick, loading }) {
         </div>
 
         {/* POI Tab */}
-        <div style={{ display: currentTab === 'poi' ? 'flex' : 'none', flexDirection: 'column', flex: 1, minHeight: 0, overflow: 'hidden' }}>
+        <div style={{ display: currentTab === 'poi' ? 'flex' : 'none', flexDirection: 'column', flex: 1, minHeight: 0 }}>
           <POITab onCollapse={() => setSidebarOpen(false)} />
         </div>
       </div>}
