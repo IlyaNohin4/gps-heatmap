@@ -84,7 +84,7 @@ export default function POITab() {
   });
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
+    <div style={{ display: 'flex', flexDirection: 'column' }}>
       {/* Search bar */}
       <div style={{ padding: '10px 10px 0', display: 'flex', gap: 6, flexShrink: 0 }}>
         <div style={{ position: 'relative', flex: 1 }}>
