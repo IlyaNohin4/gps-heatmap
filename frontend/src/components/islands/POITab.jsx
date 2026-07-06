@@ -1,4 +1,5 @@
 import React, { useState, useRef, useMemo, useCallback } from 'react';
+import { FixedSizeList as List } from 'react-window';
 import { Plus, Upload, X as XIcon, Loader, Search, ChevronLeft, Eye, EyeOff } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { useTranslation } from 'react-i18next';
@@ -133,7 +134,7 @@ export default React.memo(function POITab({ onCollapse }) {
       </div>
 
       {/* POI List */}
-      <div style={{ flex: 1, overflowY: 'auto', padding: '8px 10px 4px', minHeight: 0 }}>
+      <div style={{ flex: 1, minHeight: 0 }}>
         {loading ? (
           <div style={{ padding: '16px 14px', textAlign: 'center', color: 'var(--text-secondary)', fontSize: 12 }}>
             Loading POI...
@@ -148,15 +149,24 @@ export default React.memo(function POITab({ onCollapse }) {
             No results found
           </div>
         ) : (
-          filteredPOIs.map((poi) => (
-            <POICard
-              key={poi.id}
-              poi={poi}
-              onZoom={() => handleZoomToPOI(poi)}
-              onRename={() => handleOpenRenameModalCb(poi)}
-              onDelete={() => handleOpenDeleteModalCb(poi)}
-            />
-          ))
+          <List
+            height={200}
+            itemCount={filteredPOIs.length}
+            itemSize={68}
+            width="100%"
+            style={{ padding: '8px 10px 4px' }}
+          >
+            {({ index, style }) => (
+              <div style={style}>
+                <POICard
+                  poi={filteredPOIs[index]}
+                  onZoom={() => handleZoomToPOI(filteredPOIs[index])}
+                  onRename={() => handleOpenRenameModalCb(filteredPOIs[index])}
+                  onDelete={() => handleOpenDeleteModalCb(filteredPOIs[index])}
+                />
+              </div>
+            )}
+          </List>
         )}
       </div>
 
