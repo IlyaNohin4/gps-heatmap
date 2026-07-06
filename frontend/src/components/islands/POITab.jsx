@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next';
 import useMapStore from '../../store/mapStore.js';
 import { fetchPOI, deletePOI, uploadPOI } from '../../api/poi.js';
 import POICard from '../poi/POICard.jsx';
+import '../../styles/poi.css';
 const POIRenameModal = lazy(() => import('../poi/POIRenameModal.jsx'));
 const POIDeleteModal = lazy(() => import('../poi/POIDeleteModal.jsx'));
 
@@ -97,19 +98,19 @@ export default React.memo(function POITab({ onCollapse }) {
   }, [pois, search]);
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
+    <div className="poi-tab">
       {/* Search bar */}
-      <div style={{ padding: '10px 10px 0', display: 'flex', gap: 6, flexShrink: 0 }}>
-        <div style={{ position: 'relative', flex: 1 }}>
-          <Search size={14} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }} />
+      <div className="poi-header">
+        <div className="poi-search-wrapper">
+          <Search size={14} className="poi-search-icon" />
           <input
+            className="poi-search-input"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search POI..."
-            style={{ borderRadius: 'var(--radius-search)', paddingLeft: 30, paddingRight: search ? 30 : 12 }}
           />
           {search && (
-            <button onClick={() => setSearch('')} style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', display: 'flex' }}>
+            <button className="poi-search-clear" onClick={() => setSearch('')}>
               <XIcon size={13} />
             </button>
           )}
@@ -133,20 +134,16 @@ export default React.memo(function POITab({ onCollapse }) {
       </div>
 
       {/* POI List */}
-      <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '8px 10px 4px' }}>
+      <div className="poi-list-container">
         {loading ? (
-          <div style={{ padding: '16px 14px', textAlign: 'center', color: 'var(--text-secondary)', fontSize: 12 }}>
-            Loading POI...
-          </div>
+          <div className="poi-loading">Loading POI...</div>
         ) : pois.length === 0 ? (
-          <div style={{ padding: '20px 14px', textAlign: 'center', color: 'var(--text-secondary)', fontSize: 12 }}>
+          <div className="poi-empty-state">
             No POI yet<br />
             Click the + button then left-click on map
           </div>
         ) : filteredPOIs.length === 0 ? (
-          <div style={{ padding: '20px 14px', textAlign: 'center', color: 'var(--text-secondary)', fontSize: 12 }}>
-            No results found
-          </div>
+          <div className="poi-empty-state">No results found</div>
         ) : (
           filteredPOIs.map((poi) => (
             <POICard
@@ -161,12 +158,11 @@ export default React.memo(function POITab({ onCollapse }) {
       </div>
 
       {/* Bottom actions */}
-      <div style={{ padding: '8px 10px 10px', borderTop: '1px solid var(--border)', display: 'flex', gap: 8, flexShrink: 0 }}>
+      <div className="poi-actions">
         <button
           onClick={() => fileInputRef.current?.click()}
           disabled={uploading}
-          className="btn-secondary"
-          style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '8px', opacity: uploading ? 0.6 : 1 }}
+          className={`btn-secondary poi-action-btn ${uploading ? 'uploading' : ''}`}
           title="Import KML/KMZ file"
         >
           {uploading ? <Loader size={14} style={{ animation: 'spin 1s linear infinite' }} /> : <Upload size={14} />}
@@ -182,8 +178,7 @@ export default React.memo(function POITab({ onCollapse }) {
         />
         <button
           onClick={handleToggleCreation}
-          className={poiCreationMode ? 'btn-primary' : 'btn-secondary'}
-          style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '8px' }}
+          className={`poi-action-btn ${poiCreationMode ? 'btn-primary' : 'btn-secondary'}`}
           title="Create POI"
         >
           <Plus size={14} /> Create
@@ -192,15 +187,7 @@ export default React.memo(function POITab({ onCollapse }) {
 
       {/* Status indicator */}
       {poiCreationMode && (
-        <div style={{
-          padding: '6px 14px',
-          background: 'rgba(0, 122, 255, 0.1)',
-          fontSize: 10,
-          color: 'var(--accent)',
-          fontWeight: 600,
-          textAlign: 'center',
-          flexShrink: 0,
-        }}>
+        <div className="poi-status">
           ✓ Left-click on map to create
         </div>
       )}
