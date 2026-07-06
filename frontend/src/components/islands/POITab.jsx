@@ -1,12 +1,12 @@
-import React, { useState, useRef, useMemo, useCallback } from 'react';
+import React, { useState, useRef, useMemo, useCallback, Suspense, lazy } from 'react';
 import { Plus, Upload, X as XIcon, Loader, Search, ChevronLeft, Eye, EyeOff } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { useTranslation } from 'react-i18next';
 import useMapStore from '../../store/mapStore.js';
 import { fetchPOI, deletePOI, uploadPOI } from '../../api/poi.js';
 import POICard from '../poi/POICard.jsx';
-import POIRenameModal from '../poi/POIRenameModal.jsx';
-import POIDeleteModal from '../poi/POIDeleteModal.jsx';
+const POIRenameModal = lazy(() => import('../poi/POIRenameModal.jsx'));
+const POIDeleteModal = lazy(() => import('../poi/POIDeleteModal.jsx'));
 
 export default React.memo(function POITab({ onCollapse }) {
   const { t } = useTranslation();
@@ -205,20 +205,24 @@ export default React.memo(function POITab({ onCollapse }) {
         </div>
       )}
 
-      {/* Modals */}
-      <POIRenameModal
-        poi={selectedPOI}
-        isOpen={showRenameModal}
-        onClose={handleCloseRenameModal}
-        onRenamed={handleRenamed}
-      />
+      {/* Modals - lazy loaded */}
+      <Suspense fallback={null}>
+        <POIRenameModal
+          poi={selectedPOI}
+          isOpen={showRenameModal}
+          onClose={handleCloseRenameModal}
+          onRenamed={handleRenamed}
+        />
+      </Suspense>
 
-      <POIDeleteModal
-        poi={selectedPOI}
-        isOpen={showDeleteModal}
-        onClose={handleCloseDeleteModal}
-        onDeleted={handleDeleted}
-      />
+      <Suspense fallback={null}>
+        <POIDeleteModal
+          poi={selectedPOI}
+          isOpen={showDeleteModal}
+          onClose={handleCloseDeleteModal}
+          onDeleted={handleDeleted}
+        />
+      </Suspense>
     </div>
   );
 });
