@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback, useTransition, useEffect } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { Search, Filter, Plus, X, ChevronLeft, ChevronRight, MapPin, Route } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import Slider from 'rc-slider';
@@ -45,32 +45,16 @@ function LeftIslandContent({ onUploadClick, loading }) {
   const { t } = useTranslation();
   const { tracks, selectedTrackId, setSelectedTrack, isUploadingIds, activePanel, setActivePanel } = useAppStore();
   const { showTrackCreator, toggleTrackCreator, mapInstance } = useMapStore();
-  const [isPending, startTransition] = useTransition();
   const [open, setOpen] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [currentTab, setCurrentTab] = useState('tracks'); // 'tracks' or 'poi'
-  const [poiMounted, setPoiMounted] = useState(false); // Lazy mount POITab after island opens
   const [search, setSearch] = useState('');
   const filterOpen = activePanel === 'left:filter';
   const [sort, setSort] = useState('newest');
   const [formatFilter, setFormatFilter] = useState('all');
   const [speedRange, setSpeedRange] = useState([0, 200]);
 
-  // Lazy-mount POITab when browser is idle (non-blocking)
-  useEffect(() => {
-    if ('requestIdleCallback' in window) {
-      const id = requestIdleCallback(() => setPoiMounted(true));
-      return () => cancelIdleCallback(id);
-    } else {
-      // Fallback for browsers without requestIdleCallback
-      const timer = setTimeout(() => setPoiMounted(true), 100);
-      return () => clearTimeout(timer);
-    }
-  }, []);
-
-  const handleSetCurrentTab = useCallback((tab) => {
-    startTransition(() => setCurrentTab(tab));
-  }, []);
+  const handleSetCurrentTab = useCallback((tab) => setCurrentTab(tab), []);
   const handleCollapse = useCallback(() => setSidebarOpen(false), []);
 
   const filtered = useMemo(() => {
@@ -320,8 +304,8 @@ function LeftIslandContent({ onUploadClick, loading }) {
         </div>
 
         {/* POI Tab */}
-        {poiMounted && (
-          <div style={{ display: currentTab === 'poi' ? 'flex' : 'none', flexDirection: 'column', flex: 1, minHeight: 0 }}>
+        {currentTab === 'poi' && (
+          <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
             <POITab onCollapse={handleCollapse} />
           </div>
         )}
