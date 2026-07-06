@@ -20,21 +20,22 @@
 | Шаг | Задача | Модель | Ветка |
 |-----|--------|--------|-------|
 | 1 | T14 CI test-gate | Sonnet | `task/t14-ci` |
-| 2 | T10 секреты в .env | Haiku | `task/t10-env` |
-| 3 | T03 индексы БД | Haiku | `task/t03-indices` |
-| 4 | T01 пагинация tracks | Sonnet | `task/t01-tracks-pagination` |
-| 5 | T02 пагинация POI | Sonnet | `task/t02-poi-pagination` |
-| 6 | T15 rate limit auth | Sonnet | `task/t15-auth-ratelimit` |
-| 7 | T09 Celery retry | Sonnet | `task/t09-celery-retry` |
-| 8 | T16 кластеризация POI | Sonnet | `task/t16-poi-clustering` |
-| 9 | T04 bulk geometries | **Sonnet, thinking** | `task/t04-geometries` |
-| 10 | T05 серверная фильтрация | **Sonnet, thinking** | `task/t05-server-filtering` |
-| 11 | T06 infinite scroll | Sonnet | `task/t06-infinite-scroll` |
-| 12 | T07 loading/error states | Sonnet | `task/t07-loading-errors` |
-| 13 | T08 ErrorBoundary | Haiku | `task/t08-error-boundary` |
-| 14 | T11 прод-компоуз + nginx | **Sonnet, thinking** | `task/t11-prod-docker` |
-| 15 | T12 бэкапы | Haiku | `task/t12-backups` |
-| 16 | T13 синхронизация доков | Sonnet | `task/t13-docs-sync` |
+| 2 | T17 починка красных тестов | **Sonnet, thinking** | `task/t17-fix-tests` |
+| 3 | T10 секреты в .env | Haiku | `task/t10-env` |
+| 4 | T03 индексы БД | Haiku | `task/t03-indices` |
+| 5 | T01 пагинация tracks | Sonnet | `task/t01-tracks-pagination` |
+| 6 | T02 пагинация POI | Sonnet | `task/t02-poi-pagination` |
+| 7 | T15 rate limit auth | Sonnet | `task/t15-auth-ratelimit` |
+| 8 | T09 Celery retry | Sonnet | `task/t09-celery-retry` |
+| 9 | T16 кластеризация POI | Sonnet | `task/t16-poi-clustering` |
+| 10 | T04 bulk geometries | **Sonnet, thinking** | `task/t04-geometries` |
+| 11 | T05 серверная фильтрация | **Sonnet, thinking** | `task/t05-server-filtering` |
+| 12 | T06 infinite scroll | Sonnet | `task/t06-infinite-scroll` |
+| 13 | T07 loading/error states | Sonnet | `task/t07-loading-errors` |
+| 14 | T08 ErrorBoundary | Haiku | `task/t08-error-boundary` |
+| 15 | T11 прод-компоуз + nginx | **Sonnet, thinking** | `task/t11-prod-docker` |
+| 16 | T12 бэкапы | Haiku | `task/t12-backups` |
+| 17 | T13 синхронизация доков | Sonnet | `task/t13-docs-sync` |
 
 Правило выбора модели: Haiku — задачи с готовым кодом в описании и без
 интеграционных решений (T03, T08, T10, T12); Sonnet — всё остальное; extended
