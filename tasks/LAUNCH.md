@@ -19,8 +19,8 @@
 
 | Шаг | Задача | Модель | Ветка |
 |-----|--------|--------|-------|
-| 1 | T14 CI test-gate | Sonnet | `task/t14-ci` |
-| 2 | T17 починка красных тестов | **Sonnet, thinking** | `task/t17-fix-tests` |
+| 1 | ✅ T14 CI test-gate | Sonnet | `task/t14-ci` |
+| 2 | ✅ T17 починка красных тестов | **Sonnet, thinking** | `task/t17-fix-tests` |
 | 3 | T10 секреты в .env | Haiku | `task/t10-env` |
 | 4 | T03 индексы БД | Haiku | `task/t03-indices` |
 | 5 | T01 пагинация tracks | Sonnet | `task/t01-tracks-pagination` |
