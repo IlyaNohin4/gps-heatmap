@@ -56,10 +56,16 @@ function LeftIslandContent({ onUploadClick, loading }) {
   const [formatFilter, setFormatFilter] = useState('all');
   const [speedRange, setSpeedRange] = useState([0, 200]);
 
-  // Lazy-mount POITab after 50ms to avoid blocking island opening
+  // Lazy-mount POITab when browser is idle (non-blocking)
   useEffect(() => {
-    const timer = setTimeout(() => setPoiMounted(true), 50);
-    return () => clearTimeout(timer);
+    if ('requestIdleCallback' in window) {
+      const id = requestIdleCallback(() => setPoiMounted(true));
+      return () => cancelIdleCallback(id);
+    } else {
+      // Fallback for browsers without requestIdleCallback
+      const timer = setTimeout(() => setPoiMounted(true), 100);
+      return () => clearTimeout(timer);
+    }
   }, []);
 
   const handleSetCurrentTab = useCallback((tab) => {
