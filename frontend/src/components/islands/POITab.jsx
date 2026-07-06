@@ -1,5 +1,5 @@
 import React, { useState, useRef, useMemo, useCallback } from 'react';
-import { FixedSizeList as List } from 'react-window';
+import { FixedSizeList } from 'react-window';
 import { Plus, Upload, X as XIcon, Loader, Search, ChevronLeft, Eye, EyeOff } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { useTranslation } from 'react-i18next';
@@ -149,7 +149,7 @@ export default React.memo(function POITab({ onCollapse }) {
             No results found
           </div>
         ) : (
-          <List
+          <FixedSizeList
             height={200}
             itemCount={filteredPOIs.length}
             itemSize={68}
@@ -166,7 +166,7 @@ export default React.memo(function POITab({ onCollapse }) {
                 />
               </div>
             )}
-          </List>
+          </FixedSizeList>
         )}
       </div>
 
