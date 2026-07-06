@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useTransition } from 'react';
 import { Search, Filter, Plus, X, ChevronLeft, ChevronRight, MapPin, Route } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import Slider from 'rc-slider';
@@ -45,6 +45,7 @@ function LeftIslandContent({ onUploadClick, loading }) {
   const { t } = useTranslation();
   const { tracks, selectedTrackId, setSelectedTrack, isUploadingIds, activePanel, setActivePanel } = useAppStore();
   const { showTrackCreator, toggleTrackCreator, mapInstance } = useMapStore();
+  const [isPending, startTransition] = useTransition();
   const [open, setOpen] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [currentTab, setCurrentTab] = useState('tracks'); // 'tracks' or 'poi'
@@ -54,7 +55,9 @@ function LeftIslandContent({ onUploadClick, loading }) {
   const [formatFilter, setFormatFilter] = useState('all');
   const [speedRange, setSpeedRange] = useState([0, 200]);
 
-  const handleSetCurrentTab = useCallback((tab) => setCurrentTab(tab), []);
+  const handleSetCurrentTab = useCallback((tab) => {
+    startTransition(() => setCurrentTab(tab));
+  }, []);
   const handleCollapse = useCallback(() => setSidebarOpen(false), []);
 
   const filtered = useMemo(() => {
