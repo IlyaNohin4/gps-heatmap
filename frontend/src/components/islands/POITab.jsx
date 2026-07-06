@@ -1,4 +1,4 @@
-import React, { useState, useRef, useMemo, useCallback, Suspense, lazy } from 'react';
+import React, { useState, useRef, useMemo, useCallback, Suspense, lazy, useDeferredValue } from 'react';
 import { Plus, Upload, X as XIcon, Loader, Search, ChevronLeft, Eye, EyeOff } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { useTranslation } from 'react-i18next';
@@ -97,6 +97,9 @@ export default React.memo(function POITab({ onCollapse }) {
     });
   }, [pois, search]);
 
+  // Defer rendering of list to keep UI responsive
+  const deferredFilteredPOIs = useDeferredValue(filteredPOIs);
+
   return (
     <div className="poi-tab">
       {/* Search bar */}
@@ -142,10 +145,10 @@ export default React.memo(function POITab({ onCollapse }) {
             No POI yet<br />
             Click the + button then left-click on map
           </div>
-        ) : filteredPOIs.length === 0 ? (
+        ) : deferredFilteredPOIs.length === 0 ? (
           <div className="poi-empty-state">No results found</div>
         ) : (
-          filteredPOIs.map((poi) => (
+          deferredFilteredPOIs.map((poi) => (
             <POICard
               key={poi.id}
               poi={poi}
