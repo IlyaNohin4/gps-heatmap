@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback, useTransition } from 'react';
+import React, { useState, useMemo, useCallback, useTransition, useEffect } from 'react';
 import { Search, Filter, Plus, X, ChevronLeft, ChevronRight, MapPin, Route } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import Slider from 'rc-slider';
@@ -49,11 +49,18 @@ function LeftIslandContent({ onUploadClick, loading }) {
   const [open, setOpen] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [currentTab, setCurrentTab] = useState('tracks'); // 'tracks' or 'poi'
+  const [poiMounted, setPoiMounted] = useState(false); // Lazy mount POITab after island opens
   const [search, setSearch] = useState('');
   const filterOpen = activePanel === 'left:filter';
   const [sort, setSort] = useState('newest');
   const [formatFilter, setFormatFilter] = useState('all');
   const [speedRange, setSpeedRange] = useState([0, 200]);
+
+  // Lazy-mount POITab after 50ms to avoid blocking island opening
+  useEffect(() => {
+    const timer = setTimeout(() => setPoiMounted(true), 50);
+    return () => clearTimeout(timer);
+  }, []);
 
   const handleSetCurrentTab = useCallback((tab) => {
     startTransition(() => setCurrentTab(tab));
@@ -307,9 +314,11 @@ function LeftIslandContent({ onUploadClick, loading }) {
         </div>
 
         {/* POI Tab */}
-        <div style={{ display: currentTab === 'poi' ? 'flex' : 'none', flexDirection: 'column', flex: 1, minHeight: 0 }}>
-          <POITab onCollapse={handleCollapse} />
-        </div>
+        {poiMounted && (
+          <div style={{ display: currentTab === 'poi' ? 'flex' : 'none', flexDirection: 'column', flex: 1, minHeight: 0 }}>
+            <POITab onCollapse={handleCollapse} />
+          </div>
+        )}
       </div>}
     </div>
   );
