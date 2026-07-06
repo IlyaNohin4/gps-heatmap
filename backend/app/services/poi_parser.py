@@ -10,7 +10,7 @@ class POIParser:
     """Parse KML/KMZ files and extract POI coordinates, names, descriptions."""
 
     CATEGORY_KEYWORDS = {
-        'food': ['cafe', 'restaurant', 'bar', 'pizza', 'burger', 'coffee', 'shop', 'store'],
+        'food': ['cafe', 'restaurant', 'bar', 'pizza', 'burger', 'coffee'],
         'water': ['water', 'fountain', 'well', 'spring', 'stream'],
         'repair': ['repair', 'workshop', 'mechanic', 'service', 'maintenance'],
         'bike': ['bike', 'bicycle', 'cycling', 'rental', 'shop'],

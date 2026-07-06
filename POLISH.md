@@ -11,20 +11,25 @@
 
 ---
 
+- [x] **RESOLVED** — Backend-тесты падали на main (T17, 2026-07-06)
+  - **Что было:** 8 failed + 2 errors, обнаружено при добавлении CI (T14)
+  - **Итог по каждому случаю:**
+    - `TestBuildSegments` (4 теста) — тесты устарели: `_build_segments()` осознанно возвращает 7-е значение (`stats` с grade/elevation), тесты распаковывали 6
+    - `TestParseKML::test_no_speed_without_timestamps`, `TestParseGeoJSON::test_no_time_so_no_speed` — тесты устарели: контракт `speed_segments` расширен (grade_percent/type/distance_km для каждой пары точек, даже без скорости), `speed_segments == []` больше не верно
+    - `test_poi_parser::test_parse_kml_multiple`, `test_category_detection` ('Bike Shop'/'Bike Rental Shop' → food вместо bike) — неоднозначная категоризация, решено с пользователем: убрано слишком общее слово `'shop'`/`'store'` из ключевых слов категории `food` в `poi_parser.py`
+    - `test_db_integration.py` (2 ошибки) — тест использовал несуществующую фикстуру `db_session` и SQLite-движок без таблицы `tracks` (ARRAY/PostGIS не поддерживаются SQLite); добавлена `db_session` в `conftest.py`, использующая реальный Postgres с savepoint-изоляцией; тесты также не сериализовали `time` в ISO-строки перед записью в JSON-колонку (как это делает `process_track.py`) — исправлено
+  - Заодно убрана мёртвая опция `asyncio_mode = auto` из `pytest.ini` (pytest-asyncio не установлен, асинхронных тестов нет)
+  - Результат: `pytest tests/` — 132 passed, 0 failed, 0 errors
+
+---
+
 - [x] **RESOLVED** — Нормализатор не фильтрует GPS-выбросы скорости (Phase 2)
   - Решение: Hard limit 200 km/h (физический максимум для велосипеда)
   - Результат: Все невозможные скорости (247 km/h) отсекаются
   - Тест: реальный трек показывает max 115 км/ч (реалистично для спуска)
 ---
 
-## ⭐⭐⭐ КРИТИЧНЫЕ (MVP blockers) — 1 ЗАДАЧА
-
-- [ ] **Backend-тесты падают на main** (обнаружено при добавлении CI, T14, 2026-07-06)
-  - 8 failed, 2 errors: `test_parser.py::TestBuildSegments` (4 теста), `test_parser.py::TestParseKML::test_no_speed_without_timestamps`,
-    `test_parser.py::TestParseGeoJSON::test_no_time_so_no_speed`, `test_poi_parser.py::test_parse_kml_multiple`,
-    `test_poi_parser.py::test_category_detection`, `test_db_integration.py` (2 ошибки настройки)
-  - Вне scope T14 (не трогать parser/normalizer) — CI будет показывать красный backend-job, пока не почините отдельной задачей
-
+## ⭐⭐⭐ КРИТИЧНЫЕ (MVP blockers)
 
 - [ ] **Full integration test** (MVP REQUIREMENT)
   - Загрузить реальный трек через UI

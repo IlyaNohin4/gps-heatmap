@@ -93,7 +93,7 @@ class TestBuildSegments:
         return {"lat": lat, "lon": lon, "elevation": None, "time": t}
 
     def test_empty_returns_zero(self):
-        segs, dist, s_avg, s_max, s_min, dur = _build_segments([])
+        segs, dist, s_avg, s_max, s_min, dur, stats = _build_segments([])
         assert segs == []
         assert dist == 0.0
         assert s_avg is None
@@ -105,7 +105,7 @@ class TestBuildSegments:
 
     def test_timed_points_produce_segments(self):
         pts = [self._pt(48.8566, 2.3522, 0), self._pt(48.8600, 2.3600, 5)]
-        segs, dist, s_avg, s_max, s_min, dur = _build_segments(pts)
+        segs, dist, s_avg, s_max, s_min, dur, stats = _build_segments(pts)
         assert len(segs) == 1
         seg = segs[0]
         assert "from" in seg and "to" in seg and "speed_kmh" in seg
@@ -118,14 +118,14 @@ class TestBuildSegments:
             {"lat": 48.8600, "lon": 2.3600, "elevation": None, "time": None},
         ]
         segs, dist, s_avg, *_ = _build_segments(pts)
-        assert segs == []
         assert dist > 0
         assert s_avg is None
+        assert all(seg["speed_kmh"] is None for seg in segs)
 
     def test_speed_calculation_plausible(self):
         # Two points 1 km apart, 1 minute apart → ~60 km/h
         pts = [self._pt(48.8566, 2.3522, 0), self._pt(48.8656, 2.3522, 1)]
-        segs, _, _, s_max, _, _ = _build_segments(pts)
+        segs, _, _, s_max, _, _, _ = _build_segments(pts)
         # Not exactly 60 but roughly in that range
         assert 50 < s_max < 80
 
@@ -293,7 +293,7 @@ class TestParseKML:
     def test_no_speed_without_timestamps(self):
         result = _parse_kml(SIMPLE_KML)
         assert result["speed_avg"] is None
-        assert result["speed_segments"] == []
+        assert all(seg["speed_kmh"] is None for seg in result["speed_segments"])
 
     def test_elevation_parsed(self):
         result = _parse_kml(SIMPLE_KML)
@@ -338,7 +338,7 @@ class TestParseGeoJSON:
     def test_no_time_so_no_speed(self):
         result = _parse_geojson(SIMPLE_GEOJSON)
         assert result["speed_avg"] is None
-        assert result["speed_segments"] == []
+        assert all(seg["speed_kmh"] is None for seg in result["speed_segments"])
 
 
 # ── Public parse() API ─────────────────────────────────────────────────────────

@@ -77,8 +77,16 @@ def test_parse_and_save_track_to_db(db_session, test_user):
     db_session.commit()
 
     # Step 4: Save parsed data to track
-    track.raw_points = result["points"]
-    track.normalized_points = result["normalized_points"]
+    # (datetimes must be serialized before storing in a JSON column — same as
+    # the real Celery pipeline does in app/tasks/process_track.py)
+    track.raw_points = [
+        {**p, "time": p["time"].isoformat() if p["time"] else None}
+        for p in result["points"]
+    ]
+    track.normalized_points = [
+        {**p, "time": p["time"].isoformat() if p["time"] else None}
+        for p in result["normalized_points"]
+    ]
     track.speed_segments = result["speed_segments"]
     track.distance_km = result["distance_km"]
     track.duration_sec = result["duration_sec"]
