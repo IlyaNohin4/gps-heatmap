@@ -61,6 +61,8 @@ function LeftIslandContent({ onUploadClick, loading }) {
   const handleCollapse = useCallback(() => setSidebarOpen(false), []);
 
   const filtered = useMemo(() => {
+    performance.mark('filter-start');
+
     let list = [...tracks];
     if (search.trim()) {
       const q = search.toLowerCase();
@@ -81,6 +83,12 @@ function LeftIslandContent({ onUploadClick, loading }) {
       case 'shortest': list.sort((a, b) => (a.distance_km ?? 0) - (b.distance_km ?? 0)); break;
       default: list.sort((a, b) => new Date(b.recorded_at || b.uploaded_at) - new Date(a.recorded_at || a.uploaded_at));
     }
+
+    performance.mark('filter-end');
+    performance.measure('track-filter', 'filter-start', 'filter-end');
+    const measure = performance.getEntriesByName('track-filter')[0];
+    console.log(`🔍 Track filtering: ${measure.duration.toFixed(2)}ms (${tracks.length} tracks → ${list.length})`);
+
     return list;
   }, [tracks, search, formatFilter, sort, speedRange]);
 

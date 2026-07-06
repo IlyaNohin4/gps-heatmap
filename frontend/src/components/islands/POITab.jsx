@@ -89,12 +89,21 @@ export default React.memo(function POITab({ onCollapse }) {
   const handleCloseDeleteModal = useCallback(() => setShowDeleteModal(false), []);
 
   const filteredPOIs = useMemo(() => {
-    return pois.filter((poi) => {
+    performance.mark('poi-filter-start');
+
+    const result = pois.filter((poi) => {
       if (!search.trim()) return true;
       const q = search.toLowerCase();
       return (poi.name || '').toLowerCase().includes(q) ||
              (poi.category || '').toLowerCase().includes(q);
     });
+
+    performance.mark('poi-filter-end');
+    performance.measure('poi-filter', 'poi-filter-start', 'poi-filter-end');
+    const measure = performance.getEntriesByName('poi-filter')[0];
+    console.log(`📍 POI filtering: ${measure.duration.toFixed(2)}ms (${pois.length} POI → ${result.length})`);
+
+    return result;
   }, [pois, search]);
 
   // Defer rendering of list to keep UI responsive
