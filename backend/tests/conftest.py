@@ -101,3 +101,46 @@ def auth_headers(registered_user):
 def mock_db():
     """MagicMock SQLAlchemy session — avoids PostGIS for track tests."""
     return MagicMock()
+
+
+# ── Real Postgres session for DB integration tests ─────────────────────────────
+#
+# Track uses PostGIS Geometry and ARRAY columns that SQLite cannot create, so
+# these tests need the real Postgres service (docker compose, migrated via
+# `alembic upgrade head`) instead of the in-memory SQLite engine used by `db`.
+#
+# The session is bound to a single connection wrapped in an outer transaction
+# plus a SAVEPOINT; even if test code calls session.commit(), it only commits
+# the savepoint, and rolling back the outer transaction at teardown discards
+# everything — so nothing leaks into the real DB between test runs.
+
+@pytest.fixture()
+def db_session():
+    """Session against the real Postgres DB; fully rolled back after each test.
+
+    Skipped when no PostgreSQL is reachable (e.g. GitHub Actions CI, which has
+    no Postgres/PostGIS service — DATABASE_URL falls back to sqlite there).
+    """
+    from sqlalchemy import event
+    from sqlalchemy.orm import sessionmaker as _sessionmaker
+
+    from app.core.database import engine
+
+    if engine.dialect.name != "postgresql":
+        pytest.skip("integration test requires PostgreSQL/PostGIS (not available in this environment)")
+
+    connection = engine.connect()
+    transaction = connection.begin()
+    session = _sessionmaker(bind=connection)()
+    session.begin_nested()
+
+    @event.listens_for(session, "after_transaction_end")
+    def _restart_savepoint(sess, trans):
+        if trans.nested and not trans._parent.nested:
+            sess.begin_nested()
+
+    yield session
+
+    session.close()
+    transaction.rollback()
+    connection.close()
