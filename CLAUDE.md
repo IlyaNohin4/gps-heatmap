@@ -27,6 +27,9 @@ docker compose exec -T frontend npm run build     # Verify production
 docker compose exec -T frontend npm test          # Playwright E2E
 ```
 
+### CI
+GitHub Actions (`.github/workflows/ci.yml`) runs backend pytest + frontend build on every push to `main` and on every PR.
+
 ### Backend
 ```bash
 docker compose exec backend python -m pytest      # Run all 107 tests

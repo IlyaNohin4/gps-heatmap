@@ -19,6 +19,13 @@
 
 ## ⭐⭐⭐ КРИТИЧНЫЕ (MVP blockers) — 1 ЗАДАЧА
 
+- [ ] **Backend-тесты падают на main** (обнаружено при добавлении CI, T14, 2026-07-06)
+  - 8 failed, 2 errors: `test_parser.py::TestBuildSegments` (4 теста), `test_parser.py::TestParseKML::test_no_speed_without_timestamps`,
+    `test_parser.py::TestParseGeoJSON::test_no_time_so_no_speed`, `test_poi_parser.py::test_parse_kml_multiple`,
+    `test_poi_parser.py::test_category_detection`, `test_db_integration.py` (2 ошибки настройки)
+  - Вне scope T14 (не трогать parser/normalizer) — CI будет показывать красный backend-job, пока не почините отдельной задачей
+
+
 - [ ] **Full integration test** (MVP REQUIREMENT)
   - Загрузить реальный трек через UI
   - Проверить что данные появились на карте (normalized_points)
@@ -44,7 +51,7 @@
   - Оптимизация production Dockerfile
   - nginx reverse proxy конфигурация
   - .env template и environment variable management
-  - CI/CD pipeline (GitHub Actions для tests & deploy)
+  - CI/CD pipeline — частично закрыто: CI есть (`.github/workflows/ci.yml`, T14: pytest + frontend build на push/PR); CD (деплой) — см. FUTURE.md
   - Database backup strategy
   - Monitoring & logging setup (e.g., Sentry)
 
