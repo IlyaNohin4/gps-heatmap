@@ -4,7 +4,7 @@ from typing import List, Optional
 from pathlib import Path
 import io
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from sqlalchemy import func
@@ -32,6 +32,12 @@ class POIResponse(BaseModel):
     import_name: Optional[str] = None
 
     model_config = {"from_attributes": True}
+
+
+class POIListResponse(BaseModel):
+    items: List[POIResponse]
+    total: int
+    has_more: bool
 
 
 class CategoryStats(BaseModel):
@@ -148,19 +154,29 @@ async def upload_poi(
     )
 
 
-@router.get("", response_model=List[POIResponse])
+@router.get("", response_model=POIListResponse)
 def list_poi(
     category: str = None,
+    search: Optional[str] = Query(None, max_length=200),
+    limit: int = Query(50, ge=1, le=5000),
+    offset: int = Query(0, ge=0),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Get user's POI, optionally filtered by category."""
+    """Get user's POI, optionally filtered by category and/or search, paginated."""
     q = db.query(POI).filter(POI.user_id == current_user.id)
 
     if category:
         q = q.filter(POI.category == category)
 
-    return q.all()
+    if search:
+        q = q.filter(POI.name.ilike(f"%{search}%"))
+
+    total = q.count()
+    items = q.order_by(POI.name.asc()).offset(offset).limit(limit).all()
+    has_more = offset + limit < total
+
+    return POIListResponse(items=items, total=total, has_more=has_more)
 
 
 @router.get("/categories", response_model=List[CategoryStats])
