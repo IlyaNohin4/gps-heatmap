@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useTransition } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useTransition } from 'react';
 import { Search, Filter, Plus, X, ChevronLeft, ChevronRight, MapPin, Route } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import Slider from 'rc-slider';
@@ -8,6 +8,7 @@ import POITab from './POITab.jsx';
 import useAppStore from '../../store/appStore.js';
 import useMapStore from '../../store/mapStore.js';
 import { getTrack, fetchTracksPage } from '../../api/tracks.js';
+import useInfiniteScroll from '../../hooks/useInfiniteScroll.js';
 
 const FORMAT_OPTIONS = [
   { value: 'all',     label: 'All' },
@@ -56,13 +57,24 @@ function LeftIslandContent({ onUploadClick, loading }) {
   const [speedRange, setSpeedRange] = useState([0, 200]);
   const [items, setItems] = useState([]);
   const [total, setTotal] = useState(0);
+  const [hasMore, setHasMore] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
+  const requestVersion = useRef(0);
 
   const handleSetCurrentTab = useCallback((tab) => {
     startTransition(() => setCurrentTab(tab));
   }, []);
   const handleCollapse = useCallback(() => setSidebarOpen(false), []);
+
+  const buildParams = useCallback((offset) => {
+    const params = { sort, limit: 50, offset };
+    if (search.trim()) params.search = search.trim();
+    if (formatFilter !== 'all') params.file_format = formatFilter;
+    if (speedRange[0] > 0) params.speed_avg_min = speedRange[0];
+    if (speedRange[1] < 200) params.speed_avg_max = speedRange[1];
+    return params;
+  }, [search, sort, formatFilter, speedRange]);
 
   // Список фильтруется/сортируется на сервере — это отдельный от карты поток
   // данных: App.jsx грузит все треки (limit=500) для heatmap через
@@ -71,28 +83,40 @@ function LeftIslandContent({ onUploadClick, loading }) {
   // heatmap не должен зависеть от фильтров списка (см. T04/T05).
   useEffect(() => {
     let cancelled = false;
+    const version = ++requestVersion.current;
     setIsLoading(true);
     const timer = setTimeout(async () => {
       try {
-        const params = { sort, limit: 50, offset: 0 };
-        if (search.trim()) params.search = search.trim();
-        if (formatFilter !== 'all') params.file_format = formatFilter;
-        if (speedRange[0] > 0) params.speed_avg_min = speedRange[0];
-        if (speedRange[1] < 200) params.speed_avg_max = speedRange[1];
-        const page = await fetchTracksPage(params);
-        if (!cancelled) {
+        const page = await fetchTracksPage(buildParams(0));
+        if (!cancelled && version === requestVersion.current) {
           setItems(page.items);
           setTotal(page.total);
+          setHasMore(page.has_more);
           setError(null);
         }
       } catch (err) {
-        if (!cancelled) setError(err);
+        if (!cancelled && version === requestVersion.current) setError(err);
       } finally {
-        if (!cancelled) setIsLoading(false);
+        if (!cancelled && version === requestVersion.current) setIsLoading(false);
       }
     }, 300); // debounce для search
     return () => { cancelled = true; clearTimeout(timer); };
-  }, [search, sort, formatFilter, speedRange]);
+  }, [buildParams]);
+
+  const loadMoreTracks = useCallback(async () => {
+    const version = requestVersion.current;
+    try {
+      const page = await fetchTracksPage(buildParams(items.length));
+      if (version !== requestVersion.current) return; // фильтры сменились, отбрасываем
+      setItems((prev) => [...prev, ...page.items]);
+      setTotal(page.total);
+      setHasMore(page.has_more);
+    } catch (err) {
+      if (version === requestVersion.current) setError(err);
+    }
+  }, [buildParams, items.length]);
+
+  const sentinelRef = useInfiniteScroll(loadMoreTracks, hasMore);
 
   const chip = (active) => ({
     padding: '4px 10px',
@@ -304,6 +328,12 @@ function LeftIslandContent({ onUploadClick, loading }) {
               />
             ))
           )}
+          {items.length > 0 && hasMore && <div ref={sentinelRef} style={{ height: 1 }} />}
+          {items.length > 0 && (
+            <div style={{ textAlign: 'center', padding: '8px 0 2px', color: 'var(--text-secondary)', fontSize: 11 }}>
+              {t('tracks.count_of', { shown: items.length, total })}
+            </div>
+          )}
         </div>
 
         {/* Bottom actions - Tracks tab only */}
@@ -318,12 +348,10 @@ function LeftIslandContent({ onUploadClick, loading }) {
         </div>
         </div>
 
-        {/* POI Tab */}
-        {currentTab === 'poi' && (
-          <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
-            <POITab onCollapse={handleCollapse} />
-          </div>
-        )}
+        {/* POI Tab — always mounted, toggled via display (see POLISH.md) */}
+        <div style={{ display: currentTab === 'poi' ? 'flex' : 'none', flexDirection: 'column', flex: 1, minHeight: 0 }}>
+          <POITab onCollapse={handleCollapse} />
+        </div>
       </div>}
     </div>
   );
