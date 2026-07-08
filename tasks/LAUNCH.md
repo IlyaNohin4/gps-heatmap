@@ -25,7 +25,7 @@
 | 4 | ✅ T03 индексы БД | Haiku | `task/t03-indices` |
 | 5 | ✅ T01 пагинация tracks | Sonnet | `task/t01-tracks-pagination` |
 | 6 | ✅ T02 пагинация POI | Sonnet | `task/t02-poi-pagination` |
-| 7 | T15 rate limit auth | Sonnet | `task/t15-auth-ratelimit` |
+| 7 | ✅ T15 rate limit auth | Sonnet | `task/t15-auth-ratelimit` |
 | 8 | T09 Celery retry | Sonnet | `task/t09-celery-retry` |
 | 9 | T16 кластеризация POI | Sonnet | `task/t16-poi-clustering` |
 | 10 | T04 bulk geometries | **Sonnet, thinking** | `task/t04-geometries` |
