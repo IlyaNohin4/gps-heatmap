@@ -67,4 +67,3 @@ docker compose exec -T frontend npm test
 
 - `architecture/ARCHITECTURE.md` § Frontend — POILayer: кластеризация
   (leaflet.markercluster, disableClusteringAtZoom: 16).
-- `tasks/FUTURE.md` — удали строку про кластеризацию POI.
