@@ -88,17 +88,16 @@ function MainPage() {
     }
     let cancelled = false;
     setTracksLoading(true);
-    fetchTracks()
+    // limit=500 (API max, see T01): appStore.tracks feeds the heatmap (VisitLayer) directly,
+    // so it must hold every track the user has — a paginated 50-item page would silently
+    // drop tracks 51+ from the heatmap.
+    fetchTracks({ limit: 500 })
       .then((data) => {
         if (!cancelled) {
           setTracks(data);
-          // Preload all track details when browser is idle (no UI blocking)
-          requestIdleCallback(() => {
-            const { ensureTrackDetail } = useMapStore.getState();
-            data.forEach((track) => {
-              ensureTrackDetail(track.id);
-            });
-          });
+          // One bulk request for all track geometries (normalized_points), replacing
+          // the old N-requests-via-ensureTrackDetail preload.
+          useMapStore.getState().loadAllGeometries();
         }
       })
       .catch(() => {})

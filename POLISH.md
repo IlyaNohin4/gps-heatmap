@@ -1,5 +1,11 @@
 # Polish / known issues
 
+- [x] **RESOLVED** — VisitLayer (heatmap) получал tracks без геометрии (T04, 2026-07-08)
+  - **Проблема:** `VisitLayer` брал `tracks` напрямую из `appStore.tracks` (`TrackOut`, без `normalized_points`/`raw_points`) — heatmap не имел точек для отрисовки, независимо от режима визуализации
+  - **Причина:** список треков (`GET /api/tracks`) — облегчённый contract без geometry; только `TrackLayer`/`SpeedLayer` мёржили геометрию через `trackDetailCache`
+  - **Решение:** добавлен `useAllTracksWithGeometry()` в `MapContainer.jsx`, мёржащий `appStore.tracks` с `mapStore.trackDetailCache` по id; `VisitLayer` теперь получает этот merged список
+  - Заодно: обнаружено, что это выявилось только сейчас — до T04 preload через `ensureTrackDetail` тоже никогда не попадал в `appStore.tracks`
+
 - [x] **RESOLVED** — LeftIsland POI tab delay when switching tabs (Performance, 2026-07-05)
   - **Проблема:** При клике на вкладку POI происходило 1.1s зависание браузера
   - **Причина:** Условный рендер POITab вызывал синхронный mount и render ВСЕ POI одновременно
@@ -28,6 +34,13 @@
   - Результат: Все невозможные скорости (247 km/h) отсекаются
   - Тест: реальный трек показывает max 115 км/ч (реалистично для спуска)
 ---
+
+- [ ] После T04 (bulk-geometries) наблюдалась ощутимая медлительность UI/карты
+  (загрузка, отклик) при ручной проверке — не измерено профайлером.
+  Кандидаты на профилирование: размер ответа `/api/tracks/geometries`,
+  пересчёт `L.heatLayer` на все точки, накладные расходы Vite dev-режима.
+  См. `tasks/FUTURE.md` («Серверный heatmap», «Geometries с bbox/зумом»)
+  — возможно, туда же. Не чинил, вне scope T04.
 
 ## ⚠️ ОКРУЖЕНИЕ
 

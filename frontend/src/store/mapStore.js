@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { getTrack } from '../api/tracks.js';
+import { getTrack, fetchTrackGeometries } from '../api/tracks.js';
 
 const useMapStore = create((set, get) => ({
   mapInstance: null,
@@ -68,8 +68,9 @@ const useMapStore = create((set, get) => ({
         next.delete(id);
       } else {
         next.add(id);
-        // Lazy-load full track detail if not cached
-        if (!s.trackDetailCache[id]) {
+        // Lazy-load full track detail if not cached, or only a partial (bulk) record so far
+        const cached = s.trackDetailCache[id];
+        if (!cached || cached.partial) {
           getTrack(id)
             .then((data) => {
               useMapStore.setState((prev) => ({
@@ -84,12 +85,32 @@ const useMapStore = create((set, get) => ({
 
   // Ensure a track's detail is loaded (called when track selected in BottomIsland, etc.)
   ensureTrackDetail: (id) => {
-    if (!id || get().trackDetailCache[id]) return;
+    const cached = get().trackDetailCache[id];
+    if (!id || (cached && !cached.partial)) return;
     getTrack(id)
       .then((data) => {
         useMapStore.setState((prev) => ({
           trackDetailCache: { ...prev.trackDetailCache, [id]: data },
         }));
+      })
+      .catch(() => {});
+  },
+
+  // Bulk-load geometry (normalized_points only) for all of the user's tracks in one request.
+  // Records that already have a full detail (speed_segments, from ensureTrackDetail) are kept as-is;
+  // everything else is stored as a `partial` record that ensureTrackDetail will upgrade on demand.
+  loadAllGeometries: () => {
+    fetchTrackGeometries()
+      .then((geometries) => {
+        useMapStore.setState((prev) => {
+          const trackDetailCache = { ...prev.trackDetailCache };
+          geometries.forEach((geo) => {
+            const existing = trackDetailCache[geo.id];
+            if (existing && !existing.partial) return;
+            trackDetailCache[geo.id] = { ...geo, partial: true };
+          });
+          return { trackDetailCache };
+        });
       })
       .catch(() => {});
   },
