@@ -29,6 +29,15 @@
   - Тест: реальный трек показывает max 115 км/ч (реалистично для спуска)
 ---
 
+## ⚠️ ОКРУЖЕНИЕ
+
+- [ ] Playwright браузеры не установлены в контейнере frontend (обнаружено в T16, 2026-07-08)
+  - `npm run test:e2e` падает на всех 33 тестах: `browserType.launch: Executable doesn't exist ... chrome-headless-shell`
+  - Нужно `npx playwright install` (и/или chromium deps) внутри образа/контейнера frontend
+  - Вне scope T16 (кластеризация POI) — не чинил
+
+---
+
 ## ⭐⭐⭐ КРИТИЧНЫЕ (MVP blockers)
 
 - [ ] **Full integration test** (MVP REQUIREMENT)

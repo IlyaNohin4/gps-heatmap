@@ -315,6 +315,11 @@ font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 ### POI
 - Overpass API, категории: Food, Amenities, Medical, Tourism, Bicycle, Public Transport
 - Debounce 350ms
+- **POILayer (`frontend/src/map/POILayer.jsx`): кластеризация** через
+  `leaflet.markercluster` — маркеры добавляются в `L.markerClusterGroup({
+  disableClusteringAtZoom: 16, showCoverageOnHover: false, maxClusterRadius: 50 })`
+  вместо простого `L.layerGroup()`. На зуме ≥16 маркеры показываются
+  индивидуально (совпадает с зумом `flyTo` из POITab при выборе POI из списка).
 
 ---
 
