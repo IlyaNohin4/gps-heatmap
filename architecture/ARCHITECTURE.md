@@ -111,12 +111,14 @@ PATCH  /api/auth/me                    — обновить язык, тему, 
 
 ### Tracks
 ```
-GET    /api/tracks                     — список треков юзера
-       ?sort=newest|oldest|longest|fastest
+GET    /api/tracks                     — список треков юзера (пагинация)
+       ?sort=newest|oldest|longest|shortest|fastest|slowest
        ?search=текст
        ?bbox=minLng,minLat,maxLng,maxLat (PostGIS ST_Intersects)
        ?file_format=gpx|kml|tcx|fit|geojson
        ?speed_avg_min=X&speed_avg_max=Y
+       ?limit=N (default 50, max 500) &offset=N (default 0)
+       Response: {items: TrackOut[], total: int, has_more: bool}
 
 POST   /api/tracks/upload              — загрузка файла (max 20MB)
 GET    /api/tracks/{id}                — детали трека

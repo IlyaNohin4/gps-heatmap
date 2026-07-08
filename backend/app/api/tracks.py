@@ -181,6 +181,12 @@ class TrackOut(BaseModel):
         )
 
 
+class TrackListResponse(BaseModel):
+    items: List[TrackOut]
+    total: int
+    has_more: bool
+
+
 class TrackDetail(TrackOut):
     raw_points: Optional[object] = None
     normalized_points: Optional[object] = None
@@ -199,14 +205,16 @@ class TrackDetail(TrackOut):
 
 # ── Endpoints ─────────────────────────────────────────────────────────────────
 
-@router.get("", response_model=List[TrackOut])
+@router.get("", response_model=TrackListResponse)
 def list_tracks(
-    sort: Optional[str] = Query(None, pattern="^(newest|oldest|longest|fastest)$"),
+    sort: Optional[str] = Query(None, pattern="^(newest|oldest|longest|shortest|fastest|slowest)$"),
     search: Optional[str] = Query(None, max_length=200),
     bbox: Optional[str] = Query(None, description="minLng,minLat,maxLng,maxLat"),
     file_format: Optional[str] = Query(None),
     speed_avg_min: Optional[float] = Query(None),
     speed_avg_max: Optional[float] = Query(None),
+    limit: int = Query(50, ge=1, le=500),
+    offset: int = Query(0, ge=0),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -237,11 +245,21 @@ def list_tracks(
         "newest": Track.uploaded_at.desc(),
         "oldest": Track.uploaded_at.asc(),
         "longest": Track.distance_km.desc(),
+        "shortest": Track.distance_km.asc(),
         "fastest": Track.speed_avg.desc(),
+        "slowest": Track.speed_avg.asc(),
     }
     q = q.order_by(order_map.get(sort or "newest", Track.uploaded_at.desc()))
 
-    return [TrackOut.from_orm_dt(t) for t in q.all()]
+    total = q.count()
+    items = q.offset(offset).limit(limit).all()
+    has_more = offset + limit < total
+
+    return TrackListResponse(
+        items=[TrackOut.from_orm_dt(t) for t in items],
+        total=total,
+        has_more=has_more,
+    )
 
 
 @router.post("/upload", status_code=status.HTTP_202_ACCEPTED)

@@ -90,13 +90,12 @@ function MainPage() {
     setTracksLoading(true);
     fetchTracks()
       .then((data) => {
-        const trackList = Array.isArray(data) ? data : (data.tracks || []);
         if (!cancelled) {
-          setTracks(trackList);
+          setTracks(data);
           // Preload all track details when browser is idle (no UI blocking)
           requestIdleCallback(() => {
             const { ensureTrackDetail } = useMapStore.getState();
-            trackList.forEach((track) => {
+            data.forEach((track) => {
               ensureTrackDetail(track.id);
             });
           });
@@ -138,7 +137,7 @@ function MainPage() {
       try {
         await uploadTrack(file, null);
         const data = await fetchTracks();
-        setTracks(data.tracks || data);
+        setTracks(data);
         toast.success(`Track "${file.name}" uploaded`);
       } catch (err) {
         toast.error(`Failed to upload "${file.name}"`);
@@ -166,7 +165,7 @@ function MainPage() {
     const params = { bbox: `${bounds.getWest()},${bounds.getSouth()},${bounds.getEast()},${bounds.getNorth()}` };
     try {
       const data = await fetchTracks(params);
-      setTracks(data.tracks || data);
+      setTracks(data);
     } catch { /* ignore */ }
   }
 
@@ -174,7 +173,7 @@ function MainPage() {
     setSelectedTrack(null);
     try {
       const data = await fetchTracks();
-      setTracks(data.tracks || data);
+      setTracks(data);
     } catch { /* ignore */ }
   }
 
