@@ -188,6 +188,13 @@ GET    /api/tasks/{task_id}/status     — polling upload статуса
 - Список карточек треков (name, date, distance, avg speed, format)
 - "Find in this area" кнопка (bbox фильтр)
 - Создание трека
+- **Серверная фильтрация списка (T05):** изменение search/sort/format/speed
+  запускает `useEffect` с debounce 300мс → `fetchTracksPage({...})` →
+  результат в локальном state острова (`items`, `total`, `isLoading`, `error`).
+  Первая страница (`limit=50`), без infinite scroll (см. T06).
+  `appStore.tracks` НЕ используется и не перезаписывается этим потоком — он
+  питает карту/heatmap (все треки, `limit=500` через `/api/tracks/geometries`,
+  см. T04) и должен оставаться независимым от фильтров списка.
 
 ### RightIsland
 - Zoom, Compass, Nominatim поиск, Geolocation
