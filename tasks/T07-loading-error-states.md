@@ -39,6 +39,12 @@ loading-состояния, чистые зависимости useEffect.
 4. Используй `isLoading` (T05): пока идёт запрос — существующий LoadingIndicator или
    skeleton в списке; при `error` — сообщение + кнопка «Retry», повторяющая запрос.
 
+### mapStore (добавлено после T04)
+
+5. `frontend/src/store/mapStore.js` → `loadAllGeometries()` заканчивается на
+   `.catch(() => {})` — если bulk-загрузка геометрий упадёт, карта будет пустой
+   без объяснений. Добавь туда console.error + toast (как в App.jsx).
+
 ## Чего НЕ делать
 
 - Не добавлять ErrorBoundary (T08).
