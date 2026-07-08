@@ -29,7 +29,7 @@
 | 8 | ✅ T09 Celery retry | Sonnet | `task/t09-celery-retry` |
 | 9 | ✅ T16 кластеризация POI | Sonnet | `task/t16-poi-clustering` |
 | 10 | ✅ T04 bulk geometries | **Sonnet, thinking** | `task/t04-geometries` |
-| 11 | T05 серверная фильтрация | **Sonnet, thinking** | `task/t05-server-filtering` |
+| 11 | ✅ T05 серверная фильтрация | **Sonnet, thinking** | `task/t05-server-filtering` |
 | 12 | T06 infinite scroll | Sonnet | `task/t06-infinite-scroll` |
 | 13 | T07 loading/error states | Sonnet | `task/t07-loading-errors` |
 | 14 | T08 ErrorBoundary | Haiku | `task/t08-error-boundary` |
