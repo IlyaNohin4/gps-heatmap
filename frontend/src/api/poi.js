@@ -20,10 +20,15 @@ export async function uploadPOI(file) {
   return data;
 }
 
-export async function fetchPOI(category = null) {
-  const params = category ? { category } : {};
+export async function fetchPOIPage(params = {}) {
   const { data } = await client.get('/api/poi', { params });
   return data;
+}
+
+export async function fetchPOI(category = null) {
+  const params = category ? { category, limit: 5000 } : { limit: 5000 };
+  const data = await fetchPOIPage(params);
+  return data.items;
 }
 
 export async function fetchPOICategories() {

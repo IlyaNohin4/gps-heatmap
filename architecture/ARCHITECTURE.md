@@ -130,6 +130,28 @@ GET    /api/tracks/{id}/download       — скачивание файла
 GET    /api/tracks/public/{public_token}— просмотр без авторизации
 ```
 
+### POI
+```
+GET    /api/poi                        — список POI юзера (пагинация)
+       ?category=строка
+       ?search=текст (ILIKE по name)
+       ?limit=N (default 50, max 5000) &offset=N (default 0)
+       Response: {items: POIOut[], total: int, has_more: bool}
+       Примечание: слой карты (POILayer) запрашивает limit=5000, чтобы
+       получить все POI одним вызовом — фронтенд-обёртка fetchPOI(category)
+       сохраняет старую сигнатуру и возвращает массив.
+
+POST   /api/poi/create                 — создать одну точку
+POST   /api/poi/upload                 — импорт KML/KMZ (max 5MB)
+GET    /api/poi/categories             — категории с count
+PATCH  /api/poi/{id}
+DELETE /api/poi/{id}
+GET    /api/poi/imports                — список импортов с count
+PATCH  /api/poi/imports/{import_name}  — переименование
+DELETE /api/poi/imports/{import_name}
+GET    /api/poi/imports/{import_name}/export — экспорт KML
+```
+
 ### Tasks
 ```
 GET    /api/tasks/{task_id}/status     — polling upload статуса
