@@ -190,6 +190,44 @@ class TestListTracks:
         assert r.status_code == 400
 
 
+# ── Bulk geometries ────────────────────────────────────────────────────────────
+
+class TestListGeometries:
+    def test_returns_only_id_and_normalized_points(self, client, auth_headers, mock_db):
+        from app.main import app
+
+        fake_user = _make_fake_user()
+        track = _make_track(1, fake_user.id)
+        track.normalized_points = [{"lat": 48.8, "lon": 2.3}]
+        _setup_mock_db_user(mock_db, fake_user)
+        mock_db.query.return_value.filter.return_value.all.return_value = [track]
+
+        app.dependency_overrides[get_db] = lambda: (yield mock_db)
+        r = client.get("/api/tracks/geometries", headers=auth_headers)
+        app.dependency_overrides.clear()
+        assert r.status_code == 200
+        data = r.json()
+        assert data == [{"id": 1, "normalized_points": [{"lat": 48.8, "lon": 2.3}]}]
+
+    def test_geometries_not_matched_as_track_id(self, client, auth_headers, mock_db):
+        """The /geometries route must be matched, not FastAPI trying to parse it as an int track_id."""
+        from app.main import app
+
+        fake_user = _make_fake_user()
+        _setup_mock_db_user(mock_db, fake_user)
+        mock_db.query.return_value.filter.return_value.all.return_value = []
+
+        app.dependency_overrides[get_db] = lambda: (yield mock_db)
+        r = client.get("/api/tracks/geometries", headers=auth_headers)
+        app.dependency_overrides.clear()
+        assert r.status_code == 200
+        assert r.json() == []
+
+    def test_unauthenticated_is_401(self, client):
+        r = client.get("/api/tracks/geometries")
+        assert r.status_code == 401
+
+
 # ── Get track by ID ───────────────────────────────────────────────────────────
 
 class TestGetTrack:

@@ -126,6 +126,10 @@ GET    /api/tracks                     — список треков юзера 
        Response: {items: TrackOut[], total: int, has_more: bool}
 
 POST   /api/tracks/upload              — загрузка файла (max 20MB)
+GET    /api/tracks/geometries          — bulk: [{id, normalized_points}] для всех треков
+       юзера, одним запросом (T04). Должен быть объявлен ВЫШЕ /{id}, иначе
+       FastAPI матчит "geometries" как track_id. raw_points/speed_segments не
+       включены — тяжёлые, нужны только выбранному треку через GET /{id}.
 GET    /api/tracks/{id}                — детали трека
 DELETE /api/tracks/{id}
 PATCH  /api/tracks/{id}/publish        — toggle is_public, generate public_token
@@ -311,6 +315,28 @@ font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 - **Speed:** Polyline с градиентом по speed_segments (цветовая шкала выше)
 - **Heatmap (Visit):** react-leaflet-heatmap-layer-v3 по кол-во треков
   - 1 трек → синий, 2-3 зелёный, 4-5 оранжевый, 5+ красный
+
+### Поток геометрий карты (T04)
+- `App.jsx` после `fetchTracks({ limit: 500 })` (max API-лимит, T01) один раз
+  вызывает `mapStore.loadAllGeometries()` → `GET /api/tracks/geometries` →
+  результат мёржится в `mapStore.trackDetailCache` по id, каждая запись
+  помечена `partial: true` (только `normalized_points`, без `speed_segments`).
+  Записи, где уже есть полный detail, не перезаписываются.
+- `ensureTrackDetail(id)` (вызывается при выборе трека в `BottomIsland`/при
+  ручном toggle видимости) обновляет `partial`-запись до полного `TrackDetail`
+  (со `speed_segments`) через `GET /api/tracks/{id}`.
+- `TrackLayer`/`SpeedLayer` рисуют треки из `mapStore.visibleTrackIds`
+  (ручной toggle) ∪ выбранный трек — как и раньше, не затронуто T04.
+- `VisitLayer` (heatmap) — единственный слой, которому нужны ВСЕ треки
+  пользователя, а не только вручную включённые. `MapContainer.jsx` мёржит
+  `appStore.tracks` с `trackDetailCache` (`useAllTracksWithGeometry()`) и
+  передаёт результат в `VisitLayer`. Ограничение: heatmap видит только первые
+  500 треков (текущий `limit`); при >500 треках см. `tasks/FUTURE.md`.
+- **Find in area / Show all** — не переведены на mapStore: `handleFindInArea`/
+  `handleShowAll` в `App.jsx` по-прежнему просто перезаписывают `appStore.tracks`
+  через `fetchTracks({bbox})` — этого достаточно, т.к. `VisitLayer` берёт данные
+  оттуда. `TrackLayer`/`SpeedLayer` не подписаны на `appStore.tracks`, поэтому
+  bbox-фильтр на них не влиял и раньше — не regression.
 
 ### POI
 - Overpass API, категории: Food, Amenities, Medical, Tourism, Bicycle, Public Transport

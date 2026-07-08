@@ -29,6 +29,11 @@ export async function getTrack(id) {
   return data;
 }
 
+export async function fetchTrackGeometries() {
+  const { data } = await client.get('/api/tracks/geometries');
+  return data;
+}
+
 export async function deleteTrack(id) {
   const { data } = await client.delete(`/api/tracks/${id}`);
   return data;

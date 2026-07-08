@@ -343,6 +343,29 @@ async def create_track(
     return TrackOut.from_orm_dt(track)
 
 
+class TrackGeometry(BaseModel):
+    id: int
+    normalized_points: Optional[object] = None
+
+
+@router.get("/geometries", response_model=List[TrackGeometry])
+def list_track_geometries(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Lightweight bulk endpoint: only id + normalized_points for all of the user's tracks.
+
+    Must be declared above GET /{track_id}, otherwise FastAPI would match
+    "geometries" as a track_id path param.
+    """
+    tracks = (
+        db.query(Track.id, Track.normalized_points)
+        .filter(Track.user_id == current_user.id)
+        .all()
+    )
+    return [{"id": t.id, "normalized_points": t.normalized_points} for t in tracks]
+
+
 @router.get("/public/{public_token}", response_model=TrackDetail)
 def get_public_track(public_token: str, db: Session = Depends(get_db)):
     track = db.query(Track).filter(Track.public_token == public_token, Track.is_public == True).first()

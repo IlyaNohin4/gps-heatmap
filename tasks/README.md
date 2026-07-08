@@ -36,7 +36,7 @@
 | [T01](T01-tracks-api-pagination.md) | ✅ Пагинация и envelope для GET /api/tracks (готово 2026-07-08, PR #5) | Backend+API client | P0 | 2-3h |
 | [T02](T02-poi-api-pagination-search.md) | ✅ Пагинация и поиск для GET /api/poi (готово 2026-07-08) | Backend+API client | P0 | 1-2h |
 | [T03](T03-db-indices.md) | ✅ Индексы БД под фильтры (готово 2026-07-08, PR #4) | Database | P0 | 1h |
-| [T04](T04-bulk-geometry-endpoint.md) | Bulk-endpoint геометрий вместо N preload-запросов | Backend+Frontend | P0 | 2-3h |
+| [T04](T04-bulk-geometry-endpoint.md) | ✅ Bulk-endpoint геометрий вместо N preload-запросов (готово 2026-07-08) | Backend+Frontend | P0 | 2-3h |
 | [T05](T05-server-side-filtering.md) | Серверная фильтрация списка треков | Frontend | P0 | 2h |
 | [T06](T06-infinite-scroll.md) | Infinite scroll для списков Tracks и POI | Frontend | P1 | 2h |
 | [T07](T07-loading-error-states.md) | Loading/error states, фикс useEffect | Frontend | P1 | 1-2h |
