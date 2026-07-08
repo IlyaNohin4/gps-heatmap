@@ -24,14 +24,14 @@ class Track(Base):
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     name = Column(String, nullable=False)
-    file_format = Column(String(10), nullable=False)
+    file_format = Column(String(10), nullable=False, index=True)
 
-    distance_km = Column(Float)
+    distance_km = Column(Float, index=True)
     duration_sec = Column(Integer)
-    recorded_at = Column(DateTime(timezone=True))
-    uploaded_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    recorded_at = Column(DateTime(timezone=True), index=True)
+    uploaded_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), index=True)
 
-    speed_avg = Column(Float)
+    speed_avg = Column(Float, index=True)
     speed_max = Column(Float)
     speed_min = Column(Float)
 

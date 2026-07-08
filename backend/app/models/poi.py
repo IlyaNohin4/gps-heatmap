@@ -10,7 +10,7 @@ class POI(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
-    name = Column(String, nullable=False)
+    name = Column(String, nullable=False, index=True)
     lat = Column(Float, nullable=False)
     lon = Column(Float, nullable=False)
     category = Column(String(100), index=True)
