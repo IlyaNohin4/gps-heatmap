@@ -12,7 +12,9 @@
   - *Список* (`GET /api/tracks`) — лёгкие метаданные, пагинация `{items, total, has_more}`, фильтры.
   - *Карта* (`GET /api/tracks/geometries`) — все геометрии одним запросом (вместо N поштучных).
 - **Frontend — тонкий клиент**: рендер + состояния loading/error, без локальной фильтрации.
-- **Фильтры влияют только на список**; карта всегда показывает все треки (текущее поведение сохраняется).
+- **Списочные фильтры влияют только на список**; карта всегда показывает все треки.
+  Исключение — пространственный фильтр «Find in area»: он ограничивает и карту
+  (треки вне области скрываются, «Show all» возвращает), см. T04 п.7.
 - **Надёжность**: retry с backoff в Celery, ErrorBoundary, нормальные HTTP-коды ошибок.
 - **DevOps минимально достаточный**: секреты в .env, прод-compose с nginx, бэкапы pg_dump.
 
@@ -31,7 +33,7 @@
 
 | # | Задача | Область | Приоритет | Оценка |
 |---|--------|---------|-----------|--------|
-| [T01](T01-tracks-api-pagination.md) | Пагинация и envelope для GET /api/tracks | Backend+API client | P0 | 2-3h |
+| [T01](T01-tracks-api-pagination.md) | ✅ Пагинация и envelope для GET /api/tracks (готово 2026-07-08, PR #5) | Backend+API client | P0 | 2-3h |
 | [T02](T02-poi-api-pagination-search.md) | Пагинация и поиск для GET /api/poi | Backend+API client | P0 | 1-2h |
 | [T03](T03-db-indices.md) | ✅ Индексы БД под фильтры (готово 2026-07-08, PR #4) | Database | P0 | 1h |
 | [T04](T04-bulk-geometry-endpoint.md) | Bulk-endpoint геометрий вместо N preload-запросов | Backend+Frontend | P0 | 2-3h |
