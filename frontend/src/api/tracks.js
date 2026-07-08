@@ -1,8 +1,13 @@
 import client from './client.js';
 
-export async function fetchTracks(params = {}) {
+export async function fetchTracksPage(params = {}) {
   const { data } = await client.get('/api/tracks', { params });
   return data;
+}
+
+export async function fetchTracks(params = {}) {
+  const data = await fetchTracksPage(params);
+  return data.items;
 }
 
 export async function uploadTrack(file, onProgress) {

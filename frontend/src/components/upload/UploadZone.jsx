@@ -102,7 +102,7 @@ export default function UploadZone({ inputRef: externalInputRef, onTrackFiles, o
             removeUploadingId(taskId);
             try {
               const data = await fetchTracks({});
-              useAppStore.getState().setTracks(data.tracks || data);
+              useAppStore.getState().setTracks(data);
             } catch {
               if (status.track) addTrack(status.track);
             }

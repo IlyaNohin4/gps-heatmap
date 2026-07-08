@@ -54,13 +54,14 @@ class TestListTracks:
 
         fake_user = _make_fake_user()
         _setup_mock_db_user(mock_db, fake_user)
-        mock_db.query.return_value.filter.return_value.order_by.return_value.all.return_value = []
+        _setup_mock_db_tracks(mock_db, [])
 
         app.dependency_overrides[get_db] = lambda: (yield mock_db)
         r = client.get("/api/tracks", headers=auth_headers)
         app.dependency_overrides.clear()
         assert r.status_code == 200
-        assert r.json() == []
+        data = r.json()
+        assert data == {"items": [], "total": 0, "has_more": False}
 
     def test_returns_track_list(self, client, auth_headers, mock_db):
         from app.main import app
@@ -75,13 +76,94 @@ class TestListTracks:
         app.dependency_overrides.clear()
         assert r.status_code == 200
         data = r.json()
-        assert len(data) == 1
-        assert data[0]["name"] == "Test Track"
-        assert data[0]["file_format"] == "gpx"
+        assert data["total"] == 1
+        assert data["has_more"] is False
+        assert len(data["items"]) == 1
+        assert data["items"][0]["name"] == "Test Track"
+        assert data["items"][0]["file_format"] == "gpx"
 
     def test_invalid_sort_is_422(self, client, auth_headers):
         r = client.get("/api/tracks?sort=invalid", headers=auth_headers)
         assert r.status_code == 422
+
+    def test_default_limit_is_50(self, client, auth_headers, mock_db):
+        from app.main import app
+
+        fake_user = _make_fake_user()
+        _setup_mock_db_user(mock_db, fake_user)
+        tracks = [_make_track(i, fake_user.id) for i in range(1, 51)]
+        _setup_mock_db_tracks(mock_db, tracks, total=75)
+
+        app.dependency_overrides[get_db] = lambda: (yield mock_db)
+        r = client.get("/api/tracks", headers=auth_headers)
+        app.dependency_overrides.clear()
+        assert r.status_code == 200
+        data = r.json()
+        assert len(data["items"]) == 50
+        assert data["total"] == 75
+        assert data["has_more"] is True
+
+    def test_offset_shifts_selection(self, client, auth_headers, mock_db):
+        from app.main import app
+
+        fake_user = _make_fake_user()
+        _setup_mock_db_user(mock_db, fake_user)
+        page_2 = [_make_track(i, fake_user.id) for i in range(11, 21)]
+        _setup_mock_db_tracks(mock_db, page_2, total=30)
+
+        app.dependency_overrides[get_db] = lambda: (yield mock_db)
+        r = client.get("/api/tracks?limit=10&offset=10", headers=auth_headers)
+        app.dependency_overrides.clear()
+        assert r.status_code == 200
+        data = r.json()
+        assert len(data["items"]) == 10
+        assert data["items"][0]["id"] == 11
+        assert data["total"] == 30
+        assert data["has_more"] is True
+
+    def test_total_counts_before_limit(self, client, auth_headers, mock_db):
+        from app.main import app
+
+        fake_user = _make_fake_user()
+        _setup_mock_db_user(mock_db, fake_user)
+        tracks = [_make_track(1, fake_user.id)]
+        _setup_mock_db_tracks(mock_db, tracks, total=200)
+
+        app.dependency_overrides[get_db] = lambda: (yield mock_db)
+        r = client.get("/api/tracks?limit=1", headers=auth_headers)
+        app.dependency_overrides.clear()
+        assert r.status_code == 200
+        data = r.json()
+        assert data["total"] == 200
+        assert len(data["items"]) == 1
+
+    def test_has_more_false_on_last_page(self, client, auth_headers, mock_db):
+        from app.main import app
+
+        fake_user = _make_fake_user()
+        _setup_mock_db_user(mock_db, fake_user)
+        tracks = [_make_track(i, fake_user.id) for i in range(1, 6)]
+        _setup_mock_db_tracks(mock_db, tracks, total=25)
+
+        app.dependency_overrides[get_db] = lambda: (yield mock_db)
+        r = client.get("/api/tracks?limit=5&offset=20", headers=auth_headers)
+        app.dependency_overrides.clear()
+        assert r.status_code == 200
+        assert r.json()["has_more"] is False
+
+    @pytest.mark.parametrize("sort_value", ["shortest", "slowest"])
+    def test_new_sort_values_work(self, client, auth_headers, mock_db, sort_value):
+        from app.main import app
+
+        fake_user = _make_fake_user()
+        _setup_mock_db_user(mock_db, fake_user)
+        tracks = [_make_track(1, fake_user.id)]
+        _setup_mock_db_tracks(mock_db, tracks)
+
+        app.dependency_overrides[get_db] = lambda: (yield mock_db)
+        r = client.get(f"/api/tracks?sort={sort_value}", headers=auth_headers)
+        app.dependency_overrides.clear()
+        assert r.status_code == 200
 
     def test_invalid_file_format_is_400(self, client, auth_headers, mock_db):
         from app.main import app
@@ -284,6 +366,11 @@ def _setup_mock_db_user(mock_db: MagicMock, fake_user: User):
     mock_db.query.return_value.filter.return_value.first.return_value = fake_user
 
 
-def _setup_mock_db_tracks(mock_db: MagicMock, tracks: list):
-    """Wire mock_db to return a list of tracks from .order_by().all()."""
-    mock_db.query.return_value.filter.return_value.order_by.return_value.all.return_value = tracks
+def _setup_mock_db_tracks(mock_db: MagicMock, tracks: list, total: int = None):
+    """Wire mock_db to return a list of tracks from .order_by().offset().limit().all(),
+    and a count from .order_by().count()."""
+    order_by_mock = mock_db.query.return_value.filter.return_value.order_by.return_value
+    order_by_mock.count.return_value = total if total is not None else len(tracks)
+    order_by_mock.offset.return_value.limit.return_value.all.return_value = tracks
+    # Back-compat for any code path calling .all() directly on order_by().
+    order_by_mock.all.return_value = tracks
