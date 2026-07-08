@@ -21,30 +21,45 @@ rate limiting не нужен).
 
 1. Добавь в `backend/requirements.txt`: `slowapi==0.1.9`. Пересобери:
    `docker compose build backend celery_worker && docker compose up -d`.
-2. В `backend/app/main.py`:
+2. Создай **новый модуль** `backend/app/core/limiter.py` (именно отдельный модуль —
+   размещение limiter'а в main.py создаст циклический импорт, т.к. main импортирует
+   роутеры, а роутерам нужен limiter):
    ```python
-   from slowapi import Limiter, _rate_limit_exceeded_handler
-   from slowapi.errors import RateLimitExceeded
+   from slowapi import Limiter
    from slowapi.util import get_remote_address
 
    limiter = Limiter(key_func=get_remote_address)
+   ```
+3. В `backend/app/main.py` подключи его:
+   ```python
+   from slowapi import _rate_limit_exceeded_handler
+   from slowapi.errors import RateLimitExceeded
+   from app.core.limiter import limiter
+
    app.state.limiter = limiter
    app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
    ```
-   `get_remote_address` у slowapi уважает uvicorn-клиентский IP; чтобы за nginx он видел
-   реальный адрес, в прод-команде uvicorn нужен флаг `--proxy-headers`
-   (в `docker-compose.prod.yml`; если T11 ещё не выполнена — оставь комментарий-указание
-   в T11-файле или добавь флаг сразу, если файл уже существует).
-3. В `backend/app/api/auth.py` повесь лимиты (у slowapi endpoint должен принимать
-   `request: Request` — добавь параметр, если его нет):
+   Примечание для будущей T11: за nginx uvicorn'у нужен флаг `--proxy-headers`,
+   чтобы limiter видел реальные IP — добавь одну строку-напоминание в
+   `tasks/T11-prod-docker-nginx.md` § Что сделать.
+4. В `backend/app/api/auth.py`: `from app.core.limiter import limiter`, затем декораторы
+   (у slowapi endpoint обязан принимать `request: Request` первым параметром —
+   добавь, где его нет):
    - `login`: `@limiter.limit("5/minute")`
    - `register`: `@limiter.limit("3/minute")`
-   - `forgot-password` (и reset, если есть): `@limiter.limit("3/minute")`
-   Импортируй limiter из main (или вынеси limiter в `app/core/`, чтобы избежать
-   циклического импорта — проверь, как main импортирует роутеры, и выбери место без цикла).
-4. Тесты (`backend/tests/test_auth.py` — образцы уже там): 6-й login подряд с одного IP →
-   HTTP 429. Учти, что limiter хранит состояние в памяти — в тестах сбрасывай
-   (`limiter.reset()`) в фикстуре, чтобы не заражать соседние тесты.
+   - `forgot-password` (и reset-password, если есть): `@limiter.limit("3/minute")`
+5. Тесты (`backend/tests/test_auth.py`): добавь **autouse-фикстуру сброса** — без неё
+   тесты будут флакать в зависимости от порядка запуска:
+   ```python
+   import pytest
+   from app.core.limiter import limiter
+
+   @pytest.fixture(autouse=True)
+   def _reset_rate_limiter():
+       limiter.reset()
+       yield
+   ```
+   Новый тест: 6 неверных логинов подряд → первые пять 401, шестой 429.
 
 ## Чего НЕ делать
 
