@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback, useTransition } from 'react';
+import React, { useState, useEffect, useCallback, useTransition } from 'react';
 import { Search, Filter, Plus, X, ChevronLeft, ChevronRight, MapPin, Route } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import Slider from 'rc-slider';
@@ -7,7 +7,7 @@ import TrackCard from '../tracks/TrackCard.jsx';
 import POITab from './POITab.jsx';
 import useAppStore from '../../store/appStore.js';
 import useMapStore from '../../store/mapStore.js';
-import { getTrack } from '../../api/tracks.js';
+import { getTrack, fetchTracksPage } from '../../api/tracks.js';
 
 const FORMAT_OPTIONS = [
   { value: 'all',     label: 'All' },
@@ -43,7 +43,7 @@ function SkeletonCard() {
 
 function LeftIslandContent({ onUploadClick, loading }) {
   const { t } = useTranslation();
-  const { tracks, selectedTrackId, setSelectedTrack, isUploadingIds, activePanel, setActivePanel } = useAppStore();
+  const { selectedTrackId, setSelectedTrack, isUploadingIds, activePanel, setActivePanel } = useAppStore();
   const { showTrackCreator, toggleTrackCreator, mapInstance } = useMapStore();
   const [isPending, startTransition] = useTransition();
   const [open, setOpen] = useState(true);
@@ -54,43 +54,45 @@ function LeftIslandContent({ onUploadClick, loading }) {
   const [sort, setSort] = useState('newest');
   const [formatFilter, setFormatFilter] = useState('all');
   const [speedRange, setSpeedRange] = useState([0, 200]);
+  const [items, setItems] = useState([]);
+  const [total, setTotal] = useState(0);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   const handleSetCurrentTab = useCallback((tab) => {
     startTransition(() => setCurrentTab(tab));
   }, []);
   const handleCollapse = useCallback(() => setSidebarOpen(false), []);
 
-  const filtered = useMemo(() => {
-    performance.mark('filter-start');
-
-    let list = [...tracks];
-    if (search.trim()) {
-      const q = search.toLowerCase();
-      list = list.filter((t) => (t.name || '').toLowerCase().includes(q));
-    }
-    if (formatFilter !== 'all') {
-      list = list.filter((t) => t.file_format?.toLowerCase() === formatFilter);
-    }
-    list = list.filter((t) => {
-      const kmh = t.speed_avg ?? 0;
-      return kmh >= speedRange[0] && kmh <= speedRange[1];
-    });
-    switch (sort) {
-      case 'oldest': list.sort((a, b) => new Date(a.recorded_at) - new Date(b.recorded_at)); break;
-      case 'longest': list.sort((a, b) => (b.distance_km ?? 0) - (a.distance_km ?? 0)); break;
-      case 'fastest': list.sort((a, b) => (b.speed_avg ?? 0) - (a.speed_avg ?? 0)); break;
-      case 'slowest': list.sort((a, b) => (a.speed_avg ?? 0) - (b.speed_avg ?? 0)); break;
-      case 'shortest': list.sort((a, b) => (a.distance_km ?? 0) - (b.distance_km ?? 0)); break;
-      default: list.sort((a, b) => new Date(b.recorded_at || b.uploaded_at) - new Date(a.recorded_at || a.uploaded_at));
-    }
-
-    performance.mark('filter-end');
-    performance.measure('track-filter', 'filter-start', 'filter-end');
-    const measure = performance.getEntriesByName('track-filter')[0];
-    console.log(`🔍 Track filtering: ${measure.duration.toFixed(2)}ms (${tracks.length} tracks → ${list.length})`);
-
-    return list;
-  }, [tracks, search, formatFilter, sort, speedRange]);
+  // Список фильтруется/сортируется на сервере — это отдельный от карты поток
+  // данных: App.jsx грузит все треки (limit=500) для heatmap через
+  // /api/tracks/geometries, а этот эффект грузит только одну страницу (limit=50)
+  // под текущие фильтры списка. Не "оптимизировать" объединением с appStore.tracks —
+  // heatmap не должен зависеть от фильтров списка (см. T04/T05).
+  useEffect(() => {
+    let cancelled = false;
+    setIsLoading(true);
+    const timer = setTimeout(async () => {
+      try {
+        const params = { sort, limit: 50, offset: 0 };
+        if (search.trim()) params.search = search.trim();
+        if (formatFilter !== 'all') params.file_format = formatFilter;
+        if (speedRange[0] > 0) params.speed_avg_min = speedRange[0];
+        if (speedRange[1] < 200) params.speed_avg_max = speedRange[1];
+        const page = await fetchTracksPage(params);
+        if (!cancelled) {
+          setItems(page.items);
+          setTotal(page.total);
+          setError(null);
+        }
+      } catch (err) {
+        if (!cancelled) setError(err);
+      } finally {
+        if (!cancelled) setIsLoading(false);
+      }
+    }, 300); // debounce для search
+    return () => { cancelled = true; clearTimeout(timer); };
+  }, [search, sort, formatFilter, speedRange]);
 
   const chip = (active) => ({
     padding: '4px 10px',
@@ -244,14 +246,16 @@ function LeftIslandContent({ onUploadClick, loading }) {
 
         {/* Track list */}
         <div style={{ flex: 1, overflowY: 'auto', padding: '8px 10px 4px', minHeight: 0 }}>
-          {loading ? (
+          {loading || isLoading ? (
             [1, 2, 3].map((i) => <SkeletonCard key={i} />)
-          ) : filtered.length === 0 ? (
+          ) : items.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '24px 0', color: 'var(--text-secondary)', fontSize: 13 }}>
-              {tracks.length === 0 ? t('tracks.no_tracks') : t('tracks.no_results')}
+              {total === 0 && !search.trim() && formatFilter === 'all' && speedRange[0] === 0 && speedRange[1] === 200
+                ? t('tracks.no_tracks')
+                : t('tracks.no_results')}
             </div>
           ) : (
-            filtered.map((track) => (
+            items.map((track) => (
               <TrackCard
                 key={track.id}
                 track={track}
