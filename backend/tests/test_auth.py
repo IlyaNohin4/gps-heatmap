@@ -68,6 +68,14 @@ class TestLogin:
         r = client.post("/api/auth/login", json={"email": "a@b.com"})
         assert r.status_code == 422
 
+    def test_sixth_attempt_in_a_minute_is_429(self, client, registered_user):
+        email, _, _ = registered_user
+        for _ in range(5):
+            r = client.post("/api/auth/login", json={"email": email, "password": "WrongPass999"})
+            assert r.status_code == 401
+        r = client.post("/api/auth/login", json={"email": email, "password": "WrongPass999"})
+        assert r.status_code == 429
+
 
 # ---------------------------------------------------------------------------
 # GET /me

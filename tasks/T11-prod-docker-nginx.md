@@ -26,6 +26,8 @@
 2. **`backend/Dockerfile`** — проверь: если он ставит dev-зависимости (watchmedo) или
    что-то dev-специфичное, сделай так, чтобы прод-запуск был чистым. Команда прода:
    `uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 2` (2 CPU на VDS).
+   Не забудь флаг `--proxy-headers` — иначе rate limiter (T15) за nginx будет видеть
+   IP самого nginx вместо реального клиента из `X-Forwarded-For`.
 3. **`deploy/nginx.conf`**:
    - `location /api/ { proxy_pass http://backend:8000; }` (+ `proxy_set_header Host`,
      `X-Real-IP`, `X-Forwarded-For`, `X-Forwarded-Proto`);

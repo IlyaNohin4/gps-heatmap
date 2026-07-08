@@ -1,12 +1,18 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
 
 from app.api import auth, poi, tasks, tracks
 from app.core.database import Base, engine
+from app.core.limiter import limiter
 
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="GPS Heatmap API", version="2.0.0")
+
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 app.add_middleware(
     CORSMiddleware,
