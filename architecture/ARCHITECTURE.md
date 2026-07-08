@@ -101,13 +101,18 @@ id, user_id, token, expires_at, used
 
 ### Auth
 ```
-POST   /api/auth/register              — регистрация
-POST   /api/auth/login                 — логин, возвращает JWT
-POST   /api/auth/forgot-password       — Resend email
-POST   /api/auth/reset-password/{token}— сброс пароля
+POST   /api/auth/register              — регистрация                    [rate limit: 3/minute]
+POST   /api/auth/login                 — логин, возвращает JWT           [rate limit: 5/minute]
+POST   /api/auth/forgot-password       — Resend email                   [rate limit: 3/minute]
+POST   /api/auth/reset-password/{token}— сброс пароля                   [rate limit: 3/minute]
 GET    /api/auth/me                    — текущий пользователь + настройки
 PATCH  /api/auth/me                    — обновить язык, тему, единицы
 ```
+
+**Rate limiting (T15):** slowapi, лимит по IP (`get_remote_address`), in-memory storage,
+подключён только к auth-эндпоинтам (`app/core/limiter.py`). Остальной API не лимитирован —
+см. `tasks/FUTURE.md`. За nginx (T11) нужен `--proxy-headers` у uvicorn, иначе limiter
+увидит IP nginx вместо клиента.
 
 ### Tracks
 ```

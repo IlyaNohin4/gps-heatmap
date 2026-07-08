@@ -29,11 +29,21 @@ from sqlalchemy.pool import StaticPool
 # Patch Base.metadata.create_all so main.py's module-level call does not try
 # to create PostGIS tables against a real (or missing) PostgreSQL engine.
 from app.core.database import Base, get_db
+from app.core.limiter import limiter
 from app.models.password_reset import PasswordReset
 from app.models.user import User
 
 with patch.object(Base.metadata, "create_all"):
     from app.main import app
+
+
+@pytest.fixture(autouse=True)
+def _reset_rate_limiter():
+    """Auth endpoints are rate-limited (T15); without this, tests across any
+    file that hit /api/auth/* would flake depending on run order, since the
+    limiter's in-memory counters persist for the whole test session."""
+    limiter.reset()
+    yield
 
 # ── SQLite in-memory engine (StaticPool = single shared connection) ────────────
 #

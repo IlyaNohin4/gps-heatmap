@@ -4,12 +4,13 @@ from datetime import datetime, timedelta, timezone
 
 from typing import Literal, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, EmailStr, field_validator
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.core.deps import get_current_user
+from app.core.limiter import limiter
 from app.core.security import create_access_token, hash_password, verify_password
 from app.models.password_reset import PasswordReset
 from app.models.user import User
@@ -57,7 +58,8 @@ class TokenResponse(BaseModel):
 
 
 @router.post("/register", response_model=TokenResponse, status_code=status.HTTP_201_CREATED)
-def register(body: RegisterRequest, db: Session = Depends(get_db)):
+@limiter.limit("3/minute")
+def register(request: Request, body: RegisterRequest, db: Session = Depends(get_db)):
     if db.query(User).filter(User.email == body.email).first():
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Email already registered")
     user = User(email=body.email, password_hash=hash_password(body.password))
@@ -68,7 +70,8 @@ def register(body: RegisterRequest, db: Session = Depends(get_db)):
 
 
 @router.post("/login", response_model=TokenResponse)
-def login(body: LoginRequest, db: Session = Depends(get_db)):
+@limiter.limit("5/minute")
+def login(request: Request, body: LoginRequest, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.email == body.email).first()
     if not user or not verify_password(body.password, user.password_hash):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
@@ -76,7 +79,8 @@ def login(body: LoginRequest, db: Session = Depends(get_db)):
 
 
 @router.post("/forgot-password", status_code=status.HTTP_204_NO_CONTENT)
-def forgot_password(body: ForgotPasswordRequest, db: Session = Depends(get_db)):
+@limiter.limit("3/minute")
+def forgot_password(request: Request, body: ForgotPasswordRequest, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.email == body.email).first()
     if not user:
         return  # Don't reveal whether email exists
@@ -101,7 +105,8 @@ def forgot_password(body: ForgotPasswordRequest, db: Session = Depends(get_db)):
 
 
 @router.post("/reset-password/{token}", status_code=status.HTTP_204_NO_CONTENT)
-def reset_password(token: str, body: ResetPasswordRequest, db: Session = Depends(get_db)):
+@limiter.limit("3/minute")
+def reset_password(request: Request, token: str, body: ResetPasswordRequest, db: Session = Depends(get_db)):
     now = datetime.now(timezone.utc)
     reset = (
         db.query(PasswordReset)

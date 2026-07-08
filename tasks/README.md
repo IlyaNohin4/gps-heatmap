@@ -47,7 +47,7 @@
 | [T12](T12-db-backup.md) | Бэкапы PostgreSQL (pg_dump + cron) | DevOps | P2 | 1h |
 | [T14](T14-ci-test-gate.md) | ✅ CI test-gate: pytest + build на каждый push (готово 2026-07-06, PR #1) | DevOps | P1 | 1-2h |
 | [T17](T17-fix-failing-tests.md) | ✅ Починить красные тесты на main (готово 2026-07-06, PR #2 — 132 passed) | Backend | P0 | 2-3h |
-| [T15](T15-auth-rate-limit.md) | Rate limiting на auth-эндпоинты | Backend | P1 | 1h |
+| [T15](T15-auth-rate-limit.md) | ✅ Rate limiting на auth-эндпоинты (готово 2026-07-08) | Backend | P1 | 1h |
 | [T16](T16-poi-clustering.md) | Кластеризация POI-маркеров на карте | Frontend | P1 | 2h |
 | [T13](T13-docs-sync.md) | Синхронизация архитектурной документации (последняя) | Docs | P1 | 1-2h |
 
