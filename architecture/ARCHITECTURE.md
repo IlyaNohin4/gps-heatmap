@@ -68,10 +68,13 @@ id, user_id, token, expires_at, used
 - 0002 — elevation_gain, elevation_loss
 - 0003 — user preferences (language, theme, units)
 
-**Индексы (recommended):**
-- `track.user_id` — быстрая фильтрация по пользователю
-- `track.recorded_at` — сортировка по дате
-- PostGIS GIST на `track.geom` — для bbox ST_Intersects
+**Индексы:**
+- `track.user_id` — фильтрация по пользователю
+- `track.recorded_at`, `track.uploaded_at` — сортировка по датам
+- `track.speed_avg`, `track.distance_km` — фильтры и сортировка по метрикам
+- `track.file_format` — фильтр по формату
+- PostGIS GIST на `track.geom` — для bbox `ST_Intersects`
+- `poi.name` — поиск POI по названию
 
 ---
 
