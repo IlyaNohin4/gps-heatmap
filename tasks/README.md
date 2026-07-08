@@ -41,7 +41,7 @@
 | [T06](T06-infinite-scroll.md) | Infinite scroll для списков Tracks и POI | Frontend | P1 | 2h |
 | [T07](T07-loading-error-states.md) | Loading/error states, фикс useEffect | Frontend | P1 | 1-2h |
 | [T08](T08-error-boundary.md) | Глобальный ErrorBoundary | Frontend | P1 | 1h |
-| [T09](T09-celery-retry-backoff.md) | Retry с exponential backoff в Celery | Backend | P1 | 1h |
+| [T09](T09-celery-retry-backoff.md) | ✅ Retry с exponential backoff в Celery (готово 2026-07-08) | Backend | P1 | 1h |
 | [T10](T10-env-secrets-hygiene.md) | ✅ Секреты из compose в .env (готово 2026-07-06, PR #3) | DevOps | P0 | 1h |
 | [T11](T11-prod-docker-nginx.md) | Прод-компоуз: nginx, prod Dockerfiles, закрытые порты | DevOps | P1 | 3-4h |
 | [T12](T12-db-backup.md) | Бэкапы PostgreSQL (pg_dump + cron) | DevOps | P2 | 1h |

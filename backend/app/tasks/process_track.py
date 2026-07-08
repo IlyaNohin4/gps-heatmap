@@ -5,6 +5,9 @@ from datetime import datetime, timezone
 
 import redis
 from geoalchemy2.elements import WKTElement
+from lxml.etree import XMLSyntaxError
+from redis.exceptions import ConnectionError as RedisConnectionError, TimeoutError as RedisTimeoutError
+from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
@@ -16,13 +19,26 @@ from app.tasks.celery_app import celery_app
 _redis_client = redis.from_url(settings.REDIS_URL)
 _semaphore = _redis_client.lock("process_track_lock", timeout=3600, blocking=True)
 
+# Transient errors (DB/Redis unavailable) — safe to retry. Parser errors
+# (ValueError, incl. FitParseError/JSONDecodeError subclasses, and
+# XMLSyntaxError) are permanent and must not be retried.
+_TRANSIENT_EXCEPTIONS = (OperationalError, RedisConnectionError, RedisTimeoutError)
+
 
 def _points_to_linestring(points: list[dict]) -> str:
     coords = ", ".join(f"{p['lon']} {p['lat']}" for p in points)
     return f"LINESTRING({coords})"
 
 
-@celery_app.task(bind=True, name="process_track")
+@celery_app.task(
+    bind=True,
+    name="process_track",
+    autoretry_for=_TRANSIENT_EXCEPTIONS,
+    retry_backoff=True,
+    retry_backoff_max=60,
+    retry_jitter=True,
+    max_retries=3,
+)
 def process_track(self, track_id: int, file_bytes: bytes) -> dict:
     """Full processing pipeline for an uploaded GPS track file.
 
@@ -30,6 +46,7 @@ def process_track(self, track_id: int, file_bytes: bytes) -> dict:
     Other Celery tasks can run in parallel.
     """
     db: Session = SessionLocal()
+    track = None
     try:
         # Notify: waiting in queue
         self.update_state(state="PROGRESS", meta={"step": "queued"})
@@ -98,10 +115,23 @@ def process_track(self, track_id: int, file_bytes: bytes) -> dict:
             db.commit()
             return {"status": "done", "track_id": track_id}
 
+    except (ValueError, XMLSyntaxError) as exc:
+        # Permanent errors: invalid/unparseable file. Retrying won't help.
+        db.rollback()
+        _set_error(db, track, str(exc))
+        return {"status": "error", "detail": str(exc)}
+    except _TRANSIENT_EXCEPTIONS as exc:
+        # Transient errors: DB/Redis unavailable. Let autoretry_for handle
+        # the retry with backoff; only mark the track as failed once retries
+        # are exhausted.
+        db.rollback()
+        if self.request.retries >= self.max_retries:
+            _set_error(db, track, str(exc))
+        raise
     except Exception as exc:
         db.rollback()
-        _set_error(db, track if 'track' in dir() else None, str(exc))
-        raise self.retry(exc=exc, countdown=5, max_retries=2)
+        _set_error(db, track, str(exc))
+        raise
     finally:
         db.close()
 

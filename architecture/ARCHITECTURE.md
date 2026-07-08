@@ -274,6 +274,13 @@ font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 
 **Status polling:** фронтенд получает state: "PENDING" | "SUCCESS" | "FAILURE"
 
+**Retry policy (T09):** `autoretry_for=(OperationalError, redis.ConnectionError, redis.TimeoutError)`,
+`retry_backoff=True` (1s, 2s, 4s... до `retry_backoff_max=60`), `retry_jitter=True`, `max_retries=3`.
+- Постоянные ошибки (`ValueError` — включая парсинг/валидацию/`FitParseError`/`JSONDecodeError`,
+  и `lxml.etree.XMLSyntaxError`) → трек сразу помечается `error` (`_set_error`), без ретраев.
+- Временные ошибки (обрыв БД/Redis) → пробрасываются наружу, ретраятся автоматически;
+  трек помечается `error` только когда `self.request.retries >= max_retries` (ретраи исчерпаны).
+
 ---
 
 ## 🔄 Development Workflow (Hot Reload)
