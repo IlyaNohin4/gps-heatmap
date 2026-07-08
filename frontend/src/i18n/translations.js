@@ -38,6 +38,7 @@ const translations = {
       add_track: 'Add track',
       show_sidebar: 'Show sidebar',
       processing: 'Processing {{count}} tracks…',
+      count_of: '{{shown}} of {{total}}',
     },
     // Track card
     card: {
@@ -186,6 +187,7 @@ const translations = {
       add_track: 'Добавить трек',
       show_sidebar: 'Показать панель',
       processing: 'Обрабатывается {{count}} треков…',
+      count_of: '{{shown}} из {{total}}',
     },
     card: {
       rename: 'Переименовать',
@@ -326,6 +328,7 @@ const translations = {
       show_all: 'Показати всі',
       add_track: 'Додати трек',
       processing: 'Обробляється {{count}} треків…',
+      count_of: '{{shown}} з {{total}}',
     },
     card: {
       rename: 'Перейменувати',
@@ -466,6 +469,7 @@ const translations = {
       show_all: 'Alle anzeigen',
       add_track: 'Track hinzufügen',
       processing: '{{count}} Strecken werden verarbeitet…',
+      count_of: '{{shown}} von {{total}}',
     },
     card: {
       rename: 'Umbenennen',
@@ -606,6 +610,7 @@ const translations = {
       show_all: 'Mostrar todo',
       add_track: 'Añadir track',
       processing: 'Procesando {{count}} pista(s)…',
+      count_of: '{{shown}} de {{total}}',
     },
     card: {
       rename: 'Renombrar',

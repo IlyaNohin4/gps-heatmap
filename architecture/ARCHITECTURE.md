@@ -190,11 +190,28 @@ GET    /api/tasks/{task_id}/status     — polling upload статуса
 - Создание трека
 - **Серверная фильтрация списка (T05):** изменение search/sort/format/speed
   запускает `useEffect` с debounce 300мс → `fetchTracksPage({...})` →
-  результат в локальном state острова (`items`, `total`, `isLoading`, `error`).
-  Первая страница (`limit=50`), без infinite scroll (см. T06).
+  результат в локальном state острова (`items`, `total`, `hasMore`, `isLoading`, `error`).
   `appStore.tracks` НЕ используется и не перезаписывается этим потоком — он
   питает карту/heatmap (все треки, `limit=500` через `/api/tracks/geometries`,
   см. T04) и должен оставаться независимым от фильтров списка.
+- **Infinite scroll (T06):** оба таба (Tracks и POI) подгружают следующие 50
+  элементов через общий хук `frontend/src/hooks/useInfiniteScroll.js`
+  (IntersectionObserver над sentinel-элементом в конце списка, отключается
+  при `hasMore === false`, защита от параллельных вызовов на время загрузки).
+  Tracks-таб: `loadMore` дергает `fetchTracksPage({..., offset: items.length})`
+  и дописывает `page.items` в конец; смена фильтров сбрасывает на первую
+  страницу. Счётчик «N из M» — ключ `tracks.count_of` (i18n, 5 языков).
+  Защита от гонки loadMore/смена фильтров: `requestVersion` (ref-счётчик,
+  инкрементируется при каждой смене фильтров/search; ответ с устаревшей
+  версией отбрасывается) — иначе доскролленная-затем-отфильтрованная страница
+  дописывает чужие элементы поверх нового списка.
+  POI-таб (`POITab.jsx`): аналогичная пагинация через `fetchPOIPage({ search, limit: 50, offset })`
+  в **отдельном** локальном state (`listItems/listTotal/listHasMore`) —
+  не путать с `mapStore.pois`, который остаётся источником для маркеров на
+  карте и всегда получает ВСЕ POI (см. `loadPOIs()`/`fetchPOI()` — не менялось).
+  POITab остаётся всегда смонтированным, переключение табов — только
+  `display:none/flex` (см. POLISH.md — восстановлено после регрессии в T06),
+  поэтому пагинированное состояние списка переживает переключение табов.
 
 ### RightIsland
 - Zoom, Compass, Nominatim поиск, Geolocation
