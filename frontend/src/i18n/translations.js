@@ -44,6 +44,9 @@ const translations = {
       tracks_load_failed: 'Failed to load tracks',
       poi_load_failed: 'Failed to load POI',
       retry: 'Retry',
+      app_crashed: 'Application Error',
+      app_crashed_desc: 'Something went wrong. Please reload the page.',
+      reload_button: 'Reload',
     },
     // Track card
     card: {
@@ -198,6 +201,9 @@ const translations = {
       tracks_load_failed: 'Не удалось загрузить треки',
       poi_load_failed: 'Не удалось загрузить POI',
       retry: 'Повторить',
+      app_crashed: 'Ошибка приложения',
+      app_crashed_desc: 'Что-то пошло не так. Пожалуйста, перезагрузите страницу.',
+      reload_button: 'Перезагрузить',
     },
     card: {
       rename: 'Переименовать',
@@ -344,6 +350,9 @@ const translations = {
       tracks_load_failed: 'Не вдалося завантажити треки',
       poi_load_failed: 'Не вдалося завантажити POI',
       retry: 'Повторити',
+      app_crashed: 'Помилка додатку',
+      app_crashed_desc: 'Щось пішло не так. Будь ласка, перезавантажте сторінку.',
+      reload_button: 'Перезавантажити',
     },
     card: {
       rename: 'Перейменувати',
@@ -490,6 +499,9 @@ const translations = {
       tracks_load_failed: 'Tracks konnten nicht geladen werden',
       poi_load_failed: 'POI konnten nicht geladen werden',
       retry: 'Wiederholen',
+      app_crashed: 'Anwendungsfehler',
+      app_crashed_desc: 'Etwas ist schief gelaufen. Bitte laden Sie die Seite neu.',
+      reload_button: 'Neu laden',
     },
     card: {
       rename: 'Umbenennen',
@@ -636,6 +648,9 @@ const translations = {
       tracks_load_failed: 'No se pudieron cargar los tracks',
       poi_load_failed: 'No se pudieron cargar los POI',
       retry: 'Reintentar',
+      app_crashed: 'Error de la aplicación',
+      app_crashed_desc: 'Algo salió mal. Por favor, recargue la página.',
+      reload_button: 'Recargar',
     },
     card: {
       rename: 'Renombrar',

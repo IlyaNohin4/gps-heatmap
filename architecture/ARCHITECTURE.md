@@ -176,6 +176,8 @@ GET    /api/tasks/{task_id}/status     — polling upload статуса
 ## 🎨 Frontend — Islands Layout
 
 Картоцентричный дизайн, 4 острова поверх Leaflet карты (glassmorphism).
+**ErrorBoundary** (T08): классовый компонент верхнего уровня оборачивает всё приложение в `main.jsx`,
+ловит ошибки рендера и показывает fallback-экран с кнопкой Reload (переводы из i18n с англ. fallback).
 
 ### TopIsland
 - Логотип, файлы (open, duplicate, rename, delete, export)
