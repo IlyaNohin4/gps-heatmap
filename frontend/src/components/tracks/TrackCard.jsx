@@ -37,7 +37,7 @@ const FORMAT_COLORS = {
 
 export default React.memo(function TrackCard({ track, isSelected, onClick }) {
   const { t } = useTranslation();
-  const { unitSystem, expandedTrackInfo, removeTrack, updateTrack, selectedTrackId, setSelectedTrackId } = useAppStore();
+  const { unitSystem, expandedTrackInfo, removeTrack, updateTrack, selectedTrackId, setSelectedTrackId, bumpTracksListVersion } = useAppStore();
   const [expanded, setExpanded] = useState(false);
   const [published, setPublished] = useState(track.is_public || false);
   const [showRenameModal, setShowRenameModal] = useState(false);
@@ -66,10 +66,12 @@ export default React.memo(function TrackCard({ track, isSelected, onClick }) {
 
   function handleRenamed(updatedTrack) {
     updateTrack(updatedTrack);
+    bumpTracksListVersion();
   }
 
   function handleDeleted(trackId) {
     removeTrack(trackId);
+    bumpTracksListVersion();
     if (selectedTrackId === trackId) {
       setSelectedTrackId(null);
     }

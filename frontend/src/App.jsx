@@ -42,7 +42,7 @@ const SPEED_LEGEND = [
 // ---- Main App Page ----
 function MainPage() {
   const { isAuthenticated, setUser } = useAuthStore();
-  const { theme, setTracks, setTheme, setUnitSystem, setLanguage, selectedTrackId, setSelectedTrackId, setSelectedTrack, unitSystem, tracks } = useAppStore();
+  const { theme, setTracks, setTheme, setUnitSystem, setLanguage, selectedTrackId, setSelectedTrackId, setSelectedTrack, unitSystem, tracks, bumpTracksListVersion } = useAppStore();
   const {
     mapInstance, showSpeed, showTrackCreator, toggleTrackCreator,
     trackCreatorState, setTrackCreatorState, undoWaypoint, redoWaypoint, clearTrackCreatorState,
@@ -146,6 +146,7 @@ function MainPage() {
         await uploadTrack(file, null);
         const data = await fetchTracks();
         setTracks(data);
+        bumpTracksListVersion();
         toast.success(i18n.t('tracks.upload_success', { name: file.name }));
       } catch (err) {
         toast.error(i18n.t('tracks.upload_failed', { name: file.name }));
@@ -318,6 +319,7 @@ function MainPage() {
 
             const updatedTracks = await fetchTracks();
             setTracks(updatedTracks);
+            bumpTracksListVersion();
 
             clearTrackCreatorState();
             toggleTrackCreator();

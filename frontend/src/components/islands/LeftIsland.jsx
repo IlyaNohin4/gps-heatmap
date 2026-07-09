@@ -44,7 +44,7 @@ function SkeletonCard() {
 
 function LeftIslandContent({ onUploadClick, loading }) {
   const { t } = useTranslation();
-  const { selectedTrackId, setSelectedTrack, isUploadingIds, activePanel, setActivePanel } = useAppStore();
+  const { selectedTrackId, setSelectedTrack, isUploadingIds, activePanel, setActivePanel, tracksListVersion } = useAppStore();
   const { showTrackCreator, toggleTrackCreator, mapInstance } = useMapStore();
   const [isPending, startTransition] = useTransition();
   const [open, setOpen] = useState(true);
@@ -102,7 +102,11 @@ function LeftIslandContent({ onUploadClick, loading }) {
       }
     }, 300); // debounce для search
     return () => { cancelled = true; clearTimeout(timer); };
-  }, [buildParams, retryCount]);
+  // tracksListVersion (T19): bump после upload/delete/rename перезапускает
+  // этот эффект и грузит список заново с offset=0 — прокрутка списка
+  // сбрасывается наверх. Для этих операций это приемлемо, сохранение
+  // позиции прокрутки не реализуем — не по задаче.
+  }, [buildParams, retryCount, tracksListVersion]);
 
   const handleRetry = useCallback(() => {
     setError(null);
