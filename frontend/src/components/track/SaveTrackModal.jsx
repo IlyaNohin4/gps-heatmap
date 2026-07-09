@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'react-toastify';
-import { NOTIFICATIONS } from '../../config/notifications.js';
 
 const FORMAT_OPTIONS = [
   { id: 'gpx', label: 'GPX (.gpx)' },
@@ -133,7 +132,7 @@ export default function SaveTrackModal({
 
   const handleDownload = () => {
     if (!trackName.trim()) {
-      toast.error('Track name required');
+      toast.error(t('validation.track_name_required'));
       return;
     }
 
@@ -149,17 +148,17 @@ export default function SaveTrackModal({
       }[format];
 
       downloadFile(content, `${trackName}.${ext}`, mimeType);
-      toast.success(NOTIFICATIONS.TRACK_DOWNLOADED);
+      toast.success(t('tracks.download_success'));
       onClose();
     } catch (err) {
-      toast.error(NOTIFICATIONS.TRACK_DOWNLOAD_ERROR);
+      toast.error(t('tracks.download_failed'));
       console.error(err);
     }
   };
 
   const handleSaveToDb = async () => {
     if (!trackName.trim()) {
-      toast.error('Track name required');
+      toast.error(t('validation.track_name_required'));
       return;
     }
 

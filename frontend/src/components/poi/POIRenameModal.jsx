@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { toast } from 'react-toastify';
+import { useTranslation } from 'react-i18next';
 import { X } from 'lucide-react';
 import { updatePOI } from '../../api/poi.js';
 
@@ -10,6 +11,7 @@ const CATEGORIES = [
 ];
 
 export default function POIRenameModal({ poi, isOpen, onClose, onRenamed }) {
+  const { t } = useTranslation();
   const [nameValue, setNameValue] = useState(poi?.name || '');
   const [categoryValue, setCategoryValue] = useState(poi?.category || '');
   const [renaming, setRenaming] = useState(false);
@@ -23,11 +25,11 @@ export default function POIRenameModal({ poi, isOpen, onClose, onRenamed }) {
 
   async function handleRename() {
     if (!nameValue.trim()) {
-      toast.error('POI name cannot be empty');
+      toast.error(t('validation.poi_name_empty'));
       return;
     }
     if (nameValue === poi.name && categoryValue === poi.category) {
-      toast.info('No changes made');
+      toast.info(t('validation.no_changes'));
       return;
     }
 
@@ -38,11 +40,11 @@ export default function POIRenameModal({ poi, isOpen, onClose, onRenamed }) {
       if (categoryValue !== poi.category) updates.category = categoryValue;
 
       await updatePOI(poi.id, updates);
-      toast.success('POI updated');
+      toast.success(t('poi.updated_success'));
       onRenamed?.({ ...poi, name: nameValue, category: categoryValue });
       onClose();
     } catch (err) {
-      toast.error(err.response?.data?.detail || 'Failed to update POI');
+      toast.error(err.response?.data?.detail || t('poi.update_failed'));
     } finally {
       setRenaming(false);
     }

@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { toast } from 'react-toastify';
+import { useTranslation } from 'react-i18next';
 import { X, Mail, Lock, Eye, EyeOff } from 'lucide-react';
 import useAuthStore from '../../store/authStore.js';
 import { login as apiLogin, register as apiRegister, forgotPassword } from '../../api/auth.js';
-import { NOTIFICATIONS } from '../../config/notifications.js';
 
 const styles = {
   overlay: {
@@ -143,6 +143,7 @@ function PasswordInput({ value, onChange, placeholder }) {
 }
 
 export default function AuthModal() {
+  const { t } = useTranslation();
   const { isAuthenticated, login: storeLogin } = useAuthStore();
   const [tab, setTab] = useState('login');
   const [forgotMode, setForgotMode] = useState(false);
@@ -157,14 +158,14 @@ export default function AuthModal() {
 
   async function handleLogin(e) {
     e.preventDefault();
-    if (!email || !password) return toast.error('Please fill in all fields');
+    if (!email || !password) return toast.error(t('validation.fill_all_fields'));
     setLoading(true);
     try {
       const data = await apiLogin(email, password);
       storeLogin(data.access_token, data.user);
-      toast.success(NOTIFICATIONS.LOGIN_SUCCESS);
+      toast.success(t('auth.login_success'));
     } catch (err) {
-      toast.error(NOTIFICATIONS.LOGIN_ERROR(err.response?.data?.detail));
+      toast.error(t('auth.login_error', { detail: err.response?.data?.detail ? ': ' + err.response.data.detail : '' }));
     } finally {
       setLoading(false);
     }
@@ -172,16 +173,16 @@ export default function AuthModal() {
 
   async function handleRegister(e) {
     e.preventDefault();
-    if (!email || !password || !confirmPassword) return toast.error('Please fill in all fields');
-    if (password !== confirmPassword) return toast.error('Passwords do not match');
-    if (password.length < 8) return toast.error('Password must be at least 8 characters');
+    if (!email || !password || !confirmPassword) return toast.error(t('validation.fill_all_fields'));
+    if (password !== confirmPassword) return toast.error(t('validation.passwords_mismatch'));
+    if (password.length < 8) return toast.error(t('validation.password_min_length'));
     setLoading(true);
     try {
       const data = await apiRegister(email, password);
       storeLogin(data.access_token, data.user);
-      toast.success(NOTIFICATIONS.REGISTER_SUCCESS);
+      toast.success(t('auth.register_success'));
     } catch (err) {
-      toast.error(NOTIFICATIONS.REGISTER_ERROR(err.response?.data?.detail));
+      toast.error(t('auth.register_error', { detail: err.response?.data?.detail ? ': ' + err.response.data.detail : '' }));
     } finally {
       setLoading(false);
     }
@@ -189,14 +190,14 @@ export default function AuthModal() {
 
   async function handleForgot(e) {
     e.preventDefault();
-    if (!forgotEmail) return toast.error('Enter your email');
+    if (!forgotEmail) return toast.error(t('validation.enter_email'));
     setLoading(true);
     try {
       await forgotPassword(forgotEmail);
-      toast.success(NOTIFICATIONS.PASSWORD_RESET_SENT);
+      toast.success(t('auth.reset_email_sent'));
       setForgotMode(false);
     } catch (err) {
-      toast.error(NOTIFICATIONS.PASSWORD_RESET_ERROR(err.response?.data?.detail));
+      toast.error(t('auth.reset_email_error', { detail: err.response?.data?.detail ? ': ' + err.response.data.detail : '' }));
     } finally {
       setLoading(false);
     }

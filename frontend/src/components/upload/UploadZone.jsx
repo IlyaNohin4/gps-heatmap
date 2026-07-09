@@ -1,9 +1,9 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { toast } from 'react-toastify';
+import { useTranslation } from 'react-i18next';
 import { Upload } from 'lucide-react';
 import useAppStore from '../../store/appStore.js';
 import { uploadTrack, pollTaskStatus, fetchTracks } from '../../api/tracks.js';
-import { NOTIFICATIONS } from '../../config/notifications.js';
 
 const TRACK_FORMATS = ['.gpx', '.kml', '.tcx', '.fit', '.geojson'];
 const POI_FORMATS = ['.kml', '.kmz'];
@@ -16,6 +16,7 @@ function getExt(filename) {
 }
 
 export default function UploadZone({ inputRef: externalInputRef, onTrackFiles, onPOIFiles }) {
+  const { t } = useTranslation();
   const { addTrack, addUploadingId, removeUploadingId } = useAppStore();
   const [dragging, setDragging] = useState(false);
   // Queue progress: { current, total } | null
@@ -38,11 +39,11 @@ export default function UploadZone({ inputRef: externalInputRef, onTrackFiles, o
     for (const file of files) {
       const ext = getExt(file.name);
       if (!ACCEPTED.includes(ext)) {
-        toast.error(`Unsupported format: ${file.name}`);
+        toast.error(t('validation.unsupported_format', { name: file.name }));
         continue;
       }
       if (file.size > MAX_SIZE) {
-        toast.error(`File too large (max 20MB): ${file.name}`);
+        toast.error(t('validation.file_too_large', { name: file.name }));
         continue;
       }
       validFiles.push(file);
@@ -83,10 +84,10 @@ export default function UploadZone({ inputRef: externalInputRef, onTrackFiles, o
         await pollUntilDone(taskId, file.name);
       } else if (result.track) {
         addTrack(result.track);
-        toast.success(NOTIFICATIONS.TRACK_UPLOADED_SUCCESS(file.name));
+        toast.success(t('tracks.upload_success', { name: file.name }));
       }
     } catch (err) {
-      toast.error(NOTIFICATIONS.TRACK_UPLOAD_ERROR(file.name));
+      toast.error(t('tracks.upload_failed', { name: file.name }));
       if (taskId) removeUploadingId(taskId);
       // Continue to next file — don't rethrow
     }
@@ -106,18 +107,18 @@ export default function UploadZone({ inputRef: externalInputRef, onTrackFiles, o
             } catch {
               if (status.track) addTrack(status.track);
             }
-            toast.success(NOTIFICATIONS.TRACK_UPLOADED(filename));
+            toast.success(t('tracks.upload_success', { name: filename }));
             resolve();
           } else if (status.state === 'FAILURE' || status.status === 'error' || status.status === 'failed') {
             clearInterval(interval);
             removeUploadingId(taskId);
-            toast.error(NOTIFICATIONS.TRACK_UPLOAD_ERROR(filename));
+            toast.error(t('tracks.upload_failed', { name: filename }));
             resolve();
           }
         } catch {
           clearInterval(interval);
           removeUploadingId(taskId);
-          toast.error(`❌ Загрузка трека ошибка: ${filename}`);
+          toast.error(t('tracks.upload_failed', { name: filename }));
           resolve();
         }
       }, 2000);

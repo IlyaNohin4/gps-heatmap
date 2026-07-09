@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { toast } from 'react-toastify';
+import { useTranslation } from 'react-i18next';
 import { X } from 'lucide-react';
 import { renameTrack } from '../../api/tracks.js';
 
 export default function TrackRenameModal({ track, isOpen, onClose, onRenamed }) {
+  const { t } = useTranslation();
   const [nameValue, setNameValue] = useState(track?.name || '');
   const [renaming, setRenaming] = useState(false);
 
@@ -16,22 +18,22 @@ export default function TrackRenameModal({ track, isOpen, onClose, onRenamed }) 
 
   async function handleRename() {
     if (!nameValue.trim()) {
-      toast.error('Track name cannot be empty');
+      toast.error(t('validation.track_name_empty'));
       return;
     }
     if (nameValue === track.name) {
-      toast.info('No changes made');
+      toast.info(t('validation.no_changes'));
       return;
     }
 
     setRenaming(true);
     try {
       await renameTrack(track.id, nameValue);
-      toast.success('Track renamed');
+      toast.success(t('tracks.renamed_success'));
       onRenamed?.({ ...track, name: nameValue });
       onClose();
     } catch (err) {
-      toast.error(err.response?.data?.detail || 'Failed to rename track');
+      toast.error(err.response?.data?.detail || t('tracks.rename_failed'));
     } finally {
       setRenaming(false);
     }

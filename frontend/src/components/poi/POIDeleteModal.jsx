@@ -1,21 +1,23 @@
 import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { toast } from 'react-toastify';
+import { useTranslation } from 'react-i18next';
 import { X } from 'lucide-react';
 import { deletePOI } from '../../api/poi.js';
 
 export default function POIDeleteModal({ poi, isOpen, onClose, onDeleted }) {
+  const { t } = useTranslation();
   const [deleting, setDeleting] = useState(false);
 
   async function handleDelete() {
     setDeleting(true);
     try {
       await deletePOI(poi.id);
-      toast.success('POI deleted');
+      toast.success(t('poi.deleted_success'));
       onDeleted?.(poi.id);
       onClose();
     } catch (err) {
-      toast.error(err.response?.data?.detail || 'Failed to delete POI');
+      toast.error(err.response?.data?.detail || t('poi.delete_failed'));
     } finally {
       setDeleting(false);
     }

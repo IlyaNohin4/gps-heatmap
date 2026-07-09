@@ -1,21 +1,23 @@
 import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { toast } from 'react-toastify';
+import { useTranslation } from 'react-i18next';
 import { X } from 'lucide-react';
 import { deleteTrack } from '../../api/tracks.js';
 
 export default function TrackDeleteModal({ track, isOpen, onClose, onDeleted }) {
+  const { t } = useTranslation();
   const [deleting, setDeleting] = useState(false);
 
   async function handleDelete() {
     setDeleting(true);
     try {
       await deleteTrack(track.id);
-      toast.success('Track deleted');
+      toast.success(t('tracks.deleted_success'));
       onDeleted?.(track.id);
       onClose();
     } catch (err) {
-      toast.error(err.response?.data?.detail || 'Failed to delete track');
+      toast.error(err.response?.data?.detail || t('tracks.delete_failed'));
     } finally {
       setDeleting(false);
     }

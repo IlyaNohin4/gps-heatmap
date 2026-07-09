@@ -20,18 +20,18 @@ export default function POICreationModal({ lat, lon, onClose, onSuccess }) {
     e.preventDefault();
 
     if (!name.trim()) {
-      toast.error('Name is required');
+      toast.error(t('validation.name_required'));
       return;
     }
 
     setSaving(true);
     try {
       const poi = await createPOI(name, lat, lon, category, description || null);
-      toast.success('POI created successfully');
+      toast.success(t('poi.created_success'));
       onSuccess?.(poi);
       onClose();
     } catch (err) {
-      toast.error(err.response?.data?.detail || 'Failed to create POI');
+      toast.error(err.response?.data?.detail || t('poi.create_failed'));
     } finally {
       setSaving(false);
     }

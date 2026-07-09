@@ -1,13 +1,15 @@
 import React from 'react';
 import { Copy, X } from 'lucide-react';
 import { toast } from 'react-toastify';
+import { useTranslation } from 'react-i18next';
 
 export default function CoordinatesContextMenu({ lat, lon, x, y, onClose }) {
+  const { t } = useTranslation();
   const coordsText = `${lat.toFixed(6)}, ${lon.toFixed(6)}`;
 
   function handleCopy() {
     navigator.clipboard.writeText(coordsText);
-    toast.success('Coordinates copied to clipboard');
+    toast.success(t('map.coordinates_copied'));
     onClose();
   }
 

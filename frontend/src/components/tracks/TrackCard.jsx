@@ -7,7 +7,6 @@ import {
 } from 'lucide-react';
 import useAppStore from '../../store/appStore.js';
 import { togglePublish, getTrackDownloadUrl } from '../../api/tracks.js';
-import { NOTIFICATIONS } from '../../config/notifications.js';
 import TrackDeleteModal from './TrackDeleteModal.jsx';
 import TrackRenameModal from './TrackRenameModal.jsx';
 
