@@ -39,7 +39,7 @@
 | [T04](T04-bulk-geometry-endpoint.md) | ✅ Bulk-endpoint геометрий вместо N preload-запросов (готово 2026-07-08) | Backend+Frontend | P0 | 2-3h |
 | [T05](T05-server-side-filtering.md) | ✅ Серверная фильтрация списка треков (готово 2026-07-08) | Frontend | P0 | 2h |
 | [T06](T06-infinite-scroll.md) | ✅ Infinite scroll для списков Tracks и POI (готово 2026-07-08) | Frontend | P1 | 2h |
-| [T07](T07-loading-error-states.md) | Loading/error states, фикс useEffect | Frontend | P1 | 1-2h |
+| [T07](T07-loading-error-states.md) | ✅ Loading/error states, фикс useEffect (готово 2026-07-09) | Frontend | P1 | 1-2h |
 | [T08](T08-error-boundary.md) | Глобальный ErrorBoundary | Frontend | P1 | 1h |
 | [T09](T09-celery-retry-backoff.md) | ✅ Retry с exponential backoff в Celery (готово 2026-07-08) | Backend | P1 | 1h |
 | [T10](T10-env-secrets-hygiene.md) | ✅ Секреты из compose в .env (готово 2026-07-06, PR #3) | DevOps | P0 | 1h |

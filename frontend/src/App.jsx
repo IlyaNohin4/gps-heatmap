@@ -1,6 +1,6 @@
 import React, { lazy, Suspense, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
-import { ToastContainer } from 'react-toastify';
+import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { useTranslation } from 'react-i18next';
 
@@ -83,7 +83,7 @@ function MainPage() {
   // Load tracks whenever auth state changes
   useEffect(() => {
     if (!isAuthenticated) {
-      setTracks([]);
+      useAppStore.getState().setTracks([]);
       return;
     }
     let cancelled = false;
@@ -94,27 +94,36 @@ function MainPage() {
     fetchTracks({ limit: 500 })
       .then((data) => {
         if (!cancelled) {
-          setTracks(data);
+          useAppStore.getState().setTracks(data);
           // One bulk request for all track geometries (normalized_points), replacing
           // the old N-requests-via-ensureTrackDetail preload.
           useMapStore.getState().loadAllGeometries();
         }
       })
-      .catch(() => {})
+      .catch((err) => {
+        if (!cancelled) {
+          console.error(err);
+          toast.error(i18n.t('errors.tracks_load_failed'));
+        }
+      })
       .finally(() => { if (!cancelled) setTracksLoading(false); });
 
     // Load POI once on page load (not on tab switch)
     fetchPOI()
       .then((data) => {
         if (!cancelled) {
-          const { setPOIs } = useMapStore.getState();
-          setPOIs(data);
+          useMapStore.getState().setPOIs(data);
         }
       })
-      .catch(() => {});
+      .catch((err) => {
+        if (!cancelled) {
+          console.error(err);
+          toast.error(i18n.t('errors.poi_load_failed'));
+        }
+      });
 
     return () => { cancelled = true; };
-  }, [isAuthenticated, setTracks]);
+  }, [isAuthenticated]);
 
   useLayoutEffect(() => {
     const el = topIslandRef.current;
@@ -165,7 +174,10 @@ function MainPage() {
     try {
       const data = await fetchTracks(params);
       setTracks(data);
-    } catch { /* ignore */ }
+    } catch (err) {
+      console.error(err);
+      toast.error(t('errors.tracks_load_failed'));
+    }
   }
 
   async function handleShowAll() {
@@ -173,7 +185,10 @@ function MainPage() {
     try {
       const data = await fetchTracks();
       setTracks(data);
-    } catch { /* ignore */ }
+    } catch (err) {
+      console.error(err);
+      toast.error(t('errors.tracks_load_failed'));
+    }
   }
 
   function handleToggleVisibility() {

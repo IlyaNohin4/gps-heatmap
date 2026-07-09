@@ -1,5 +1,18 @@
 # Polish / known issues
 
+- [x] **RESOLVED** — Silent-fail при загрузке данных (T07, 2026-07-09)
+  - **Проблема:** `App.jsx` глотал ошибки загрузки треков/POI (`.catch(() => {})`,
+    `catch { /* ignore */ }` в `handleFindInArea`/`handleShowAll`), пользователь видел
+    пустой экран без объяснения; `mapStore.loadAllGeometries()` тоже падал молча
+  - **Решение:** все catch'и заменены на `console.error` + `toast.error`
+    (i18n-ключи `errors.tracks_load_failed`/`errors.poi_load_failed`, 5 языков);
+    в LeftIsland/POITab при ошибке списка — сообщение + кнопка Retry, сбрасывающая
+    error перед повторным запросом; главный data-effect в `App.jsx` теперь зависит
+    только от `isAuthenticated` (чтение store через `getState()`), eslint-disable убран
+  - **Оставлено как есть:** `mapStore.js` — не компонент, доступа к i18next нет и
+    ради одного тоста инфраструктуру не заводили — там английская строка
+    (`'Failed to load track geometries'`) без перевода, с `console.error` для деталей
+
 - [x] **RESOLVED** — VisitLayer (heatmap) получал tracks без геометрии (T04, 2026-07-08)
   - **Проблема:** `VisitLayer` брал `tracks` напрямую из `appStore.tracks` (`TrackOut`, без `normalized_points`/`raw_points`) — heatmap не имел точек для отрисовки, независимо от режима визуализации
   - **Причина:** список треков (`GET /api/tracks`) — облегчённый contract без geometry; только `TrackLayer`/`SpeedLayer` мёржили геометрию через `trackDetailCache`
