@@ -9,9 +9,9 @@
     в LeftIsland/POITab при ошибке списка — сообщение + кнопка Retry, сбрасывающая
     error перед повторным запросом; главный data-effect в `App.jsx` теперь зависит
     только от `isAuthenticated` (чтение store через `getState()`), eslint-disable убран
-  - **Оставлено как есть:** `mapStore.js` — не компонент, доступа к i18next нет и
-    ради одного тоста инфраструктуру не заводили — там английская строка
-    (`'Failed to load track geometries'`) без перевода, с `console.error` для деталей
+  - [x] **FIXED in T18** — `mapStore.js` теперь использует прямой импорт `i18n.t()`
+    (не React-компонент, но может импортировать инстанс i18n), тост для
+    'Failed to load track geometries' теперь локализован через `errors.geometries_load_failed`
 
 - [x] **RESOLVED** — VisitLayer (heatmap) получал tracks без геометрии (T04, 2026-07-08)
   - **Проблема:** `VisitLayer` брал `tracks` напрямую из `appStore.tracks` (`TrackOut`, без `normalized_points`/`raw_points`) — heatmap не имел точек для отрисовки, независимо от режима визуализации

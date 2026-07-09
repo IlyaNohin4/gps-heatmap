@@ -146,9 +146,9 @@ function MainPage() {
         await uploadTrack(file, null);
         const data = await fetchTracks();
         setTracks(data);
-        toast.success(`Track "${file.name}" uploaded`);
+        toast.success(i18n.t('tracks.upload_success', { name: file.name }));
       } catch (err) {
-        toast.error(`Failed to upload "${file.name}"`);
+        toast.error(i18n.t('tracks.upload_failed', { name: file.name }));
       }
     }
   }
@@ -160,9 +160,9 @@ function MainPage() {
         await uploadPOI(file);
         const pois = await fetchPOI();
         useMapStore.getState().setPOIs(pois);
-        toast.success(`POI imported from "${file.name}"`);
+        toast.success(i18n.t('poi.import_from_file', { name: file.name }));
       } catch (err) {
-        toast.error(`Failed to import POI from "${file.name}"`);
+        toast.error(i18n.t('poi.import_from_file_failed', { name: file.name }));
       }
     }
   }
@@ -323,9 +323,9 @@ function MainPage() {
             toggleTrackCreator();
             setShowSaveModal(false);
 
-            toast.success(`Track "${trackName}" saved!`);
+            toast.success(t('tracks.saved_success', { name: trackName }));
           } catch (err) {
-            toast.error('Failed to save track');
+            toast.error(t('tracks.save_failed'));
             console.error(err);
           } finally {
             setSavingTrack(false);

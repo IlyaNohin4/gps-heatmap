@@ -9,7 +9,6 @@ import useAppStore from '../../store/appStore.js';
 import useAuthStore from '../../store/authStore.js';
 import client from '../../api/client.js';
 import { updatePrefs } from '../../api/auth.js';
-import { NOTIFICATIONS } from '../../config/notifications.js';
 
 const LANGUAGES = [
   { code: 'en', label: 'English' },
@@ -37,7 +36,7 @@ export default function TopIsland() {
       const updated = await updatePrefs(patch);
       setUser(updated);
     } catch (err) {
-      toast.error(err.response?.data?.detail || 'Failed to save setting');
+      toast.error(err.response?.data?.detail || t('settings.save_failed'));
     }
   }
 
@@ -74,13 +73,13 @@ export default function TopIsland() {
 
   async function handleChangePassword(e) {
     e.preventDefault();
-    if (!oldPass || !newPass) return toast.error(t('toast.password_failed'));
+    if (!oldPass || !newPass) return toast.error(t('validation.fill_all_fields'));
     try {
       await client.post('/api/auth/change-password', { old_password: oldPass, new_password: newPass });
-      toast.success(NOTIFICATIONS.PASSWORD_CHANGE_SUCCESS);
+      toast.success(t('settings.password_changed'));
       setOldPass(''); setNewPass(''); setChangePassOpen(false);
     } catch (err) {
-      toast.error(NOTIFICATIONS.PASSWORD_CHANGE_ERROR(err.response?.data?.detail));
+      toast.error(t('settings.password_change_failed', { detail: err.response?.data?.detail ? ': ' + err.response.data.detail : '' }));
     }
   }
 
@@ -115,7 +114,7 @@ export default function TopIsland() {
       toast.success(t('toast.account_deleted'));
     } catch (err) {
       console.error('[delete account]', err.response?.status, err.response?.data, err);
-      toast.error(err.response?.data?.detail || err.message || 'Failed to delete account');
+      toast.error(err.response?.data?.detail || err.message || t('settings.account_delete_failed'));
     }
   }
 
@@ -282,7 +281,7 @@ export default function TopIsland() {
                   <button
                     className="btn-secondary"
                     style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, padding: '7px' }}
-                    onClick={() => { logout(); toast.success(NOTIFICATIONS.LOGOUT_SUCCESS); }}
+                    onClick={() => { logout(); toast.success(t('auth.logout_success')); }}
                   >
                     <LogOut size={13} /> {t('settings.sign_out')}
                   </button>

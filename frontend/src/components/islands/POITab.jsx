@@ -37,7 +37,7 @@ export default React.memo(function POITab({ onCollapse }) {
       const data = await fetchPOI();
       setPOIs(data);
     } catch (err) {
-      toast.error('Failed to load POI');
+      toast.error(t('errors.poi_load_failed'));
       console.error(err);
     } finally {
       setLoading(false);
@@ -49,17 +49,17 @@ export default React.memo(function POITab({ onCollapse }) {
     if (!file) return;
 
     if (!file.name.match(/\.(kml|kmz)$/i)) {
-      toast.error('Only KML and KMZ files are supported');
+      toast.error(t('validation.poi_format_only_kml'));
       return;
     }
 
     setUploading(true);
     try {
       await uploadPOI(file);
-      toast.success('POI imported successfully');
+      toast.success(t('poi.imported_success'));
       await loadPOIs();
     } catch (err) {
-      toast.error(err.response?.data?.detail || 'Failed to import POI');
+      toast.error(err.response?.data?.detail || t('poi.import_failed'));
       console.error(err);
     } finally {
       setUploading(false);

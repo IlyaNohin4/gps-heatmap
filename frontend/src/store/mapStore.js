@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import i18n from '../i18n/index.js';
 import { getTrack, fetchTrackGeometries } from '../api/tracks.js';
 
 const useMapStore = create((set, get) => ({
@@ -114,7 +115,7 @@ const useMapStore = create((set, get) => ({
       })
       .catch((err) => {
         console.error('Failed to load track geometries', err);
-        import('react-toastify').then(({ toast }) => toast.error('Failed to load track geometries'));
+        import('react-toastify').then(({ toast }) => toast.error(i18n.t('errors.geometries_load_failed')));
       });
   },
 

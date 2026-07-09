@@ -4,6 +4,7 @@ import {
   Flame, Gauge, PenLine, ChevronRight,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import i18n from '../../i18n/index.js';
 import useMapStore from '../../store/mapStore.js';
 import useAppStore from '../../store/appStore.js';
 import { LAYER_OPTIONS } from '../../map/MapLayers.js';
@@ -49,7 +50,7 @@ export default function RightIsland() {
     if (!navigator.geolocation) return;
     navigator.geolocation.getCurrentPosition(
       (pos) => mapInstance?.flyTo([pos.coords.latitude, pos.coords.longitude], 14, MAP_ANIMATIONS.geolocation),
-      () => import('react-toastify').then((m) => m.toast.error('Geolocation denied'))
+      () => import('react-toastify').then((m) => m.toast.error(i18n.t('errors.geolocation_denied')))
     );
   }
 
