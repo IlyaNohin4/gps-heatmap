@@ -28,6 +28,8 @@ export default React.memo(function POITab({ onCollapse }) {
   const [listTotal, setListTotal] = useState(0);
   const [listHasMore, setListHasMore] = useState(false);
   const [listLoading, setListLoading] = useState(true);
+  const [listError, setListError] = useState(null);
+  const [retryCount, setRetryCount] = useState(0);
 
   async function loadPOIs() {
     setLoading(true);
@@ -119,15 +121,22 @@ export default React.memo(function POITab({ onCollapse }) {
           setListItems(page.items);
           setListTotal(page.total);
           setListHasMore(page.has_more);
+          setListError(null);
         }
       } catch (err) {
         console.error(err);
+        if (!cancelled && version === requestVersion.current) setListError(err);
       } finally {
         if (!cancelled && version === requestVersion.current) setListLoading(false);
       }
     }, 300); // debounce для search
     return () => { cancelled = true; clearTimeout(timer); };
-  }, [buildListParams]);
+  }, [buildListParams, retryCount]);
+
+  const handleListRetry = useCallback(() => {
+    setListError(null);
+    setRetryCount((c) => c + 1);
+  }, []);
 
   const loadMorePOIList = useCallback(async () => {
     const version = requestVersion.current;
@@ -182,7 +191,15 @@ export default React.memo(function POITab({ onCollapse }) {
 
       {/* POI List */}
       <div className="poi-list-container">
-        {loading || listLoading ? (
+        {listError ? (
+          <div className="poi-empty-state">
+            {t('errors.poi_load_failed')}
+            <br />
+            <button className="btn-secondary" style={{ marginTop: 10 }} onClick={handleListRetry}>
+              {t('errors.retry')}
+            </button>
+          </div>
+        ) : loading || listLoading ? (
           <div className="poi-loading">Loading POI...</div>
         ) : pois.length === 0 ? (
           <div className="poi-empty-state">

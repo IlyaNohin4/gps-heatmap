@@ -40,6 +40,11 @@ const translations = {
       processing: 'Processing {{count}} tracks…',
       count_of: '{{shown}} of {{total}}',
     },
+    errors: {
+      tracks_load_failed: 'Failed to load tracks',
+      poi_load_failed: 'Failed to load POI',
+      retry: 'Retry',
+    },
     // Track card
     card: {
       rename: 'Rename',
@@ -189,6 +194,11 @@ const translations = {
       processing: 'Обрабатывается {{count}} треков…',
       count_of: '{{shown}} из {{total}}',
     },
+    errors: {
+      tracks_load_failed: 'Не удалось загрузить треки',
+      poi_load_failed: 'Не удалось загрузить POI',
+      retry: 'Повторить',
+    },
     card: {
       rename: 'Переименовать',
       download: 'Скачать',
@@ -329,6 +339,11 @@ const translations = {
       add_track: 'Додати трек',
       processing: 'Обробляється {{count}} треків…',
       count_of: '{{shown}} з {{total}}',
+    },
+    errors: {
+      tracks_load_failed: 'Не вдалося завантажити треки',
+      poi_load_failed: 'Не вдалося завантажити POI',
+      retry: 'Повторити',
     },
     card: {
       rename: 'Перейменувати',
@@ -471,6 +486,11 @@ const translations = {
       processing: '{{count}} Strecken werden verarbeitet…',
       count_of: '{{shown}} von {{total}}',
     },
+    errors: {
+      tracks_load_failed: 'Tracks konnten nicht geladen werden',
+      poi_load_failed: 'POI konnten nicht geladen werden',
+      retry: 'Wiederholen',
+    },
     card: {
       rename: 'Umbenennen',
       download: 'Herunterladen',
@@ -611,6 +631,11 @@ const translations = {
       add_track: 'Añadir track',
       processing: 'Procesando {{count}} pista(s)…',
       count_of: '{{shown}} de {{total}}',
+    },
+    errors: {
+      tracks_load_failed: 'No se pudieron cargar los tracks',
+      poi_load_failed: 'No se pudieron cargar los POI',
+      retry: 'Reintentar',
     },
     card: {
       rename: 'Renombrar',

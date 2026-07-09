@@ -60,6 +60,7 @@ function LeftIslandContent({ onUploadClick, loading }) {
   const [hasMore, setHasMore] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [retryCount, setRetryCount] = useState(0);
   const requestVersion = useRef(0);
 
   const handleSetCurrentTab = useCallback((tab) => {
@@ -101,7 +102,12 @@ function LeftIslandContent({ onUploadClick, loading }) {
       }
     }, 300); // debounce для search
     return () => { cancelled = true; clearTimeout(timer); };
-  }, [buildParams]);
+  }, [buildParams, retryCount]);
+
+  const handleRetry = useCallback(() => {
+    setError(null);
+    setRetryCount((c) => c + 1);
+  }, []);
 
   const loadMoreTracks = useCallback(async () => {
     const version = requestVersion.current;
@@ -270,7 +276,12 @@ function LeftIslandContent({ onUploadClick, loading }) {
 
         {/* Track list */}
         <div style={{ flex: 1, overflowY: 'auto', padding: '8px 10px 4px', minHeight: 0 }}>
-          {loading || isLoading ? (
+          {error ? (
+            <div style={{ textAlign: 'center', padding: '24px 0', color: 'var(--text-secondary)', fontSize: 13 }}>
+              <div style={{ marginBottom: 10 }}>{t('errors.tracks_load_failed')}</div>
+              <button className="btn-secondary" onClick={handleRetry}>{t('errors.retry')}</button>
+            </div>
+          ) : loading || isLoading ? (
             [1, 2, 3].map((i) => <SkeletonCard key={i} />)
           ) : items.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '24px 0', color: 'var(--text-secondary)', fontSize: 13 }}>

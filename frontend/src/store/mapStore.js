@@ -112,7 +112,10 @@ const useMapStore = create((set, get) => ({
           return { trackDetailCache };
         });
       })
-      .catch(() => {});
+      .catch((err) => {
+        console.error('Failed to load track geometries', err);
+        import('react-toastify').then(({ toast }) => toast.error('Failed to load track geometries'));
+      });
   },
 
   // Track creator methods
