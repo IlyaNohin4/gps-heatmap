@@ -451,14 +451,45 @@ docker compose exec -T playwright npx playwright test
 
 ---
 
-## 🚀 Производство (TODO)
+## 🚀 Deployment (прод, T11)
 
-- [ ] nginx reverse proxy
-- [ ] Production Dockerfile оптимизация
-- [ ] .env template и env variable management
-- [ ] CI/CD pipeline (GitHub Actions для tests & deploy)
-- [ ] Database backup strategy
-- [ ] Monitoring & logging (Sentry)
+Отдельный от dev стек: `docker-compose.prod.yml` (запуск
+`docker compose -f docker-compose.prod.yml up -d --build`). Наружу торчит
+только nginx (80, задел под 443).
+
+```
+Client ── :80 ──▶ nginx (frontend container)
+                     ├─ /              → статика React (dist), SPA fallback (try_files → index.html)
+                     ├─ /api/*         → proxy_pass backend:8000 (X-Forwarded-For/-Proto, Host)
+                     └─ /docs,/redoc,/openapi.json → proxy_pass backend:8000 (Swagger)
+
+backend, celery_worker, postgres, redis — только во внутренней docker-сети,
+портов наружу нет.
+```
+
+Сервисы прод-компоуза:
+- **postgres** / **redis** — без `ports:`, healthcheck, именованный volume
+  `postgres_data_prod` (отдельный от dev, чтобы не пересекались).
+- **backend** — образ из `backend/Dockerfile` (тот же, что в dev), без
+  bind-mount исходников, команда переопределена:
+  `alembic upgrade head && uvicorn app.main:app --workers 2 --proxy-headers`
+  (`--proxy-headers` обязателен — иначе rate limiter T15 видит IP nginx, а не
+  клиента). Healthcheck — `python -c "urllib.request.urlopen(...)"` на
+  `GET /health` (curl в образе нет).
+- **celery_worker** — без watchmedo (`--concurrency=1`, `--loglevel=warning`).
+- **frontend** — собран из `frontend/Dockerfile.prod` (multi-stage:
+  `node:20-alpine` → `npm run build` → статика в `nginx:alpine` с конфигом
+  `deploy/nginx.conf`), единственный сервис с внешним портом (`80:80`).
+
+Все сервисы: `restart: unless-stopped`, логирование `json-file` (`max-size:
+10m`, `max-file: 3`).
+
+Инструкция по деплою на VDS (docker install, `.env` с
+`ENVIRONMENT=production`, запуск, обновление, HTTPS через certbot как
+следующий шаг) — `deploy/README.md`.
+
+Не сделано (см. `tasks/T12-db-backup.md`, `FUTURE.md`): backup-стратегия БД,
+мониторинг/логирование (Sentry), автоматизация выпуска SSL.
 
 ---
 

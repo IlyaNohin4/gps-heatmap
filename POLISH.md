@@ -1,5 +1,9 @@
 # Polish / known issues
 
+- [ ] После загрузки трека он не появляется в сайдбар-списке без перезагрузки страницы
+  (найдено при ручной проверке T11, 2026-07-09) — дефект стыка T05/T06: локальное
+  состояние списка в `LeftIsland` не инвалидируется после успешной загрузки
+
 - [x] **RESOLVED** — Silent-fail при загрузке данных (T07, 2026-07-09)
   - **Проблема:** `App.jsx` глотал ошибки загрузки треков/POI (`.catch(() => {})`,
     `catch { /* ignore */ }` в `handleFindInArea`/`handleShowAll`), пользователь видел
@@ -97,13 +101,16 @@
     - Подтверждения email при регистрации
     - Смены email в профиле
 
-- [ ] Production deployment setup
-  - Оптимизация production Dockerfile
-  - nginx reverse proxy конфигурация
-  - .env template и environment variable management
+- [x] **RESOLVED** — Production deployment setup: compose/nginx (T11, 2026-07-09)
+  - `docker-compose.prod.yml` — отдельный прод-компоуз: postgres/redis без внешних
+    портов, backend без reload/bind-mount (`--workers 2 --proxy-headers`, healthcheck
+    через `/health`), celery без watchmedo, frontend — статика за nginx, наружу только 80
+  - `frontend/Dockerfile.prod` — multi-stage build (node → nginx:alpine)
+  - `deploy/nginx.conf` — прокси `/api/`, `/docs`/`/redoc`/`/openapi.json` на backend,
+    SPA fallback, `client_max_body_size 25m`, gzip
+  - `deploy/README.md` — шпаргалка деплоя на VDS
   - CI/CD pipeline — частично закрыто: CI есть (`.github/workflows/ci.yml`, T14: pytest + frontend build на push/PR); CD (деплой) — см. FUTURE.md
-  - Database backup strategy
-  - Monitoring & logging setup (e.g., Sentry)
+  - Ещё не сделано: Database backup strategy (T12), Monitoring & logging setup (Sentry, см. FUTURE.md), автоматизация SSL (см. deploy/README.md § HTTPS)
 
 ---
 
