@@ -11,6 +11,7 @@ const useAppStore = create(
       activePanel: null,
       tracks: [],
       isUploadingIds: new Set(),
+      tracksListVersion: 0,
       expandedTrackInfo: 'partial', // 'off' | 'partial' | 'on'
 
       setTheme: (theme) => set({ theme }),
@@ -22,6 +23,7 @@ const useAppStore = create(
       setTracks: (tracks) => set({ tracks }),
       setExpandedTrackInfo: (mode) => set({ expandedTrackInfo: mode }),
       addTrack: (track) => set((s) => ({ tracks: [track, ...s.tracks] })),
+      bumpTracksListVersion: () => set((s) => ({ tracksListVersion: s.tracksListVersion + 1 })),
       removeTrack: (id) =>
         set((s) => ({ tracks: s.tracks.filter((t) => t.id !== id) })),
       updateTrack: (updated) =>

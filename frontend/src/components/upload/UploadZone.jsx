@@ -17,7 +17,7 @@ function getExt(filename) {
 
 export default function UploadZone({ inputRef: externalInputRef, onTrackFiles, onPOIFiles }) {
   const { t } = useTranslation();
-  const { addTrack, addUploadingId, removeUploadingId } = useAppStore();
+  const { addTrack, addUploadingId, removeUploadingId, bumpTracksListVersion } = useAppStore();
   const [dragging, setDragging] = useState(false);
   // Queue progress: { current, total } | null
   const [queueProgress, setQueueProgress] = useState(null);
@@ -84,6 +84,7 @@ export default function UploadZone({ inputRef: externalInputRef, onTrackFiles, o
         await pollUntilDone(taskId, file.name);
       } else if (result.track) {
         addTrack(result.track);
+        bumpTracksListVersion();
         toast.success(t('tracks.upload_success', { name: file.name }));
       }
     } catch (err) {
@@ -107,6 +108,7 @@ export default function UploadZone({ inputRef: externalInputRef, onTrackFiles, o
             } catch {
               if (status.track) addTrack(status.track);
             }
+            bumpTracksListVersion();
             toast.success(t('tracks.upload_success', { name: filename }));
             resolve();
           } else if (status.state === 'FAILURE' || status.status === 'error' || status.status === 'failed') {
