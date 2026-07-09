@@ -84,6 +84,8 @@ function MainPage() {
   useEffect(() => {
     if (!isAuthenticated) {
       useAppStore.getState().setTracks([]);
+      useAppStore.getState().resetUserData();
+      useMapStore.getState().resetMapData();
       return;
     }
     let cancelled = false;

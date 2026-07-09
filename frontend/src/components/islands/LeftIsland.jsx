@@ -6,6 +6,7 @@ import 'rc-slider/assets/index.css';
 import TrackCard from '../tracks/TrackCard.jsx';
 import POITab from './POITab.jsx';
 import useAppStore from '../../store/appStore.js';
+import useAuthStore from '../../store/authStore.js';
 import useMapStore from '../../store/mapStore.js';
 import { getTrack, fetchTracksPage } from '../../api/tracks.js';
 import useInfiniteScroll from '../../hooks/useInfiniteScroll.js';
@@ -46,6 +47,7 @@ function LeftIslandContent({ onUploadClick, loading }) {
   const { t } = useTranslation();
   const { selectedTrackId, setSelectedTrack, isUploadingIds, activePanel, setActivePanel, tracksListVersion } = useAppStore();
   const { showTrackCreator, toggleTrackCreator, mapInstance } = useMapStore();
+  const { isAuthenticated } = useAuthStore();
   const [isPending, startTransition] = useTransition();
   const [open, setOpen] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -83,6 +85,14 @@ function LeftIslandContent({ onUploadClick, loading }) {
   // под текущие фильтры списка. Не "оптимизировать" объединением с appStore.tracks —
   // heatmap не должен зависеть от фильтров списка (см. T04/T05).
   useEffect(() => {
+    if (!isAuthenticated) {
+      setItems([]);
+      setTotal(0);
+      setHasMore(false);
+      setError(null);
+      setIsLoading(false);
+      return;
+    }
     let cancelled = false;
     const version = ++requestVersion.current;
     setIsLoading(true);
@@ -106,7 +116,7 @@ function LeftIslandContent({ onUploadClick, loading }) {
   // этот эффект и грузит список заново с offset=0 — прокрутка списка
   // сбрасывается наверх. Для этих операций это приемлемо, сохранение
   // позиции прокрутки не реализуем — не по задаче.
-  }, [buildParams, retryCount, tracksListVersion]);
+  }, [buildParams, retryCount, tracksListVersion, isAuthenticated]);
 
   const handleRetry = useCallback(() => {
     setError(null);

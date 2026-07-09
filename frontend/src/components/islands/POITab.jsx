@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect, useCallback, Suspense, lazy } from 
 import { Plus, Upload, X as XIcon, Loader, Search, ChevronLeft, Eye, EyeOff } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { useTranslation } from 'react-i18next';
+import useAuthStore from '../../store/authStore.js';
 import useMapStore from '../../store/mapStore.js';
 import { fetchPOI, fetchPOIPage, deletePOI, uploadPOI } from '../../api/poi.js';
 import POICard from '../poi/POICard.jsx';
@@ -13,6 +14,7 @@ const POIDeleteModal = lazy(() => import('../poi/POIDeleteModal.jsx'));
 export default React.memo(function POITab({ onCollapse }) {
   const { t } = useTranslation();
   const { pois, setPOIs, setPoiCreationMode, poiCreationMode, mapInstance, showPOI, togglePOI } = useMapStore();
+  const { isAuthenticated } = useAuthStore();
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [search, setSearch] = useState('');
@@ -111,6 +113,14 @@ export default React.memo(function POITab({ onCollapse }) {
   // Список в табе пагинирован через сервер (отдельно от mapStore.pois,
   // который карта получает целиком — см. loadPOIs выше, не трогать).
   useEffect(() => {
+    if (!isAuthenticated) {
+      setListItems([]);
+      setListTotal(0);
+      setListHasMore(false);
+      setListError(null);
+      setListLoading(false);
+      return;
+    }
     let cancelled = false;
     const version = ++requestVersion.current;
     setListLoading(true);
@@ -131,7 +141,7 @@ export default React.memo(function POITab({ onCollapse }) {
       }
     }, 300); // debounce для search
     return () => { cancelled = true; clearTimeout(timer); };
-  }, [buildListParams, retryCount]);
+  }, [buildListParams, retryCount, isAuthenticated]);
 
   const handleListRetry = useCallback(() => {
     setListError(null);

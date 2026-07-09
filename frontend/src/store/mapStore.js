@@ -138,6 +138,27 @@ const useMapStore = create((set, get) => ({
       },
     }),
 
+  // Called on logout / auth switch (App.jsx): clears data belonging to the previous
+  // user. Does NOT touch UI settings (activeLayer, showHeatmap/Speed/POI, poiCategories,
+  // showTrackCreator, poiCreationMode) — those are not per-user data (see T21).
+  resetMapData: () =>
+    set({
+      pois: [],
+      visibleTrackIds: new Set(),
+      trackDetailCache: {},
+      imports: [],
+      visibleImports: new Set(),
+      trackCreatorState: {
+        waypoints: [],
+        redoStack: [],
+        routePoints: [],
+        mode: 'manual',
+        profile: 'cycling-regular',
+        error: null,
+        routing: false,
+      },
+    }),
+
   addWaypoint: (latlng) =>
     set((s) => ({
       trackCreatorState: {
