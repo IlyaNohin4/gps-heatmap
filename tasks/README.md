@@ -43,7 +43,7 @@
 | [T08](T08-error-boundary.md) | ✅ Глобальный ErrorBoundary (готово 2026-07-09) | Frontend | P1 | 1h |
 | [T09](T09-celery-retry-backoff.md) | ✅ Retry с exponential backoff в Celery (готово 2026-07-08) | Backend | P1 | 1h |
 | [T10](T10-env-secrets-hygiene.md) | ✅ Секреты из compose в .env (готово 2026-07-06, PR #3) | DevOps | P0 | 1h |
-| [T11](T11-prod-docker-nginx.md) | Прод-компоуз: nginx, prod Dockerfiles, закрытые порты | DevOps | P1 | 3-4h |
+| [T11](T11-prod-docker-nginx.md) | ✅ Прод-компоуз: nginx, prod Dockerfiles, закрытые порты (готово 2026-07-09) | DevOps | P1 | 3-4h |
 | [T12](T12-db-backup.md) | Бэкапы PostgreSQL (pg_dump + cron) | DevOps | P2 | 1h |
 | [T14](T14-ci-test-gate.md) | ✅ CI test-gate: pytest + build на каждый push (готово 2026-07-06, PR #1) | DevOps | P1 | 1-2h |
 | [T17](T17-fix-failing-tests.md) | ✅ Починить красные тесты на main (готово 2026-07-06, PR #2 — 132 passed) | Backend | P0 | 2-3h |
