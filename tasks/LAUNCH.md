@@ -36,7 +36,7 @@
 | 14a | ✅ T18 единый стиль уведомлений | Haiku | `task/t18-notifications` |
 | 15 | ✅ T11 прод-компоуз + nginx | **Sonnet, thinking** | `task/t11-prod-docker` |
 | 15a | ✅ T19 список после загрузки | Sonnet | `task/t19-upload-list` |
-| 15b | T21 сброс данных при смене аккаунта | Sonnet | `task/t21-auth-reset` |
+| 15b | ✅ T21 сброс данных при смене аккаунта | Sonnet | `task/t21-auth-reset` |
 | 15c | T20 отступы UI | Sonnet | `task/t20-ui-spacing` |
 | 16 | T12 бэкапы | Haiku | `task/t12-backups` |
 | 17 | T13 синхронизация доков | Sonnet | `task/t13-docs-sync` |
