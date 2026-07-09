@@ -31,8 +31,9 @@
 | 10 | ✅ T04 bulk geometries | **Sonnet, thinking** | `task/t04-geometries` |
 | 11 | ✅ T05 серверная фильтрация | **Sonnet, thinking** | `task/t05-server-filtering` |
 | 12 | ✅ T06 infinite scroll | Sonnet | `task/t06-infinite-scroll` |
-| 13 | T07 loading/error states | Sonnet | `task/t07-loading-errors` |
+| 13 | ✅ T07 loading/error states | Sonnet | `task/t07-loading-errors` |
 | 14 | T08 ErrorBoundary | Haiku | `task/t08-error-boundary` |
+| 14a | T18 единый стиль уведомлений | Haiku | `task/t18-notifications` |
 | 15 | T11 прод-компоуз + nginx | **Sonnet, thinking** | `task/t11-prod-docker` |
 | 16 | T12 бэкапы | Haiku | `task/t12-backups` |
 | 17 | T13 синхронизация доков | Sonnet | `task/t13-docs-sync` |
