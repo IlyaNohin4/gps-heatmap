@@ -1,5 +1,22 @@
 # Polish / known issues
 
+- [x] **RESOLVED** — Смена аккаунта (logout → login под другим юзером) не сбрасывала
+  клиентские данные (T21, 2026-07-09)
+  - **Проблема:** после T05/T06 списки треков (`LeftIsland`) и POI (`POITab`) живут
+    в локальном состоянии компонентов, их debounce-эффекты не зависели от `isAuthenticated` —
+    logout не очищал список, login под другим юзером до момента ответа сервера показывал
+    список прошлого аккаунта; `mapStore.trackDetailCache`/`visibleTrackIds`/`pois` и др.
+    вообще не сбрасывались нигде
+  - **Решение:** `isAuthenticated` добавлен в deps обоих debounce-эффектов, при
+    `!isAuthenticated` — список/total/hasMore/error очищаются, запрос не идёт;
+    `mapStore.resetMapData()` (новое действие) очищает `pois`, `visibleTrackIds`,
+    `trackDetailCache`, `imports`, `visibleImports`, `trackCreatorState`;
+    `appStore.resetUserData()` очищает `selectedTrackId`, `isUploadingIds`; оба вызываются
+    из `App.jsx` в ветке `!isAuthenticated` главного data-эффекта
+  - **Что сознательно не тронуто:** UI-настройки (`activeLayer`, `showHeatmap/Speed/POI`,
+    `poiCategories`, `showTrackCreator`, `poiCreationMode`), `tracksListVersion` (bump-механизм
+    T19), `authStore`
+
 - [x] **RESOLVED** — После загрузки/удаления/переименования трека список в сайдбаре
   не обновлялся без перезагрузки страницы (T19, 2026-07-09)
   - **Причина:** список треков живёт в локальном состоянии `LeftIsland` и

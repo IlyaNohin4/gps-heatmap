@@ -40,6 +40,9 @@ const useAppStore = create(
           next.delete(taskId);
           return { isUploadingIds: next };
         }),
+      // Called on logout / auth switch (App.jsx). tracksListVersion (T19 bump
+      // mechanism) is intentionally left untouched (see T21).
+      resetUserData: () => set({ selectedTrackId: null, isUploadingIds: new Set() }),
     }),
     {
       name: 'gps_app',
