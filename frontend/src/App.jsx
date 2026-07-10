@@ -29,6 +29,10 @@ import { Search, RotateCcw, Eye, EyeOff } from 'lucide-react';
 // Lazy-load the public track page so it doesn't pull leaflet into the main bundle
 const PublicTrackPage = lazy(() => import('./pages/PublicTrackPage.jsx'));
 
+// Dev-only UI-kit demo page — the `import.meta.env.DEV ? ... : null` branch lets Rollup
+// dead-code-eliminate the dynamic import entirely from the production bundle.
+const UiDemoPage = import.meta.env.DEV ? lazy(() => import('./pages/UiDemoPage.jsx')) : null;
+
 // Speed legend colors
 const SPEED_LEGEND = [
   { maxKmh: 10,  labelKm: '0–10 km/h',   labelMi: '0–6 mph',   color: 'rgb(155,155,155)' },
@@ -368,6 +372,16 @@ export default function App() {
             </Suspense>
           }
         />
+        {import.meta.env.DEV && (
+          <Route
+            path="/ui-demo"
+            element={
+              <Suspense fallback={<div style={{ padding: 32, textAlign: 'center' }}>Loading…</div>}>
+                <UiDemoPage />
+              </Suspense>
+            }
+          />
+        )}
       </Routes>
     </BrowserRouter>
   );
