@@ -37,7 +37,9 @@
 | 15 | ✅ T11 прод-компоуз + nginx | **Sonnet, thinking** | `task/t11-prod-docker` |
 | 15a | ✅ T19 список после загрузки | Sonnet | `task/t19-upload-list` |
 | 15b | ✅ T21 сброс данных при смене аккаунта | Sonnet | `task/t21-auth-reset` |
-| 15c | T20 отступы UI | Sonnet | `task/t20-ui-spacing` |
+| 15c | ❌ T20 отступы UI — отменена в пользу UI-kit | — | — |
+| 15d | T22 UI-kit (токены + компоненты + демо) | **Sonnet, thinking** | `task/t22-ui-kit` |
+| 15e | T23a-e пересборка островов на kit (задачи появятся после приёмки T22) | Sonnet | `task/t23x-...` |
 | 16 | T12 бэкапы | Haiku | `task/t12-backups` |
 | 17 | T13 синхронизация доков | Sonnet | `task/t13-docs-sync` |
 
