@@ -256,6 +256,36 @@ font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 - `appStore.activePanel` — только одна панель открыта
 - Клик на карту → `activePanel = null`
 
+### UI-kit (T22, `frontend/src/ui/`)
+
+Фундамент для пересборки островов/модалок (T23a-e). Существующие компоненты
+приложения пока НЕ переведены на kit — тот же визуальный стиль, но геометрия
+зафиксирована токенами вместо inline-значений.
+
+**Токены** — `frontend/src/styles/tokens.css` (дополняют, не дублируют
+цвета/тени/радиусы из `globals.css`):
+
+```css
+--space-1: 4px;  --space-2: 8px;  --space-3: 12px;
+--space-4: 16px; --space-5: 24px;
+--control-h: 32px;        /* высота кнопок/инпутов */
+--control-h-sm: 24px;     /* чипы, компактные кнопки */
+--text-xs: 11px; --text-sm: 12px; --text-md: 14px; --text-lg: 16px;
+--danger: #ff3b30; --danger-hover: #cc2d24;
+```
+
+**Компоненты** — `frontend/src/ui/*.jsx`, стили в `frontend/src/styles/ui.css`:
+- `Button` — variants: primary/secondary/ghost/danger; sizes: md/sm; `iconOnly`
+- `Input` — `leftIcon` prop, высота `--control-h`
+- `Card` — паддинг `--space-3`, без внешних margin
+- `Modal` — оверлей + окно, Escape/клик-мимо закрывают, слот `actions`
+- `Panel` — обёртка-остров (переиспользует класс `.island`), паддинг `--space-3`
+- `Chip` — фильтр-кнопка, высота `--control-h-sm`
+
+**Демо:** `/ui-demo` (`frontend/src/pages/UiDemoPage.jsx`) — доступна только в
+dev (`import.meta.env.DEV` ветвление вырезает роут и ленивый импорт из
+прод-сборки целиком, включая CSS токенов/kit).
+
 ---
 
 ## 📤 File Upload & Processing
