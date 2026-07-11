@@ -54,6 +54,8 @@
 | [T20](T20-ui-spacing.md) | ❌ ОТМЕНЕНА (2026-07-10) в пользу блока UI-kit: T22 → T23a-e → T24 | Frontend | — | — |
 | [T22](T22-ui-kit.md) | ✅ UI-kit: дизайн-токены + 6 базовых компонентов + /ui-demo (готово 2026-07-10) | Frontend | P1 | 3-4h |
 | [T23a](T23a-rebuild-leftisland.md) | ✅ Пересборка LeftIsland на UI-kit (образец серии T23, готово 2026-07-11, v2 по чекпоинтам) | Frontend | P1 | 2-3h |
+| [T25](T25-moving-avg-speed.md) | Средняя скорость по методике gpx.studio (moving time) | Backend | P1 | 2-3h |
+| [T26](T26-stats-parity-audit.md) | Аудит статистики vs gpx.studio (read-only сравнение) | Backend | P2 | 2h |
 | [T21](T21-auth-switch-resets-data.md) | ✅ Смена аккаунта сбрасывает клиентские данные (готово 2026-07-09) | Frontend | P1 | 1-1.5h |
 | [T13](T13-docs-sync.md) | Синхронизация архитектурной документации (последняя) | Docs | P1 | 1-2h |
 

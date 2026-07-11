@@ -39,8 +39,10 @@
 | 15b | ✅ T21 сброс данных при смене аккаунта | Sonnet | `task/t21-auth-reset` |
 | 15c | ❌ T20 отступы UI — отменена в пользу UI-kit | — | — |
 | 15d | ✅ T22 UI-kit (токены + компоненты + демо) | **Sonnet, thinking** | `task/t22-ui-kit` |
-| 15e | T23a пересборка LeftIsland (образец серии) | Sonnet | `task/t23a-leftisland` |
-| 15f | T23b-e остальные острова и модалки (файлы задач — после приёмки T23a) | Sonnet | `task/t23x-...` |
+| 15e | ✅ T23a пересборка LeftIsland (v2, чекпоинты) | Sonnet | `task/t23a-leftisland-v2` |
+| 15f | T25 средняя скорость по gpx.studio (moving time) | **Sonnet, thinking** | `task/t25-moving-speed` |
+| 15g | T26 аудит статистики vs gpx.studio (read-only) | Sonnet | `task/t26-stats-audit` |
+| 15h | T23b-e остальные острова и модалки | Sonnet | `task/t23x-...` |
 | 16 | T12 бэкапы | Haiku | `task/t12-backups` |
 | 17 | T13 синхронизация доков | Sonnet | `task/t13-docs-sync` |
 
