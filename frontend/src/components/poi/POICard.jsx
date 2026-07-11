@@ -1,28 +1,25 @@
 import React from 'react';
 import { Trash2, Pencil } from 'lucide-react';
+import Card from '../../ui/Card.jsx';
+import Button from '../../ui/Button.jsx';
 
 export default React.memo(function POICard({ poi, isDeleting, onZoom, onDelete, onRename }) {
   return (
-    <div
+    <Card
       style={{
-        borderRadius: 12,
-        padding: '8px 14px',
-        background: 'var(--surface)',
-        border: '1px solid var(--border)',
         cursor: 'pointer',
         transition: 'all 0.15s',
-        marginBottom: 8,
         display: 'flex',
         alignItems: 'center',
-        gap: 8,
+        gap: 'var(--space-2)',
       }}
       onClick={onZoom}
     >
       {/* Icon + Text */}
-      <div style={{ flex: 1, minWidth: 0 }}>
+      <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 'var(--space-1)' }}>
         <div
           style={{
-            fontSize: 13,
+            fontSize: 'var(--text-sm)',
             fontWeight: 600,
             color: 'var(--text)',
             overflow: 'hidden',
@@ -34,12 +31,11 @@ export default React.memo(function POICard({ poi, isDeleting, onZoom, onDelete, 
         </div>
         <div
           style={{
-            fontSize: 11,
+            fontSize: 'var(--text-xs)',
             color: 'var(--text-secondary)',
             overflow: 'hidden',
             textOverflow: 'ellipsis',
             whiteSpace: 'nowrap',
-            marginTop: 2,
           }}
         >
           {poi.category || 'Other'}
@@ -47,8 +43,9 @@ export default React.memo(function POICard({ poi, isDeleting, onZoom, onDelete, 
       </div>
 
       {/* Rename button */}
-      <button
-        className="icon-btn"
+      <Button
+        iconOnly
+        variant="ghost"
         onClick={(e) => {
           e.stopPropagation();
           onRename?.();
@@ -57,11 +54,12 @@ export default React.memo(function POICard({ poi, isDeleting, onZoom, onDelete, 
         title="Rename POI"
       >
         <Pencil size={14} />
-      </button>
+      </Button>
 
       {/* Delete button */}
-      <button
-        className="icon-btn"
+      <Button
+        iconOnly
+        variant="ghost"
         onClick={(e) => {
           e.stopPropagation();
           onDelete();
@@ -70,7 +68,7 @@ export default React.memo(function POICard({ poi, isDeleting, onZoom, onDelete, 
         title={isDeleting ? 'Deleting...' : 'Delete POI'}
       >
         <Trash2 size={14} />
-      </button>
-    </div>
+      </Button>
+    </Card>
   );
 });

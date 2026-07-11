@@ -11,6 +11,7 @@
   /* controls */
   --control-h: 32px;     /* buttons / inputs */
   --control-h-sm: 24px;  /* chips, compact controls */
+  --control-h-icon: 36px; /* icon-only buttons (md) */
 
   /* type scale */
   --text-xs: 11px;
