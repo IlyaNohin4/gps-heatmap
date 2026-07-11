@@ -32,6 +32,7 @@ _PARSE_RESULT = {
     "speed_segments": [],
     "distance_km": 0.0,
     "duration_sec": None,
+    "moving_time_sec": None,
     "speed_avg": None,
     "speed_max": None,
     "speed_min": None,

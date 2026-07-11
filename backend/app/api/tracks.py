@@ -147,6 +147,7 @@ class TrackOut(BaseModel):
     file_format: str
     distance_km: Optional[float]
     duration_sec: Optional[int]
+    moving_time_sec: Optional[int]
     recorded_at: Optional[str]
     uploaded_at: Optional[str]
     speed_avg: Optional[float]
@@ -168,6 +169,7 @@ class TrackOut(BaseModel):
             file_format=t.file_format,
             distance_km=t.distance_km,
             duration_sec=t.duration_sec,
+            moving_time_sec=t.moving_time_sec,
             recorded_at=t.recorded_at.isoformat() if t.recorded_at else None,
             uploaded_at=t.uploaded_at.isoformat() if t.uploaded_at else None,
             speed_avg=t.speed_avg,
