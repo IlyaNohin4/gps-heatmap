@@ -330,11 +330,12 @@ ParseResult = {
         "time": datetime | None
     }],
     
-    "distance_km": float,           # haversine(points)
-    "duration_sec": int | None,     # last.time - first.time
+    "distance_km": float,           # haversine(points), pre-simplification (T25)
+    "duration_sec": int | None,     # last.time - first.time (includes stops)
+    "moving_time_sec": int | None,  # T25: sum of pair-durations classified as "moving"
     "recorded_at": datetime | None, # first.time
     
-    "speed_avg": float | None,      # km/h
+    "speed_avg": float | None,      # km/h, moving-time average (T25, see below)
     "speed_max": float | None,      # km/h
     "speed_min": float | None,      # km/h, > 0 only
     
@@ -468,10 +469,53 @@ def calculate_speed_segments(points: List[Dict]) -> List[Dict]:
 **Используется для:**
 - SpeedLayer на карте (градиент цветов по скорости)
 - GradeLayer на карте (градиент цветов по уклону)
-- Расчёта `speed_avg`, `speed_max`, `speed_min`
+- Расчёта `speed_max`, `speed_min` (per-pair extremes)
 - Расчёта `grade_avg`, `grade_max`, `grade_min`
 - Классификации маршрута (% climbing, descent, flat)
 - Analytics в графиках (BottomIsland)
+
+**Важно (T25):** `speed_segments` (для карты/графиков) считаются на
+**упрощённых** точках (после RDP, phase 6) — для лёгкого payload и рендера.
+`speed_avg`/`distance_km`/elevation-суммы считаются **отдельным** вызовом
+`_build_segments` на **пре-упрощённых** точках (после фаз 1-4, до RDP) —
+см. следующий раздел.
+
+---
+
+## Speed Statistics: Moving-Time Average (T25)
+
+**Проблема (было):** `speed_avg` считался как арифметическое среднее скоростей
+всех сегментов (`sum(speeds) / len(speeds)`). Короткие сегменты весили как
+длинные, а сегменты стоянок (скорость ≈ 0) занижали среднюю. Статистика,
+кроме того, считалась на точках **после** Douglas-Peucker упрощения
+(−91-93% точек), из-за чего `distance_km` (и производные от него метрики)
+были систематически занижены на 0.9-3.0% (замерено на реальных треках).
+
+**Эталон:** [gpx.studio](https://github.com/gpxstudio/gpx.studio)
+(`gpx/src/gpx.ts`, `_computeStatistics`).
+
+**Методика:**
+
+1. Статистика (`distance_km`, `speed_avg/max/min`, `elevation_gain/loss`,
+   `moving_time_sec`) считается на точках **после фаз очистки 1-4** (drift
+   collapse → outlier removal → Kalman → elevation smoothing), но **до**
+   упрощения (phase 6 / RDP). `_normalize_points()` теперь выполняет только
+   фазы 1-4; `_simplify_trajectory()` вызывается отдельно, только для
+   `normalized_points` (карта/геометрия) и для второго вызова
+   `_build_segments()`, который производит `speed_segments` (см. выше).
+2. Для каждой пары соседних точек с таймстампами: `speed = dist / time`.
+   Пара считается **движением**, если `0.5 ≤ speed ≤ 200` км/ч (нижняя
+   граница — порог стоянки по gpx.studio; верхняя — существующий hard limit
+   для отсечения GPS-мусора, phase 2, оставлен без изменений).
+3. Накапливаются `distance_moving_km` и `moving_time_sec` по парам-движениям.
+4. `speed_avg = distance_moving_km / (moving_time_sec / 3600)` если
+   `moving_time_sec > 0`, иначе `None`.
+
+`duration_sec` остаётся полным временем (`last.time - first.time`),
+включая стоянки — не путать с `moving_time_sec`.
+
+`speed_max`/`speed_min`/`speed_kmh` per-segment остаются прежними (per-pair
+extremes / recorded-or-derived display speed) — эта методика их не касается.
 
 ---
 

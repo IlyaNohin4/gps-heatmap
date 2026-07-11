@@ -17,6 +17,12 @@ function formatDate(iso) {
   return new Date(iso).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
 }
 
+function formatDurationSec(sec) {
+  const h = Math.floor(sec / 3600);
+  const m = Math.floor((sec % 3600) / 60);
+  return h > 0 ? `${h}h ${m}m` : `${m}m`;
+}
+
 function distanceLabel(km, unitSystem) {
   if (!km && km !== 0) return '—';
   if (unitSystem === 'imperial') return `${(km * 0.621371).toFixed(2)} mi`;
@@ -232,13 +238,13 @@ export default React.memo(function TrackCard({ track, isSelected, onClick }) {
             {track.duration_sec != null && (
               <div>
                 <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: 600 }}>{t('card.duration')}</div>
-                <div style={{ fontSize: 'var(--text-sm)' }}>
-                  {(() => {
-                    const h = Math.floor(track.duration_sec / 3600);
-                    const m = Math.floor((track.duration_sec % 3600) / 60);
-                    return h > 0 ? `${h}h ${m}m` : `${m}m`;
-                  })()}
-                </div>
+                <div style={{ fontSize: 'var(--text-sm)' }}>{formatDurationSec(track.duration_sec)}</div>
+              </div>
+            )}
+            {track.moving_time_sec != null && (
+              <div>
+                <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: 600 }}>{t('card.moving_time')}</div>
+                <div style={{ fontSize: 'var(--text-sm)' }}>{formatDurationSec(track.moving_time_sec)}</div>
               </div>
             )}
             {track.elevation_gain != null && (

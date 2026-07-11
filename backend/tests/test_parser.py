@@ -117,9 +117,10 @@ class TestBuildSegments:
             {"lat": 48.8566, "lon": 2.3522, "elevation": None, "time": None},
             {"lat": 48.8600, "lon": 2.3600, "elevation": None, "time": None},
         ]
-        segs, dist, s_avg, *_ = _build_segments(pts)
+        segs, dist, s_avg, _, _, _, stats = _build_segments(pts)
         assert dist > 0
         assert s_avg is None
+        assert stats["moving_time_sec"] is None
         assert all(seg["speed_kmh"] is None for seg in segs)
 
     def test_speed_calculation_plausible(self):
@@ -128,6 +129,28 @@ class TestBuildSegments:
         segs, _, _, s_max, _, _, _ = _build_segments(pts)
         # Not exactly 60 but roughly in that range
         assert 50 < s_max < 80
+
+    def test_moving_avg_excludes_stop(self):
+        # 10 km covered in 30 min (moving), then stationary for 10 min (stop).
+        # gpx.studio methodology: speed_avg = distance_moving / (moving_time / 3600).
+        pts = [
+            self._pt(48.0, 2.0, 0),
+            self._pt(48.0 + 10 / 111.0, 2.0, 30),  # ~10 km away, 30 min later → 20 km/h
+            self._pt(48.0 + 10 / 111.0, 2.0, 40),  # same spot, 10 min later → stop
+        ]
+        segs, dist, s_avg, s_max, s_min, dur, stats = _build_segments(pts)
+        assert dur == 40 * 60
+        assert stats["moving_time_sec"] == 1800
+        assert s_avg == pytest.approx(20.0, abs=0.5)
+
+    def test_no_timestamps_no_moving_time(self):
+        pts = [
+            {"lat": 48.0, "lon": 2.0, "elevation": None, "time": None},
+            {"lat": 48.1, "lon": 2.1, "elevation": None, "time": None},
+        ]
+        _, _, s_avg, _, _, _, stats = _build_segments(pts)
+        assert s_avg is None
+        assert stats["moving_time_sec"] is None
 
 
 # ── detect_format ──────────────────────────────────────────────────────────────
@@ -159,7 +182,7 @@ class TestDetectFormat:
 class TestParseGPX:
     def test_returns_expected_keys(self):
         result = _parse_gpx(SIMPLE_GPX)
-        for key in ("points", "speed_segments", "distance_km", "speed_avg", "speed_max", "speed_min", "duration_sec", "recorded_at"):
+        for key in ("points", "speed_segments", "distance_km", "speed_avg", "speed_max", "speed_min", "duration_sec", "moving_time_sec", "recorded_at"):
             assert key in result
 
     def test_point_count(self):
@@ -228,9 +251,13 @@ class TestParseGPX:
         assert len(result["points"]) == 2
         assert result["distance_km"] > 0
         assert result["recorded_at"] is not None
-        # OsmAnd 3.x: speed 8.3 m/s → 29.88 km/h; should appear in segments
+        # OsmAnd 3.x: speed 8.3 m/s → 29.88 km/h; should appear in the segment display.
+        assert 25 < result["speed_segments"][0]["speed_kmh"] < 35  # 8.3 m/s * 3.6 ≈ 29.88 km/h
+        # speed_avg (T25) is the moving-time average (real dist/time), independent
+        # of the recorded device speed — for this fixture's actual coordinates
+        # that works out to ~5.5 km/h, not the recorded 29.88 km/h.
         assert result["speed_avg"] is not None
-        assert 25 < result["speed_avg"] < 35  # 8.3 m/s * 3.6 ≈ 29.88 km/h
+        assert 4 < result["speed_avg"] < 7
 
     def test_osmand_v3_speed_converted_from_ms(self):
         # xmlns:osmand short URL → v3 → speed in m/s, must multiply by 3.6
@@ -251,8 +278,11 @@ class TestParseGPX:
 </gpx>"""
         assert _detect_osmand(gpx[:2048]) == ("https://osmand.net", False)
         result = _parse_gpx(gpx)
-        # 10.0 m/s * 3.6 = 36.0 km/h
-        assert abs(result["speed_avg"] - 36.0) < 0.5
+        # 10.0 m/s * 3.6 = 36.0 km/h, converted correctly and shown on the segment.
+        assert abs(result["speed_segments"][0]["speed_kmh"] - 36.0) < 0.5
+        # speed_avg (T25) is moving-time based (real dist/time), not the recorded
+        # device speed — for this fixture's coordinates that's ~66.7 km/h.
+        assert abs(result["speed_avg"] - 66.7) < 0.5
 
     def test_osmand_v4_speed_used_directly(self):
         # xmlns:osmand long URL → v4 → speed already in km/h
@@ -275,8 +305,11 @@ class TestParseGPX:
             "https://osmand.net/docs/technical/osmand-file-formats/osmand-gpx", True
         )
         result = _parse_gpx(gpx)
-        # 50.0 km/h used directly
-        assert abs(result["speed_avg"] - 50.0) < 0.5
+        # 50.0 km/h used directly, shown on the segment.
+        assert abs(result["speed_segments"][0]["speed_kmh"] - 50.0) < 0.5
+        # speed_avg (T25) is moving-time based (real dist/time), not the recorded
+        # device speed — for this fixture's coordinates that's ~66.7 km/h.
+        assert abs(result["speed_avg"] - 66.7) < 0.5
 
 
 # ── KML parser ─────────────────────────────────────────────────────────────────

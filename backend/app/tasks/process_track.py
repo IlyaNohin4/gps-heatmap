@@ -103,6 +103,7 @@ def process_track(self, track_id: int, file_bytes: bytes) -> dict:
             track.speed_segments = result["speed_segments"]
             track.distance_km = result["distance_km"]
             track.duration_sec = result["duration_sec"]
+            track.moving_time_sec = result["moving_time_sec"]
             track.speed_avg = result["speed_avg"]
             track.speed_max = result["speed_max"]
             track.speed_min = result["speed_min"]

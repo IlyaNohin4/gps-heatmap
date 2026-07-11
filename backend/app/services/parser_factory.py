@@ -297,7 +297,13 @@ def _simplify_trajectory(points: list[dict], tolerance_m: float = 15.0) -> list[
 
 
 def _normalize_points(points: list[dict]) -> list[dict]:
-    """Full normalization pipeline: collapse drift → remove outliers → Kalman filter → smooth elevation → simplify."""
+    """Cleaning pipeline: collapse drift → remove outliers → Kalman filter → smooth elevation.
+
+    Does NOT simplify (RDP) — callers that need the simplified trajectory for
+    the map/geometry must apply `_simplify_trajectory` separately. Statistics
+    (distance, speed, elevation) are computed on these pre-simplification
+    points to avoid the underestimation RDP introduces (see PARSER.md).
+    """
     if len(points) < 2:
         return points
 
@@ -305,7 +311,6 @@ def _normalize_points(points: list[dict]) -> list[dict]:
     points = _remove_speed_outliers(points)
     points = _apply_kalman_filter(points)
     points = _smooth_elevation(points)
-    points = _simplify_trajectory(points, tolerance_m=15.0)
 
     return points
 
@@ -358,6 +363,10 @@ def _build_segments(points: list[dict]) -> tuple[list[dict], float, float, float
     total_km = 0.0
     speeds: list[float] = []
     grades: list[float] = []
+    distance_moving_km = 0.0
+    moving_time_sec = 0.0
+    _MOVING_MIN_KMH = 0.5
+    _MOVING_MAX_KMH = 200
     elevation_gain = 0.0
     elevation_loss = 0.0
     segment_types: dict[str, int] = {"climbing": 0, "descent": 0, "flat": 0}
@@ -405,6 +414,17 @@ def _build_segments(points: list[dict]) -> tuple[list[dict], float, float, float
         if spd is not None:
             speeds.append(spd)
 
+        # Moving-time accounting (gpx.studio methodology): based on actual
+        # elapsed time between points, independent of the recorded/derived
+        # display speed above.
+        if p0["time"] and p1["time"]:
+            dt = (p1["time"] - p0["time"]).total_seconds()
+            if dt > 0:
+                pair_speed = dist_km / (dt / 3600)
+                if _MOVING_MIN_KMH <= pair_speed <= _MOVING_MAX_KMH:
+                    distance_moving_km += dist_km
+                    moving_time_sec += dt
+
         # Build segment
         segment = {
             "from": [p0["lat"], p0["lon"]],
@@ -416,7 +436,11 @@ def _build_segments(points: list[dict]) -> tuple[list[dict], float, float, float
         }
         segments.append(segment)
 
-    speed_avg = sum(speeds) / len(speeds) if speeds else None
+    moving_time_sec_int = int(moving_time_sec) if moving_time_sec > 0 else None
+    speed_avg = (
+        distance_moving_km / (moving_time_sec / 3600)
+        if moving_time_sec > 0 else None
+    )
     speed_max = max(speeds) if speeds else None
     speed_min = min(speeds) if speeds else None
 
@@ -436,6 +460,7 @@ def _build_segments(points: list[dict]) -> tuple[list[dict], float, float, float
         "grade_min": round(grade_min, 1) if grade_min is not None else None,
         "elevation_gain": round(elevation_gain, 1),
         "elevation_loss": round(elevation_loss, 1),
+        "moving_time_sec": moving_time_sec_int,
         "segment_counts": segment_types,
         "segment_distances": {k: round(v, 2) for k, v in segment_distances.items()},
         "segment_percentages": {
@@ -535,10 +560,12 @@ def _parse_gpx(data: bytes) -> dict:
         raise ValueError("No GPS points found in GPX file")
 
     raw_points = points
-    normalized_points = _normalize_points(points)
+    cleaned_points = _normalize_points(points)
+    normalized_points = _simplify_trajectory(cleaned_points, tolerance_m=15.0)
 
     recorded_at = points[0]["time"] if points[0]["time"] else None
-    segs, dist, s_avg, s_max, s_min, dur, stats = _build_segments(normalized_points)
+    segs, *_ = _build_segments(normalized_points)
+    _, dist, s_avg, s_max, s_min, dur, stats = _build_segments(cleaned_points)
     return {
         "points": raw_points,
         "normalized_points": normalized_points,
@@ -550,6 +577,7 @@ def _parse_gpx(data: bytes) -> dict:
         "elevation_gain": stats.get("elevation_gain", 0.0),
         "elevation_loss": stats.get("elevation_loss", 0.0),
         "duration_sec": dur,
+        "moving_time_sec": stats.get("moving_time_sec"),
         "recorded_at": recorded_at,
         "grade_stats": stats,
     }
@@ -574,9 +602,11 @@ def _parse_kml(data: bytes) -> dict:
                     continue
 
     raw_points = points
-    normalized_points = _normalize_points(points) if points else []
+    cleaned_points = _normalize_points(points) if points else []
+    normalized_points = _simplify_trajectory(cleaned_points, tolerance_m=15.0) if cleaned_points else []
 
-    segs, dist, s_avg, s_max, s_min, dur, stats = _build_segments(normalized_points)
+    segs, *_ = _build_segments(normalized_points)
+    _, dist, s_avg, s_max, s_min, dur, stats = _build_segments(cleaned_points)
     return {
         "points": raw_points,
         "normalized_points": normalized_points,
@@ -588,6 +618,7 @@ def _parse_kml(data: bytes) -> dict:
         "elevation_gain": stats.get("elevation_gain", 0.0),
         "elevation_loss": stats.get("elevation_loss", 0.0),
         "duration_sec": None,
+        "moving_time_sec": stats.get("moving_time_sec"),
         "recorded_at": None,
         "grade_stats": stats,
     }
@@ -622,10 +653,12 @@ def _parse_tcx(data: bytes) -> dict:
         points.append({"lat": lat, "lon": lon, "elevation": ele, "time": t})
 
     raw_points = points
-    normalized_points = _normalize_points(points) if points else []
+    cleaned_points = _normalize_points(points) if points else []
+    normalized_points = _simplify_trajectory(cleaned_points, tolerance_m=15.0) if cleaned_points else []
 
     recorded_at = points[0]["time"] if points and points[0]["time"] else None
-    segs, dist, s_avg, s_max, s_min, dur, stats = _build_segments(normalized_points)
+    segs, *_ = _build_segments(normalized_points)
+    _, dist, s_avg, s_max, s_min, dur, stats = _build_segments(cleaned_points)
     return {
         "points": raw_points,
         "normalized_points": normalized_points,
@@ -637,6 +670,7 @@ def _parse_tcx(data: bytes) -> dict:
         "elevation_gain": stats.get("elevation_gain", 0.0),
         "elevation_loss": stats.get("elevation_loss", 0.0),
         "duration_sec": dur,
+        "moving_time_sec": stats.get("moving_time_sec"),
         "recorded_at": recorded_at,
         "grade_stats": stats,
     }
@@ -666,10 +700,12 @@ def _parse_fit(data: bytes) -> dict:
         points.append({"lat": lat, "lon": lon, "elevation": ele, "time": t})
 
     raw_points = points
-    normalized_points = _normalize_points(points) if points else []
+    cleaned_points = _normalize_points(points) if points else []
+    normalized_points = _simplify_trajectory(cleaned_points, tolerance_m=15.0) if cleaned_points else []
 
     recorded_at = points[0]["time"] if points and points[0]["time"] else None
-    segs, dist, s_avg, s_max, s_min, dur, stats = _build_segments(normalized_points)
+    segs, *_ = _build_segments(normalized_points)
+    _, dist, s_avg, s_max, s_min, dur, stats = _build_segments(cleaned_points)
     return {
         "points": raw_points,
         "normalized_points": normalized_points,
@@ -681,6 +717,7 @@ def _parse_fit(data: bytes) -> dict:
         "elevation_gain": stats.get("elevation_gain", 0.0),
         "elevation_loss": stats.get("elevation_loss", 0.0),
         "duration_sec": dur,
+        "moving_time_sec": stats.get("moving_time_sec"),
         "recorded_at": recorded_at,
         "grade_stats": stats,
     }
@@ -710,9 +747,11 @@ def _parse_geojson(data: bytes) -> dict:
             points.append({"lat": lat, "lon": lon, "elevation": ele, "time": None})
 
     raw_points = points
-    normalized_points = _normalize_points(points) if points else []
+    cleaned_points = _normalize_points(points) if points else []
+    normalized_points = _simplify_trajectory(cleaned_points, tolerance_m=15.0) if cleaned_points else []
 
-    segs, dist, s_avg, s_max, s_min, dur, stats = _build_segments(normalized_points)
+    segs, *_ = _build_segments(normalized_points)
+    _, dist, s_avg, s_max, s_min, dur, stats = _build_segments(cleaned_points)
     return {
         "points": raw_points,
         "normalized_points": normalized_points,
@@ -724,6 +763,7 @@ def _parse_geojson(data: bytes) -> dict:
         "elevation_gain": stats.get("elevation_gain", 0.0),
         "elevation_loss": stats.get("elevation_loss", 0.0),
         "duration_sec": None,
+        "moving_time_sec": stats.get("moving_time_sec"),
         "recorded_at": None,
         "grade_stats": stats,
     }

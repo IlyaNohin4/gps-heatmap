@@ -28,6 +28,7 @@ class Track(Base):
 
     distance_km = Column(Float, index=True)
     duration_sec = Column(Integer)
+    moving_time_sec = Column(Integer, nullable=True)
     recorded_at = Column(DateTime(timezone=True), index=True)
     uploaded_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), index=True)
 
