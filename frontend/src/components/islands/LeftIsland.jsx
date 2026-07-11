@@ -10,6 +10,10 @@ import useAuthStore from '../../store/authStore.js';
 import useMapStore from '../../store/mapStore.js';
 import { getTrack, fetchTracksPage } from '../../api/tracks.js';
 import useInfiniteScroll from '../../hooks/useInfiniteScroll.js';
+import Input from '../../ui/Input.jsx';
+import Chip from '../../ui/Chip.jsx';
+import Button from '../../ui/Button.jsx';
+import Panel from '../../ui/Panel.jsx';
 
 const FORMAT_OPTIONS = [
   { value: 'all',     label: 'All' },
@@ -24,10 +28,9 @@ function SkeletonCard() {
   return (
     <div style={{
       borderRadius: 12,
-      padding: '12px 14px',
+      padding: 'var(--space-3) var(--space-4)',
       background: 'var(--surface)',
       border: '1px solid var(--border)',
-      marginBottom: 8,
     }}>
       {[80, 50, 60].map((w, i) => (
         <div key={i} style={{
@@ -35,7 +38,7 @@ function SkeletonCard() {
           width: `${w}%`,
           borderRadius: 6,
           background: 'var(--border)',
-          marginBottom: i < 2 ? 8 : 0,
+          marginBottom: i < 2 ? 'var(--space-2)' : 0,
           animation: 'pulse 1.4s ease-in-out infinite',
         }} />
       ))}
@@ -138,17 +141,6 @@ function LeftIslandContent({ onUploadClick, loading }) {
 
   const sentinelRef = useInfiniteScroll(loadMoreTracks, hasMore);
 
-  const chip = (active) => ({
-    padding: '4px 10px',
-    borderRadius: 8,
-    fontSize: 11,
-    fontWeight: 600,
-    background: active ? 'var(--accent)' : 'var(--bg)',
-    color: active ? '#fff' : 'var(--text-secondary)',
-    border: 'none',
-    cursor: 'pointer',
-  });
-
   return (
     <div onClick={(e) => e.stopPropagation()} style={{
       position: 'fixed',
@@ -163,7 +155,7 @@ function LeftIslandContent({ onUploadClick, loading }) {
     }}>
       {/* Collapsed state: just a toggle button */}
       {!sidebarOpen && (
-        <div className="island" style={{ padding: '6px' }}>
+        <div className="island" style={{ padding: 'var(--space-2)' }}>
           <button
             className="icon-btn"
             onClick={() => setSidebarOpen(true)}
@@ -174,89 +166,63 @@ function LeftIslandContent({ onUploadClick, loading }) {
         </div>
       )}
 
-      {sidebarOpen && <div className="island panel-animate-in-left" style={{
+      {sidebarOpen && <Panel className="panel-animate-in-left" style={{
         display: 'flex',
         flexDirection: 'column',
         height: '100%',
         maxHeight: 'calc(100vh - 320px)',
+        padding: 0,
       }}>
         {/* Tabs */}
         <div style={{
           display: 'flex',
-          padding: '8px 8px 8px',
-          gap: 4,
+          padding: 'var(--space-2)',
+          gap: 'var(--space-1)',
           borderBottom: '1px solid var(--border)',
         }}>
-          <button
+          <Button
+            variant={currentTab === 'tracks' ? 'primary' : 'ghost'}
             onClick={() => handleSetCurrentTab('tracks')}
-            style={{
-              flex: 1,
-              padding: '8px 10px',
-              border: 'none',
-              borderRadius: '8px',
-              background: currentTab === 'tracks' ? 'var(--accent)' : 'var(--bg)',
-              color: currentTab === 'tracks' ? '#fff' : 'var(--text-secondary)',
-              fontSize: 13,
-              fontWeight: 600,
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 4,
-              transition: 'all 0.15s',
-            }}
+            style={{ flex: 1, background: currentTab === 'tracks' ? undefined : 'var(--surface)' }}
           >
             <Route size={14} /> Tracks
-          </button>
-          <button
+          </Button>
+          <Button
+            variant={currentTab === 'poi' ? 'primary' : 'ghost'}
             onClick={() => handleSetCurrentTab('poi')}
-            style={{
-              flex: 1,
-              padding: '8px 10px',
-              border: 'none',
-              borderRadius: '8px',
-              background: currentTab === 'poi' ? 'var(--accent)' : 'var(--bg)',
-              color: currentTab === 'poi' ? '#fff' : 'var(--text-secondary)',
-              fontSize: 13,
-              fontWeight: 600,
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 4,
-              transition: 'all 0.15s',
-            }}
+            style={{ flex: 1, background: currentTab === 'poi' ? undefined : 'var(--surface)' }}
           >
             <MapPin size={14} /> POI
-          </button>
+          </Button>
         </div>
 
         {/* Tracks Tab */}
         <div style={{ display: currentTab === 'tracks' ? 'flex' : 'none', flexDirection: 'column', flex: 1, minHeight: 0 }}>
         {/* Search bar */}
-        <div style={{ padding: '10px 10px 0', display: 'flex', gap: 6, flexShrink: 0 }}>
-          <div style={{ position: 'relative', flex: 1 }}>
-            <Search size={14} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }} />
-            <input
+        <div style={{ padding: 'var(--space-3) var(--space-2) 0', display: 'flex', gap: 'var(--space-2)', flexShrink: 0 }}>
+          <div style={{ position: 'relative', flex: 1, display: 'flex', alignItems: 'center' }}>
+            <Input
+              leftIcon={<Search size={14} />}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder={t('tracks.search')}
-              style={{ borderRadius: 'var(--radius-search)', paddingLeft: 30, paddingRight: search ? 30 : 12 }}
+              style={{ borderRadius: 'var(--radius-search)', height: '34px', paddingRight: search ? 30 : undefined }}
             />
             {search && (
-              <button onClick={() => setSearch('')} style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', display: 'flex' }}>
+              <button onClick={() => setSearch('')} style={{ position: 'absolute', right: 'var(--space-2)', background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', display: 'flex' }}>
                 <X size={13} />
               </button>
             )}
           </div>
-          <button
-            className="icon-btn"
+          <Button
+            iconOnly
+            variant="ghost"
+            active={filterOpen}
             onClick={() => setActivePanel(filterOpen ? null : 'left:filter')}
             title="Filters"
-            style={{ background: filterOpen ? 'rgba(0,122,255,0.1)' : undefined, color: filterOpen ? 'var(--accent)' : undefined }}
           >
             <Filter size={15} />
-          </button>
+          </Button>
           <button
             className="icon-btn"
             onClick={() => setSidebarOpen(false)}
@@ -268,37 +234,37 @@ function LeftIslandContent({ onUploadClick, loading }) {
 
         {/* Filter panel */}
         {filterOpen && (
-          <div style={{ padding: '10px 12px', borderBottom: '1px solid var(--border)', animation: 'fadeIn 0.3s ease-out', flexShrink: 0 }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-secondary)', marginBottom: 6, textTransform: 'uppercase' }}>{t('tracks.sort')}</div>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 10 }}>
+          <div style={{ padding: 'var(--space-3)', borderBottom: '1px solid var(--border)', animation: 'fadeIn 0.3s ease-out', flexShrink: 0 }}>
+            <div style={{ fontSize: 'var(--text-xs)', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: 'var(--space-2)', textTransform: 'uppercase' }}>{t('tracks.sort')}</div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-1)', marginBottom: 'var(--space-3)' }}>
               {(['newest', 'oldest', 'longest', 'shortest', 'fastest', 'slowest']).map((v) => (
-                <button key={v} style={chip(sort === v)} onClick={() => setSort(v)}>{t(`sort.${v}`)}</button>
+                <Chip key={v} active={sort === v} onClick={() => setSort(v)}>{t(`sort.${v}`)}</Chip>
               ))}
             </div>
-            <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-secondary)', marginBottom: 6, textTransform: 'uppercase' }}>{t('tracks.format')}</div>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 10 }}>
+            <div style={{ fontSize: 'var(--text-xs)', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: 'var(--space-2)', textTransform: 'uppercase' }}>{t('tracks.format')}</div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-1)', marginBottom: 'var(--space-3)' }}>
               {FORMAT_OPTIONS.map((f) => (
-                <button key={f.value} style={chip(formatFilter === f.value)} onClick={() => setFormatFilter(f.value)}>{f.label}</button>
+                <Chip key={f.value} active={formatFilter === f.value} onClick={() => setFormatFilter(f.value)}>{f.label}</Chip>
               ))}
             </div>
-            <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-secondary)', marginBottom: 6, textTransform: 'uppercase' }}>
+            <div style={{ fontSize: 'var(--text-xs)', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: 'var(--space-2)', textTransform: 'uppercase' }}>
               {t('tracks.avg_speed')}: {speedRange[0]}–{speedRange[1]} km/h
             </div>
-            <Slider range min={0} max={200} value={speedRange} onChange={setSpeedRange} style={{ marginBottom: 8 }} />
+            <Slider range min={0} max={200} value={speedRange} onChange={setSpeedRange} style={{ marginBottom: 'var(--space-2)' }} />
           </div>
         )}
 
         {/* Track list */}
-        <div style={{ flex: 1, overflowY: 'auto', padding: '8px 10px 4px', minHeight: 0 }}>
+        <div style={{ flex: 1, overflowY: 'auto', padding: 'var(--space-2) var(--space-3) var(--space-1)', minHeight: 0, display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
           {error ? (
-            <div style={{ textAlign: 'center', padding: '24px 0', color: 'var(--text-secondary)', fontSize: 13 }}>
-              <div style={{ marginBottom: 10 }}>{t('errors.tracks_load_failed')}</div>
+            <div style={{ textAlign: 'center', padding: 'var(--space-5) 0', color: 'var(--text-secondary)', fontSize: 'var(--text-sm)' }}>
+              <div style={{ marginBottom: 'var(--space-2)' }}>{t('errors.tracks_load_failed')}</div>
               <button className="btn-secondary" onClick={handleRetry}>{t('errors.retry')}</button>
             </div>
           ) : loading || isLoading ? (
             [1, 2, 3].map((i) => <SkeletonCard key={i} />)
           ) : items.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '24px 0', color: 'var(--text-secondary)', fontSize: 13 }}>
+            <div style={{ textAlign: 'center', padding: 'var(--space-5) 0', color: 'var(--text-secondary)', fontSize: 'var(--text-sm)' }}>
               {total === 0 && !search.trim() && formatFilter === 'all' && speedRange[0] === 0 && speedRange[1] === 200
                 ? t('tracks.no_tracks')
                 : t('tracks.no_results')}
@@ -355,17 +321,17 @@ function LeftIslandContent({ onUploadClick, loading }) {
           )}
           {items.length > 0 && hasMore && <div ref={sentinelRef} style={{ height: 1 }} />}
           {items.length > 0 && (
-            <div style={{ textAlign: 'center', padding: '8px 0 2px', color: 'var(--text-secondary)', fontSize: 11 }}>
+            <div style={{ textAlign: 'center', padding: 'var(--space-2) 0 var(--space-1)', color: 'var(--text-secondary)', fontSize: 'var(--text-xs)' }}>
               {t('tracks.count_of', { shown: items.length, total })}
             </div>
           )}
         </div>
 
         {/* Bottom actions - Tracks tab only */}
-        <div style={{ padding: '8px 10px 10px', borderTop: '1px solid var(--border)', flexShrink: 0 }}>
+        <div style={{ padding: 'var(--space-2) var(--space-3) var(--space-3)', borderTop: '1px solid var(--border)', flexShrink: 0 }}>
           <button
             className="btn-secondary"
-            style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '8px' }}
+            style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 'var(--space-2)', padding: 'var(--space-2)' }}
             onClick={onUploadClick}
           >
             <Plus size={14} /> {t('tracks.add_track')}
@@ -377,7 +343,7 @@ function LeftIslandContent({ onUploadClick, loading }) {
         <div style={{ display: currentTab === 'poi' ? 'flex' : 'none', flexDirection: 'column', flex: 1, minHeight: 0 }}>
           <POITab onCollapse={handleCollapse} />
         </div>
-      </div>}
+      </Panel>}
     </div>
   );
 }

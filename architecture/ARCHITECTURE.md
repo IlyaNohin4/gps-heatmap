@@ -258,9 +258,17 @@ font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 
 ### UI-kit (T22, `frontend/src/ui/`)
 
-Фундамент для пересборки островов/модалок (T23a-e). Существующие компоненты
-приложения пока НЕ переведены на kit — тот же визуальный стиль, но геометрия
-зафиксирована токенами вместо inline-значений.
+Фундамент для пересборки островов/модалок (T23a-e). `tokens.css` и `ui.css`
+подключены глобально в `App.jsx` (рядом с `globals.css`) — без этого
+kit-компоненты рендерились бы неоформленными вне `/ui-demo` (пропуск T22,
+исправлено в T23a).
+
+**LeftIsland (T23a, образец серии)** — первый остров, полностью переведённый
+на kit: `TrackCard`, `POICard`, шапка вкладки Tracks (поиск/сортировка/
+фильтры/табы), каркас острова (`Panel`). Данные-слой (хуки, debounce,
+infinite scroll, tracksListVersion) не менялся — только слой представления.
+`POITab.jsx` переведён частично: список и кнопки Import/Create — на kit,
+строка поиска POI осталась на legacy `poi.css` (вне скоупа T23a, см. POLISH.md).
 
 **Токены** — `frontend/src/styles/tokens.css` (дополняют, не дублируют
 цвета/тени/радиусы из `globals.css`):
@@ -270,17 +278,28 @@ font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 --space-4: 16px; --space-5: 24px;
 --control-h: 32px;        /* высота кнопок/инпутов */
 --control-h-sm: 24px;     /* чипы, компактные кнопки */
+--control-h-icon: 36px;   /* iconOnly-кнопки (совпадает с legacy .icon-btn) */
 --text-xs: 11px; --text-sm: 12px; --text-md: 14px; --text-lg: 16px;
 --danger: #ff3b30; --danger-hover: #cc2d24;
 ```
 
 **Компоненты** — `frontend/src/ui/*.jsx`, стили в `frontend/src/styles/ui.css`:
 - `Button` — variants: primary/secondary/ghost/danger; sizes: md/sm; `iconOnly`
+  (36×36, `--control-h-icon`); `active` prop (T23a, согласованное расширение) —
+  класс `.ui-btn--active` для toggle-кнопок вроде фильтра; hover на активной
+  кнопке не переопределяет цвет (см. `.ui-btn--*.ui-btn--active:hover`)
 - `Input` — `leftIcon` prop, высота `--control-h`
 - `Card` — паддинг `--space-3`, без внешних margin
 - `Modal` — оверлей + окно, Escape/клик-мимо закрывают, слот `actions`
 - `Panel` — обёртка-остров (переиспользует класс `.island`), паддинг `--space-3`
+  (обнуляется инлайн-стилем, если внутренние секции сами управляют паддингами —
+  см. `LeftIsland.jsx`)
 - `Chip` — фильтр-кнопка, высота `--control-h-sm`
+- `.ui-badge` (T23a, CSS-класс, не отдельный компонент) — компактный лейбл
+  (формат трека и т.п.), `padding: 2px 6px` — документированное исключение
+  из шкалы отступов для мини-элементов
+- `.track-tag` (T23a, `globals.css`, не `ui.css` — используется вне `ui/`) —
+  span-тег для регион-тегов в развёрнутой TrackCard
 
 **Демо:** `/ui-demo` (`frontend/src/pages/UiDemoPage.jsx`) — доступна только в
 dev (`import.meta.env.DEV` ветвление вырезает роут и ленивый импорт из

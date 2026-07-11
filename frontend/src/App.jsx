@@ -5,6 +5,8 @@ import 'react-toastify/dist/ReactToastify.css';
 import { useTranslation } from 'react-i18next';
 
 import './styles/globals.css';
+import './styles/tokens.css';
+import './styles/ui.css';
 
 import useAppStore from './store/appStore.js';
 import useAuthStore from './store/authStore.js';

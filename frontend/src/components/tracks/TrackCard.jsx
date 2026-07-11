@@ -9,6 +9,8 @@ import useAppStore from '../../store/appStore.js';
 import { togglePublish, getTrackDownloadUrl } from '../../api/tracks.js';
 import TrackDeleteModal from './TrackDeleteModal.jsx';
 import TrackRenameModal from './TrackRenameModal.jsx';
+import Card from '../../ui/Card.jsx';
+import Button from '../../ui/Button.jsx';
 
 function formatDate(iso) {
   if (!iso) return '—';
@@ -87,25 +89,19 @@ export default React.memo(function TrackCard({ track, isSelected, onClick }) {
   const fmt = track.file_format?.toLowerCase();
 
   return (
-    <div
+    <Card
       style={{
-        borderRadius: 12,
-        padding: '8px 14px',
         background: isSelected ? 'rgba(0,122,255,0.08)' : 'var(--surface)',
         border: `1px solid ${isSelected ? 'rgba(0,122,255,0.3)' : 'var(--border)'}`,
         cursor: 'pointer',
         transition: 'all 0.15s',
-        marginBottom: 8,
       }}
       onClick={onClick}
     >
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-1)' }}>
       {/* Row 1: format badge + name + publish + expand */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
-        <span style={{
-          fontSize: 11,
-          fontWeight: 700,
-          padding: '2px 6px',
-          borderRadius: 5,
+      <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+        <span className="ui-badge" style={{
           background: FORMAT_COLORS[fmt] || '#8e8e93',
           color: '#fff',
           textTransform: 'uppercase',
@@ -118,7 +114,7 @@ export default React.memo(function TrackCard({ track, isSelected, onClick }) {
         <span style={{
           flex: 1,
           minWidth: 0,
-          fontSize: 14,
+          fontSize: 'var(--text-md)',
           fontWeight: 600,
           color: 'var(--text)',
           overflow: 'hidden',
@@ -129,120 +125,114 @@ export default React.memo(function TrackCard({ track, isSelected, onClick }) {
         </span>
 
         {/* Publish + expand always visible, compact */}
-        <div style={{ display: 'flex', gap: 2, flexShrink: 0 }}>
-          <button
-            className="icon-btn"
+        <div style={{ display: 'flex', gap: 'var(--space-1)', flexShrink: 0 }}>
+          <Button
+            iconOnly
+            variant="ghost"
             onClick={(e) => { e.stopPropagation(); handlePublish(e); }}
             title={published ? t('card.unpublish') : t('card.publish')}
           >
             {published ? <Globe size={14} color="var(--accent)" /> : <Lock size={14} />}
-          </button>
-          <button
-            className="icon-btn"
+          </Button>
+          <Button
+            iconOnly
+            variant="ghost"
             onClick={(e) => { e.stopPropagation(); setExpanded(!expanded); }}
             title={t('card.details')}
           >
             {expanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-          </button>
+          </Button>
         </div>
       </div>
 
       {/* Row 2: meta chips + action buttons (only when info is shown) */}
       {shouldShowTrackInfo() && (
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', minWidth: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--space-2)' }}>
+          <div style={{ display: 'flex', gap: 'var(--space-2)', flexWrap: 'wrap', minWidth: 0 }}>
             {track.recorded_at && (
-              <span style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 12, color: 'var(--text-secondary)' }}>
+              <span style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-1)', fontSize: 'var(--text-sm)', color: 'var(--text-secondary)' }}>
                 <Calendar size={11} /> {formatDate(track.recorded_at)}
               </span>
             )}
             {track.distance_km !== undefined && (
-              <span style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 12, color: 'var(--text-secondary)' }}>
+              <span style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-1)', fontSize: 'var(--text-sm)', color: 'var(--text-secondary)' }}>
                 <Route size={11} /> {distanceLabel(track.distance_km, unitSystem)}
               </span>
             )}
             {track.speed_avg !== undefined && (
-              <span style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 12, color: 'var(--text-secondary)' }}>
+              <span style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-1)', fontSize: 'var(--text-sm)', color: 'var(--text-secondary)' }}>
                 <Gauge size={11} /> {speedLabel(track.speed_avg, unitSystem)}
               </span>
             )}
           </div>
 
           {/* Action buttons: rename, download, delete */}
-          <div style={{ display: 'flex', gap: 2, flexShrink: 0 }}>
-            <button className="icon-btn" onClick={handleOpenRenameModal} title={t('card.rename')}>
-              <Pencil size={13} />
-            </button>
+          <div style={{ display: 'flex', gap: 'var(--space-1)', flexShrink: 0 }}>
+            <Button iconOnly variant="ghost" onClick={handleOpenRenameModal} title={t('card.rename')}>
+              <Pencil size={14} />
+            </Button>
             <a
               href={getTrackDownloadUrl(track.id)}
               download
               onClick={(e) => e.stopPropagation()}
-              className="icon-btn"
+              className="ui-btn ui-btn--ghost ui-btn--icon-only"
               title={t('card.download')}
-              style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', textDecoration: 'none', color: 'var(--text)' }}
+              style={{ textDecoration: 'none' }}
             >
-              <Download size={13} />
+              <Download size={14} />
             </a>
-            <button
-              className="icon-btn"
-              onClick={handleOpenDeleteModal}
-              title={t('card.delete')}
-            >
-              <Trash2 size={13} />
-            </button>
+            <Button iconOnly variant="ghost" onClick={handleOpenDeleteModal} title={t('card.delete')}>
+              <Trash2 size={14} />
+            </Button>
           </div>
         </div>
       )}
 
       {expanded && (
-        <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--border)' }}>
+        <div style={{ paddingTop: 12, borderTop: '1px solid var(--border)' }}>
           {!shouldShowTrackInfo() && (
             <div style={{
               display: 'flex',
               justifyContent: 'center',
-              gap: 2,
-              marginBottom: 12,
-              paddingBottom: 12,
+              gap: 'var(--space-1)',
+              marginBottom: 'var(--space-3)',
+              paddingBottom: 'var(--space-3)',
               borderBottom: '1px solid var(--border)',
             }}>
-              <button className="icon-btn" onClick={handleOpenRenameModal} title={t('card.rename')}>
+              <Button iconOnly variant="ghost" onClick={handleOpenRenameModal} title={t('card.rename')}>
                 <Pencil size={14} />
-              </button>
+              </Button>
               <a
                 href={getTrackDownloadUrl(track.id)}
                 download
                 onClick={(e) => e.stopPropagation()}
-                className="icon-btn"
+                className="ui-btn ui-btn--ghost ui-btn--icon-only"
                 title={t('card.download')}
-                style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', textDecoration: 'none', color: 'var(--text)' }}
+                style={{ textDecoration: 'none' }}
               >
                 <Download size={14} />
               </a>
-              <button
-                className="icon-btn"
-                onClick={handleOpenDeleteModal}
-                title={t('card.delete')}
-              >
+              <Button iconOnly variant="ghost" onClick={handleOpenDeleteModal} title={t('card.delete')}>
                 <Trash2 size={14} />
-              </button>
+              </Button>
             </div>
           )}
 
           <div style={{
             display: 'grid',
             gridTemplateColumns: '1fr 1fr',
-            gap: '6px 16px',
+            gap: 'var(--space-2) var(--space-4)',
           }}>
             {track.uploaded_at && (
               <div>
-                <div style={{ fontSize: 10, color: 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: 600 }}>{t('card.uploaded')}</div>
-                <div style={{ fontSize: 12 }}>{formatDate(track.uploaded_at)}</div>
+                <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: 600 }}>{t('card.uploaded')}</div>
+                <div style={{ fontSize: 'var(--text-sm)' }}>{formatDate(track.uploaded_at)}</div>
               </div>
             )}
             {track.duration_sec != null && (
               <div>
-                <div style={{ fontSize: 10, color: 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: 600 }}>{t('card.duration')}</div>
-                <div style={{ fontSize: 12 }}>
+                <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: 600 }}>{t('card.duration')}</div>
+                <div style={{ fontSize: 'var(--text-sm)' }}>
                   {(() => {
                     const h = Math.floor(track.duration_sec / 3600);
                     const m = Math.floor((track.duration_sec % 3600) / 60);
@@ -253,30 +243,24 @@ export default React.memo(function TrackCard({ track, isSelected, onClick }) {
             )}
             {track.elevation_gain != null && (
               <div>
-                <div style={{ fontSize: 10, color: 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: 600 }}>{t('card.elev_gain')}</div>
-                <div style={{ fontSize: 12 }}>{Math.round(track.elevation_gain)} m</div>
+                <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: 600 }}>{t('card.elev_gain')}</div>
+                <div style={{ fontSize: 'var(--text-sm)' }}>{Math.round(track.elevation_gain)} m</div>
               </div>
             )}
             {track.elevation_loss != null && (
               <div>
-                <div style={{ fontSize: 10, color: 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: 600 }}>{t('card.elev_loss')}</div>
-                <div style={{ fontSize: 12 }}>{Math.round(track.elevation_loss)} m</div>
+                <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: 600 }}>{t('card.elev_loss')}</div>
+                <div style={{ fontSize: 'var(--text-sm)' }}>{Math.round(track.elevation_loss)} m</div>
               </div>
             )}
             {track.regions?.length > 0 && (
               <div style={{ gridColumn: '1/-1' }}>
-                <div style={{ fontSize: 10, color: 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: 600, marginBottom: 4, display: 'flex', alignItems: 'center', gap: 3 }}>
+                <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: 600, marginBottom: 'var(--space-1)', display: 'flex', alignItems: 'center', gap: 'var(--space-1)' }}>
                   <MapPin size={10} /> {t('card.regions')}
                 </div>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-1)' }}>
                   {track.regions.map((r, i) => (
-                    <span key={i} style={{
-                      fontSize: 11,
-                      padding: '2px 7px',
-                      background: 'var(--bg)',
-                      borderRadius: 6,
-                      border: '1px solid var(--border)',
-                    }}>{r}</span>
+                    <span key={i} className="track-tag">{r}</span>
                   ))}
                 </div>
               </div>
@@ -284,6 +268,7 @@ export default React.memo(function TrackCard({ track, isSelected, onClick }) {
           </div>
         </div>
       )}
+      </div>
 
       {/* Rename Modal */}
       <TrackRenameModal
@@ -300,6 +285,6 @@ export default React.memo(function TrackCard({ track, isSelected, onClick }) {
         onClose={() => setShowDeleteModal(false)}
         onDeleted={handleDeleted}
       />
-    </div>
+    </Card>
   );
 });

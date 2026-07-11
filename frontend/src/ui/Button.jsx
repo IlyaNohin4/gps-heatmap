@@ -4,6 +4,7 @@ export default function Button({
   variant = 'primary',
   size = 'md',
   iconOnly = false,
+  active = false,
   disabled = false,
   className = '',
   children,
@@ -14,6 +15,7 @@ export default function Button({
     `ui-btn--${variant}`,
     size === 'sm' ? 'ui-btn--sm' : '',
     iconOnly ? 'ui-btn--icon-only' : '',
+    active ? 'ui-btn--active' : '',
     className,
   ].filter(Boolean).join(' ');
 

@@ -7,6 +7,7 @@ import useMapStore from '../../store/mapStore.js';
 import { fetchPOI, fetchPOIPage, deletePOI, uploadPOI } from '../../api/poi.js';
 import POICard from '../poi/POICard.jsx';
 import useInfiniteScroll from '../../hooks/useInfiniteScroll.js';
+import Button from '../../ui/Button.jsx';
 import '../../styles/poi.css';
 const POIRenameModal = lazy(() => import('../poi/POIRenameModal.jsx'));
 const POIDeleteModal = lazy(() => import('../poi/POIDeleteModal.jsx'));
@@ -200,7 +201,7 @@ export default React.memo(function POITab({ onCollapse }) {
       </div>
 
       {/* POI List */}
-      <div className="poi-list-container">
+      <div className="poi-list-container" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
         {listError ? (
           <div className="poi-empty-state">
             {t('errors.poi_load_failed')}
@@ -230,7 +231,7 @@ export default React.memo(function POITab({ onCollapse }) {
               />
             ))}
             {listHasMore && <div ref={sentinelRef} style={{ height: 1 }} />}
-            <div style={{ textAlign: 'center', padding: '8px 0 2px', color: 'var(--text-secondary)', fontSize: 11 }}>
+            <div style={{ textAlign: 'center', padding: 'var(--space-2) 0 var(--space-1)', color: 'var(--text-secondary)', fontSize: 'var(--text-xs)' }}>
               {t('tracks.count_of', { shown: listItems.length, total: listTotal })}
             </div>
           </>
@@ -239,15 +240,16 @@ export default React.memo(function POITab({ onCollapse }) {
 
       {/* Bottom actions */}
       <div className="poi-actions">
-        <button
+        <Button
+          variant="secondary"
           onClick={() => fileInputRef.current?.click()}
           disabled={uploading}
-          className={`btn-secondary poi-action-btn ${uploading ? 'uploading' : ''}`}
+          style={{ flex: 1, gap: 'var(--space-2)' }}
           title="Import KML/KMZ file"
         >
           {uploading ? <Loader size={14} style={{ animation: 'spin 1s linear infinite' }} /> : <Upload size={14} />}
           Import
-        </button>
+        </Button>
         <input
           ref={fileInputRef}
           type="file"
@@ -256,13 +258,14 @@ export default React.memo(function POITab({ onCollapse }) {
           disabled={uploading}
           style={{ display: 'none' }}
         />
-        <button
+        <Button
+          variant={poiCreationMode ? 'primary' : 'secondary'}
           onClick={handleToggleCreation}
-          className={`poi-action-btn ${poiCreationMode ? 'btn-primary' : 'btn-secondary'}`}
+          style={{ flex: 1 }}
           title="Create POI"
         >
           <Plus size={14} /> Create
-        </button>
+        </Button>
       </div>
 
       {/* Status indicator */}

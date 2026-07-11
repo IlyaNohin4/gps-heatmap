@@ -46,7 +46,12 @@ export default function UiDemoPage() {
           <Button variant="primary" size="sm">Primary sm</Button>
           <Button variant="secondary" size="sm">Secondary sm</Button>
           <Button variant="primary" iconOnly title="Search"><Search size={14} /></Button>
+          <Button variant="ghost" iconOnly title="Search"><Search size={14} /></Button>
           <Button variant="secondary" iconOnly size="sm" title="Search"><Search size={12} /></Button>
+        </div>
+        <div style={row}>
+          <Button variant="ghost" iconOnly active title="Filters (active)"><Search size={14} /></Button>
+          <Button variant="ghost" iconOnly title="Filters (inactive)"><Search size={14} /></Button>
         </div>
       </div>
 

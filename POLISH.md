@@ -1,5 +1,22 @@
 # Polish / known issues
 
+- [ ] **T23a leftovers (LeftIsland → UI-kit)** — вне scope T23a, не чинил:
+  - `poi.css` (`frontend/src/styles/poi.css`) не удалён (запрещено правилами T23),
+    но классы `.poi-action-btn` (Import/Create теперь `Button`) и косвенно
+    `marginBottom` в `.poi-status`/`.poi-actions` стали частично избыточны —
+    снос/чистка запланирован на T24
+  - Строка поиска POI-таба (`POITab.jsx`, классы `.poi-search-*`) осталась на
+    legacy-вёрстке (сырые px: `left:10px`, `padding-left:30px`,
+    `top:50%/translateY(-50%)` у крестика) — не переведена на kit `Input`,
+    в отличие от поиска Tracks-таба (`LeftIsland.jsx`, T23a). Высота
+    Tracks-инпута подогнана вручную (`height:34px` инлайн) под POI ради
+    визуального единства, но это точечный костыль, не системное решение —
+    правильная унификация (обе строки поиска через kit `Input`) — задача
+    T23b-e или T24
+  - Собранное состояние `!sidebarOpen` (свёрнутый остров, маленький div с
+    одной кнопкой в `LeftIsland.jsx`) не переведено на `Panel`/`Button` —
+    вне списка файлов чекпоинтов T23a
+
 - [x] **RESOLVED** — Смена аккаунта (logout → login под другим юзером) не сбрасывала
   клиентские данные (T21, 2026-07-09)
   - **Проблема:** после T05/T06 списки треков (`LeftIsland`) и POI (`POITab`) живут
