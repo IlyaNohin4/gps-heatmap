@@ -4,6 +4,7 @@ from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
 from app.api import auth, poi, tasks, tracks
+from app.core.config import settings
 from app.core.database import Base, engine
 from app.core.limiter import limiter
 
@@ -14,9 +15,11 @@ app = FastAPI(title="GPS Heatmap API", version="2.0.0")
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
+# Dev-only gate: production serves frontend+API same-origin behind nginx (see deploy/nginx.conf),
+# so this middleware never actually triggers in prod — hygiene, not a deploy blocker.
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],
+    allow_origins=settings.cors_origins_list,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

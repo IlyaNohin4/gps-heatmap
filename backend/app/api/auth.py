@@ -1,3 +1,4 @@
+import logging
 import re
 import secrets
 from datetime import datetime, timedelta, timezone
@@ -16,6 +17,7 @@ from app.models.password_reset import PasswordReset
 from app.models.user import User
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
+logger = logging.getLogger(__name__)
 
 EMAIL_RE = re.compile(r"^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$")
 
@@ -101,7 +103,9 @@ def forgot_password(request: Request, body: ForgotPasswordRequest, db: Session =
             "html": f"<p>Click to reset: <a href='https://gpsheatmap.app/reset-password/{token}'>Reset password</a></p>",
         })
     except Exception:
-        pass  # Email failure is silent; token is still saved
+        # User-facing behavior stays silent (don't reveal email delivery status),
+        # but log so failures (bad API key, network) are diagnosable. Token is still saved.
+        logger.error("Failed to send password reset email to user_id=%s", user.id, exc_info=True)
 
 
 @router.post("/reset-password/{token}", status_code=status.HTTP_204_NO_CONTENT)
