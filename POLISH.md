@@ -17,7 +17,33 @@
     одной кнопкой в `LeftIsland.jsx`) не переведено на `Panel`/`Button` —
     вне списка файлов чекпоинтов T23a
 
-- [ ] **T26 audit — elevation_gain/loss расходятся с gpx.studio на порядок** (2026-07-12)
+- [x] **RESOLVED** — T26 audit: elevation_gain/loss расходились с gpx.studio на порядок (2026-07-12, зафиксировано 2026-07-13)
+  - **Решение (вариант B, обсуждено с пользователем):** точечный фикс только для
+    gain/loss, Phase 4/5 (Савицкий-Голай, график, grade-классификация) НЕ трогали.
+    Добавлены `_rdp_profile_1d`/`_windowed_average_by_distance`/`_elevation_gain_loss`
+    в `parser_factory.py` (порт методики gpx.studio из `compare_gpxstudio.py`,
+    RDP eps=20 по профилю дистанция/высота + скользящее среднее 0.1км), вызывается
+    в `_build_segments` вместо построчного суммирования дельт по SavGol-сглаженным
+    точкам. Elevation самих точек (график Elevation, grade) не изменена.
+  - **Результат:** медианная дельта с gpx.studio упала с +230%/+275% до **1.14%/1.35%**
+    (проверено `compare_gpxstudio.py` после фикса). Тест `test_realistic_mountain_route`
+    (climbing/flat/descent сплит) прошёл без изменений — Phase 5 не задета, все 153
+    теста бэкенда зелёные.
+  - **Backfill:** `backend/scripts/backfill_elevation.py` (новый, поддерживает
+    `--dry-run`) пересчитал elevation_gain/loss для всех 31 существующих треков в БД
+    через `_normalize_points → _build_segments` по уже сохранённым `raw_points` —
+    остальные поля (raw_points, normalized_points, distance_km, speed_*, geom,
+    regions) не тронуты. Новые/переобрабатываемые треки получают исправленные
+    значения автоматически через обычный `process_track.py`.
+  - **Trade-off, принят сознательно:** график Elevation и число elevation_gain/loss
+    теперь считаются по разным степеням сглаживания одного трека (график — слабый
+    SavGol, число — сильный RDP+window) — на глаз может показаться, что «не бьётся»,
+    но это осознанный компромисс ради минимального риска (не трогаем защищённый
+    Phase 4/5 и его тестовый эталон).
+  - **Не решено, вне scope:** трек 152 (см. ниже) — отдельная аномалия в raw_points,
+    не в методике.
+
+  - **Исходный аудит (архив, до фикса выше), 2026-07-12:**
   - **Скрипт:** `backend/scripts/compare_gpxstudio.py` (read-only, `docker compose
     exec backend python -m scripts.compare_gpxstudio`) — портировал методику
     gpx.studio (haversine-дистанция по raw-точкам; moving speed_avg 0.5-1500 км/ч;

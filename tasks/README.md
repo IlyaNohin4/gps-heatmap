@@ -59,7 +59,7 @@
 | [T23d](T23d-rebuild-track-auth-modals.md) | ✅ Пересборка модалок треков + AuthModal на UI-kit (готово 2026-07-12, kit Modal теперь всегда портальный) | Frontend | P1 | 2-3h |
 | [T23e](T23e-rebuild-poi-modals.md) | ✅ Пересборка POI-модалок на UI-kit (готово 2026-07-12, последняя в серии T23) | Frontend | P1 | 1.5-2h |
 | [T25](T25-moving-avg-speed.md) | ✅ Средняя скорость по методике gpx.studio (moving time, готово 2026-07-11) | Backend | P1 | 2-3h |
-| [T26](T26-stats-parity-audit.md) | ✅ Аудит статистики vs gpx.studio (готово 2026-07-12: distance/speed_avg сошлись, elevation gain/loss расходятся ~250%, см. POLISH.md) | Backend | P2 | 2h |
+| [T26](T26-stats-parity-audit.md) | ✅ Аудит статистики vs gpx.studio (готово 2026-07-12; elevation gain/loss фикс + backfill 2026-07-13, медиана дельты 1.14%/1.35%, см. POLISH.md) | Backend | P2 | 2h |
 | [T21](T21-auth-switch-resets-data.md) | ✅ Смена аккаунта сбрасывает клиентские данные (готово 2026-07-09) | Frontend | P1 | 1-1.5h |
 | [T13](T13-docs-sync.md) | Синхронизация архитектурной документации (последняя) | Docs | P1 | 1-2h |
 

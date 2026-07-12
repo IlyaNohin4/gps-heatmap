@@ -351,6 +351,114 @@ def _classify_segment(grade: Optional[float], climbing_threshold: float = 5.0, d
         return "flat"
 
 
+_ELEVATION_RDP_EPSILON_M = 20.0
+_ELEVATION_WINDOW_KM = 0.1
+
+
+def _rdp_profile_1d(xs: list[float], ys: list[float], eps: float) -> list[int]:
+    """Douglas-Peucker on a 1D profile (x, y). Returns indices to keep.
+
+    Same algorithm as gpx.studio (gpx/src/gpx.ts _elevationComputation),
+    ported here (and cross-checked in scripts/compare_gpxstudio.py) so
+    elevation_gain/elevation_loss match their methodology instead of
+    accumulating noise left over from the point-wise Savitzky-Golay filter
+    in _smooth_elevation (see POLISH.md T26 audit). Deliberately separate
+    from _point_to_line_distance/_simplify_trajectory, which operate on
+    (lat, lon) rather than a (distance, elevation) profile.
+    """
+    n = len(xs)
+    if n < 3:
+        return list(range(n))
+
+    keep = [False] * n
+    keep[0] = keep[-1] = True
+
+    def recurse(lo: int, hi: int) -> None:
+        if hi <= lo + 1:
+            return
+        x0, y0 = xs[lo], ys[lo]
+        x1, y1 = xs[hi], ys[hi]
+        dx, dy = x1 - x0, y1 - y0
+        norm = (dx ** 2 + dy ** 2) ** 0.5
+
+        dmax = 0.0
+        idx = -1
+        for i in range(lo + 1, hi):
+            if norm == 0:
+                d = ((xs[i] - x0) ** 2 + (ys[i] - y0) ** 2) ** 0.5
+            else:
+                d = abs(dy * (xs[i] - x0) - dx * (ys[i] - y0)) / norm
+            if d > dmax:
+                dmax = d
+                idx = i
+
+        if dmax > eps and idx != -1:
+            keep[idx] = True
+            recurse(lo, idx)
+            recurse(idx, hi)
+
+    recurse(0, n - 1)
+    return [i for i in range(n) if keep[i]]
+
+
+def _windowed_average_by_distance(xs: list[float], ys: list[float], window_km: float) -> list[float]:
+    """Moving average of ys, averaging over all points within window_km/2 (by
+    cumulative distance xs) on either side of each point."""
+    n = len(xs)
+    smoothed = []
+    half = window_km / 2
+    lo = 0
+    hi = 0
+    for i in range(n):
+        while lo < i and xs[i] - xs[lo] > half:
+            lo += 1
+        if hi < i:
+            hi = i
+        while hi < n - 1 and xs[hi + 1] - xs[i] <= half:
+            hi += 1
+        window = ys[lo:hi + 1]
+        smoothed.append(sum(window) / len(window))
+    return smoothed
+
+
+def _elevation_gain_loss(points: list[dict]) -> tuple[float, float]:
+    """elevation_gain/loss via gpx.studio's methodology: RDP-simplify the
+    (cumulative distance, elevation) profile (eps=20), then a 0.1km moving
+    average by distance, then sum deltas of the smoothed series.
+
+    Deliberately independent of the per-point elevation stored on `points`
+    (Savitzky-Golay smoothed, used for the chart and grade classification —
+    Phase 4/5, not touched here). Only the gain/loss totals use this
+    stronger smoothing; see POLISH.md T26 audit for why the naive point-wise
+    sum overestimated gain/loss by 230-275% (median) vs gpx.studio.
+    """
+    pts_with_ele = [p for p in points if p.get("elevation") is not None]
+    if len(pts_with_ele) < 2:
+        return 0.0, 0.0
+
+    cum_km = [0.0]
+    for i in range(1, len(pts_with_ele)):
+        p0, p1 = pts_with_ele[i - 1], pts_with_ele[i]
+        cum_km.append(cum_km[-1] + _haversine(p0["lat"], p0["lon"], p1["lat"], p1["lon"]))
+    eles = [p["elevation"] for p in pts_with_ele]
+
+    kept_idx = _rdp_profile_1d(cum_km, eles, _ELEVATION_RDP_EPSILON_M)
+    kept_x = [cum_km[i] for i in kept_idx]
+    kept_y = [eles[i] for i in kept_idx]
+
+    smoothed = _windowed_average_by_distance(kept_x, kept_y, _ELEVATION_WINDOW_KM)
+
+    gain = 0.0
+    loss = 0.0
+    for i in range(1, len(smoothed)):
+        delta = smoothed[i] - smoothed[i - 1]
+        if delta > 0:
+            gain += delta
+        else:
+            loss += abs(delta)
+    return gain, loss
+
+
 def _build_segments(points: list[dict]) -> tuple[list[dict], float, float, float, float, Optional[int], dict]:
     """Compute speed_segments, distance_km, speed stats, duration, grade stats, and elevation gain/loss.
 
@@ -367,8 +475,6 @@ def _build_segments(points: list[dict]) -> tuple[list[dict], float, float, float
     moving_time_sec = 0.0
     _MOVING_MIN_KMH = 0.5
     _MOVING_MAX_KMH = 200
-    elevation_gain = 0.0
-    elevation_loss = 0.0
     segment_types: dict[str, int] = {"climbing": 0, "descent": 0, "flat": 0}
     segment_distances: dict[str, float] = {"climbing": 0.0, "descent": 0.0, "flat": 0.0}
 
@@ -387,11 +493,6 @@ def _build_segments(points: list[dict]) -> tuple[list[dict], float, float, float
             grade = _calculate_grade(ele_delta, dist_m)
             if grade is not None:
                 grades.append(grade)
-            # Track elevation gain/loss
-            if ele_delta > 0:
-                elevation_gain += ele_delta
-            else:
-                elevation_loss += abs(ele_delta)
 
         # Classify segment
         seg_type = _classify_segment(grade)
@@ -452,6 +553,8 @@ def _build_segments(points: list[dict]) -> tuple[list[dict], float, float, float
     timed = [p for p in points if p["time"]]
     if len(timed) >= 2:
         duration = int((timed[-1]["time"] - timed[0]["time"]).total_seconds())
+
+    elevation_gain, elevation_loss = _elevation_gain_loss(points)
 
     # Build statistics
     stats = {
