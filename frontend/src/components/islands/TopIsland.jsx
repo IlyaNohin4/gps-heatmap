@@ -9,6 +9,10 @@ import useAppStore from '../../store/appStore.js';
 import useAuthStore from '../../store/authStore.js';
 import client from '../../api/client.js';
 import { updatePrefs } from '../../api/auth.js';
+import Panel from '../../ui/Panel.jsx';
+import Button from '../../ui/Button.jsx';
+import Chip from '../../ui/Chip.jsx';
+import Input from '../../ui/Input.jsx';
 
 const LANGUAGES = [
   { code: 'en', label: 'English' },
@@ -118,31 +122,20 @@ export default function TopIsland() {
     }
   }
 
-  const row = { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 10 };
-  const sectionLabel = { fontSize: 11, fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '14px 0 8px' };
-  const chipGroup = { display: 'flex', gap: 4 };
-  const chip = (active) => ({
-    padding: '5px 11px',
-    borderRadius: 8,
-    fontSize: 12,
-    fontWeight: 600,
-    background: active ? 'var(--accent)' : 'var(--bg)',
-    color: active ? '#fff' : 'var(--text-secondary)',
-    border: 'none',
-    cursor: 'pointer',
-    transition: 'all 0.15s',
-  });
+  const row = { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--space-3)', marginBottom: 'var(--space-2)' };
+  const sectionLabel = { fontSize: 11, fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.06em', margin: 'var(--space-4) 0 var(--space-2)' };
+  const chipGroup = { display: 'flex', gap: 'var(--space-1)' };
 
   return (
     <div style={{ minWidth: 260 }} onClick={(e) => e.stopPropagation()}>
-      <div className="island" style={{ padding: 0, overflow: 'hidden' }}>
+      <Panel style={{ padding: 0, overflow: 'hidden' }}>
         <button
           onClick={() => setActivePanel(open ? null : 'top')}
           style={{
             display: 'flex',
             alignItems: 'center',
-            gap: 10,
-            padding: '10px 16px',
+            gap: 'var(--space-3)',
+            padding: 'var(--space-3) var(--space-4)',
             width: '100%',
             background: 'none',
             border: 'none',
@@ -155,27 +148,23 @@ export default function TopIsland() {
         </button>
 
         {open && (
-          <div style={{ padding: '0 16px 16px', borderTop: '1px solid var(--border)', animation: 'fadeIn 0.3s ease-out' }}>
+          <div style={{ padding: '0 var(--space-4) var(--space-4)', borderTop: '1px solid var(--border)', animation: 'fadeIn 0.3s ease-out' }}>
             <div style={sectionLabel}>{t('settings.display')}</div>
 
             <div style={row}>
               <span style={{ fontSize: 13, color: 'var(--text)' }}>{t('settings.units')}</span>
               <div style={chipGroup}>
-                <button style={chip(unitSystem === 'metric')} onClick={() => handleUnitSystem('metric')}>{t('settings.metric')}</button>
-                <button style={chip(unitSystem === 'imperial')} onClick={() => handleUnitSystem('imperial')}>{t('settings.imperial')}</button>
+                <Chip active={unitSystem === 'metric'} onClick={() => handleUnitSystem('metric')}>{t('settings.metric')}</Chip>
+                <Chip active={unitSystem === 'imperial'} onClick={() => handleUnitSystem('imperial')}>{t('settings.imperial')}</Chip>
               </div>
             </div>
 
             <div style={row}>
               <span style={{ fontSize: 13, color: 'var(--text)' }}>{t('settings.theme')}</span>
-              <button onClick={handleTheme} style={{
-                display: 'flex', alignItems: 'center', gap: 6,
-                padding: '5px 11px', borderRadius: 8, fontSize: 12, fontWeight: 600,
-                background: 'var(--bg)', border: 'none', cursor: 'pointer', color: 'var(--text)',
-              }}>
+              <Button variant="secondary" size="sm" onClick={handleTheme}>
                 {theme === 'light' ? <Moon size={13} /> : <Sun size={13} />}
                 {theme === 'light' ? t('settings.dark') : t('settings.light')}
-              </button>
+              </Button>
             </div>
 
             <div style={row}>
@@ -183,7 +172,7 @@ export default function TopIsland() {
               <select
                 value={language}
                 onChange={(e) => handleLanguage(e.target.value)}
-                style={{ width: 'auto', padding: '5px 8px', fontSize: 12 }}
+                style={{ width: 'auto', padding: 'var(--space-1) var(--space-2)', fontSize: 12 }}
               >
                 {LANGUAGES.map((l) => (
                   <option key={l.code} value={l.code}>{l.label}</option>
@@ -194,27 +183,27 @@ export default function TopIsland() {
             <div style={row}>
               <span style={{ fontSize: 13, color: 'var(--text)' }}>Track Info</span>
               <div style={chipGroup}>
-                <button
-                  style={chip(expandedTrackInfo === 'off')}
+                <Chip
+                  active={expandedTrackInfo === 'off'}
                   onClick={() => setExpandedTrackInfo('off')}
                   title="Hide track info"
                 >
                   Off
-                </button>
-                <button
-                  style={chip(expandedTrackInfo === 'partial')}
+                </Chip>
+                <Chip
+                  active={expandedTrackInfo === 'partial'}
                   onClick={() => setExpandedTrackInfo('partial')}
                   title="Show on selection"
                 >
                   On Selection
-                </button>
-                <button
-                  style={chip(expandedTrackInfo === 'on')}
+                </Chip>
+                <Chip
+                  active={expandedTrackInfo === 'on'}
                   onClick={() => setExpandedTrackInfo('on')}
                   title="Always show"
                 >
                   Always
-                </button>
+                </Chip>
               </div>
             </div>
 
@@ -225,80 +214,85 @@ export default function TopIsland() {
                   <User size={13} /> {user?.email}
                 </div>
 
-                <button
-                  style={{ fontSize: 13, color: 'var(--accent)', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5, marginBottom: 6 }}
-                  onClick={() => { setChangeEmailOpen(!changeEmailOpen); setChangePassOpen(false); }}
-                >
-                  <Mail size={13} /> {t('settings.change_email')}
-                </button>
+                <div style={{ display: 'flex', gap: 'var(--space-2)', marginBottom: 'var(--space-1)' }}>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    style={{ flex: 1, color: 'var(--accent)', justifyContent: 'flex-start' }}
+                    onClick={() => { setChangeEmailOpen(!changeEmailOpen); setChangePassOpen(false); }}
+                  >
+                    <Mail size={13} /> {t('settings.change_email')}
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    style={{ flex: 1, color: 'var(--accent)', justifyContent: 'flex-start' }}
+                    onClick={() => { setChangePassOpen(!changePassOpen); setChangeEmailOpen(false); }}
+                  >
+                    <Key size={13} /> {t('settings.change_password')}
+                  </Button>
+                </div>
 
                 {changeEmailOpen && (
-                  <form onSubmit={handleChangeEmail} style={{ marginBottom: 10, animation: 'fadeIn 0.3s ease-out' }}>
-                    <input
+                  <form onSubmit={handleChangeEmail} style={{ marginBottom: 'var(--space-2)', animation: 'fadeIn 0.3s ease-out' }}>
+                    <Input
                       type="email"
                       placeholder={t('toast.email_placeholder')}
                       value={newEmail}
                       onChange={(e) => setNewEmail(e.target.value)}
-                      style={{ marginBottom: 8 }}
+                      style={{ marginBottom: 'var(--space-2)' }}
                       autoFocus
                     />
-                    <button type="submit" className="btn-primary" style={{ width: '100%', padding: '8px' }}>
+                    <Button type="submit" style={{ width: '100%' }}>
                       {t('settings.update')}
-                    </button>
+                    </Button>
                   </form>
                 )}
 
-                <button
-                  style={{ fontSize: 13, color: 'var(--accent)', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5, marginBottom: 6 }}
-                  onClick={() => { setChangePassOpen(!changePassOpen); setChangeEmailOpen(false); }}
-                >
-                  <Key size={13} /> {t('settings.change_password')}
-                </button>
-
                 {changePassOpen && (
-                  <form onSubmit={handleChangePassword} style={{ marginBottom: 10, animation: 'fadeIn 0.3s ease-out' }}>
-                    <input
+                  <form onSubmit={handleChangePassword} style={{ marginBottom: 'var(--space-2)', animation: 'fadeIn 0.3s ease-out' }}>
+                    <Input
                       type="password"
                       placeholder={t('settings.current_password')}
                       value={oldPass}
                       onChange={(e) => setOldPass(e.target.value)}
-                      style={{ marginBottom: 6 }}
+                      style={{ marginBottom: 'var(--space-1)' }}
                     />
-                    <input
+                    <Input
                       type="password"
                       placeholder={t('settings.new_password')}
                       value={newPass}
                       onChange={(e) => setNewPass(e.target.value)}
-                      style={{ marginBottom: 8 }}
+                      style={{ marginBottom: 'var(--space-2)' }}
                     />
-                    <button type="submit" className="btn-primary" style={{ width: '100%', padding: '8px' }}>
+                    <Button type="submit" style={{ width: '100%' }}>
                       {t('settings.update')}
-                    </button>
+                    </Button>
                   </form>
                 )}
 
-                <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
-                  <button
-                    className="btn-secondary"
-                    style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, padding: '7px' }}
+                <div style={{ display: 'flex', justifyContent: 'center', gap: 'var(--space-2)', marginTop: 'var(--space-1)' }}>
+                  <Button
+                    variant="secondary"
+                    style={{ width: 170, height: 32, border: 'none' }}
                     onClick={() => { logout(); toast.success(t('auth.logout_success')); }}
                   >
-                    <LogOut size={13} /> {t('settings.sign_out')}
-                  </button>
-                  <button
-                    className="btn-danger"
-                    style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, padding: '7px', fontSize: 12 }}
+                    <LogOut size={13} style={{ flexShrink: 0 }} /> {t('settings.sign_out')}
+                  </Button>
+                  <Button
+                    variant="danger"
+                    style={{ width: 170, height: 32 }}
                     onClick={handleDeleteAccount}
                   >
-                    <AlertTriangle size={13} />
+                    <AlertTriangle size={13} style={{ flexShrink: 0 }} />
                     {deleteConfirm ? t('settings.confirm') : t('settings.delete_account')}
-                  </button>
+                  </Button>
                 </div>
               </>
             )}
           </div>
         )}
-      </div>
+      </Panel>
     </div>
   );
 }

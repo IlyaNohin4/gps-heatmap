@@ -54,6 +54,10 @@
 | [T20](T20-ui-spacing.md) | ❌ ОТМЕНЕНА (2026-07-10) в пользу блока UI-kit: T22 → T23a-e → T24 | Frontend | — | — |
 | [T22](T22-ui-kit.md) | ✅ UI-kit: дизайн-токены + 6 базовых компонентов + /ui-demo (готово 2026-07-10) | Frontend | P1 | 3-4h |
 | [T23a](T23a-rebuild-leftisland.md) | ✅ Пересборка LeftIsland на UI-kit (образец серии T23, готово 2026-07-11, v2 по чекпоинтам) | Frontend | P1 | 2-3h |
+| [T23b](T23b-rebuild-top-right-island.md) | ✅ Пересборка TopIsland + RightIsland на UI-kit (готово 2026-07-12, по чекпоинтам) | Frontend | P1 | 2-3h |
+| [T23c](T23c-rebuild-bottom-island.md) | ✅ Пересборка BottomIsland на UI-kit (готово 2026-07-12, без recharts-логики) | Frontend | P1 | 2h |
+| [T23d](T23d-rebuild-track-auth-modals.md) | ✅ Пересборка модалок треков + AuthModal на UI-kit (готово 2026-07-12, kit Modal теперь всегда портальный) | Frontend | P1 | 2-3h |
+| [T23e](T23e-rebuild-poi-modals.md) | ✅ Пересборка POI-модалок на UI-kit (готово 2026-07-12, последняя в серии T23) | Frontend | P1 | 1.5-2h |
 | [T25](T25-moving-avg-speed.md) | ✅ Средняя скорость по методике gpx.studio (moving time, готово 2026-07-11) | Backend | P1 | 2-3h |
 | [T26](T26-stats-parity-audit.md) | ✅ Аудит статистики vs gpx.studio (готово 2026-07-12: distance/speed_avg сошлись, elevation gain/loss расходятся ~250%, см. POLISH.md) | Backend | P2 | 2h |
 | [T21](T21-auth-switch-resets-data.md) | ✅ Смена аккаунта сбрасывает клиентские данные (готово 2026-07-09) | Frontend | P1 | 1-1.5h |

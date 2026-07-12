@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef, useTransition } from 'react';
-import { Search, Filter, Plus, X, ChevronLeft, ChevronRight, MapPin, Route } from 'lucide-react';
+import { Search, Filter, Plus, X, ChevronLeft, ChevronRight, MapPin, Route, Eye, EyeOff } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import Slider from 'rc-slider';
 import 'rc-slider/assets/index.css';
@@ -14,6 +14,7 @@ import Input from '../../ui/Input.jsx';
 import Chip from '../../ui/Chip.jsx';
 import Button from '../../ui/Button.jsx';
 import Panel from '../../ui/Panel.jsx';
+import SkeletonCard from '../shared/SkeletonCard.jsx';
 
 const FORMAT_OPTIONS = [
   { value: 'all',     label: 'All' },
@@ -24,29 +25,7 @@ const FORMAT_OPTIONS = [
   { value: 'geojson', label: 'GeoJSON' },
 ];
 
-function SkeletonCard() {
-  return (
-    <div style={{
-      borderRadius: 12,
-      padding: 'var(--space-3) var(--space-4)',
-      background: 'var(--surface)',
-      border: '1px solid var(--border)',
-    }}>
-      {[80, 50, 60].map((w, i) => (
-        <div key={i} style={{
-          height: 12,
-          width: `${w}%`,
-          borderRadius: 6,
-          background: 'var(--border)',
-          marginBottom: i < 2 ? 'var(--space-2)' : 0,
-          animation: 'pulse 1.4s ease-in-out infinite',
-        }} />
-      ))}
-    </div>
-  );
-}
-
-function LeftIslandContent({ onUploadClick, loading }) {
+function LeftIslandContent({ onUploadClick, loading, allTracksVisible, onToggleVisibility }) {
   const { t } = useTranslation();
   const { selectedTrackId, setSelectedTrack, isUploadingIds, activePanel, setActivePanel, tracksListVersion } = useAppStore();
   const { showTrackCreator, toggleTrackCreator, mapInstance } = useMapStore();
@@ -71,7 +50,6 @@ function LeftIslandContent({ onUploadClick, loading }) {
   const handleSetCurrentTab = useCallback((tab) => {
     startTransition(() => setCurrentTab(tab));
   }, []);
-  const handleCollapse = useCallback(() => setSidebarOpen(false), []);
 
   const buildParams = useCallback((offset) => {
     const params = { sort, limit: 50, offset };
@@ -142,30 +120,19 @@ function LeftIslandContent({ onUploadClick, loading }) {
   const sentinelRef = useInfiniteScroll(loadMoreTracks, hasMore);
 
   return (
+    <>
     <div onClick={(e) => e.stopPropagation()} style={{
       position: 'fixed',
       left: 16,
       top: '50%',
       transform: 'translateY(-50%)',
       zIndex: 1000,
-      width: sidebarOpen ? 300 : 'auto',
+      width: sidebarOpen ? 300 : 0,
       maxHeight: 'calc(100vh - 320px)',
       display: 'flex',
       flexDirection: 'column',
+      overflow: 'hidden',
     }}>
-      {/* Collapsed state: just a toggle button */}
-      {!sidebarOpen && (
-        <div className="island" style={{ padding: 'var(--space-2)' }}>
-          <button
-            className="icon-btn"
-            onClick={() => setSidebarOpen(true)}
-            title={t('tracks.show_sidebar')}
-          >
-            <ChevronRight size={16} />
-          </button>
-        </div>
-      )}
-
       {sidebarOpen && <Panel className="panel-animate-in-left" style={{
         display: 'flex',
         flexDirection: 'column',
@@ -181,16 +148,18 @@ function LeftIslandContent({ onUploadClick, loading }) {
           borderBottom: '1px solid var(--border)',
         }}>
           <Button
-            variant={currentTab === 'tracks' ? 'primary' : 'ghost'}
+            variant="ghost"
+            active={currentTab === 'tracks'}
             onClick={() => handleSetCurrentTab('tracks')}
-            style={{ flex: 1, background: currentTab === 'tracks' ? undefined : 'var(--surface)' }}
+            style={{ flex: 1 }}
           >
             <Route size={14} /> Tracks
           </Button>
           <Button
-            variant={currentTab === 'poi' ? 'primary' : 'ghost'}
+            variant="ghost"
+            active={currentTab === 'poi'}
             onClick={() => handleSetCurrentTab('poi')}
-            style={{ flex: 1, background: currentTab === 'poi' ? undefined : 'var(--surface)' }}
+            style={{ flex: 1 }}
           >
             <MapPin size={14} /> POI
           </Button>
@@ -217,19 +186,21 @@ function LeftIslandContent({ onUploadClick, loading }) {
           <Button
             iconOnly
             variant="ghost"
+            active={allTracksVisible}
+            onClick={onToggleVisibility}
+            title={allTracksVisible ? 'Hide all tracks' : 'Show all tracks'}
+          >
+            {allTracksVisible ? <Eye size={15} /> : <EyeOff size={15} />}
+          </Button>
+          <Button
+            iconOnly
+            variant="ghost"
             active={filterOpen}
             onClick={() => setActivePanel(filterOpen ? null : 'left:filter')}
             title="Filters"
           >
             <Filter size={15} />
           </Button>
-          <button
-            className="icon-btn"
-            onClick={() => setSidebarOpen(false)}
-            title={t('chart.collapse')}
-          >
-            <ChevronLeft size={15} />
-          </button>
         </div>
 
         {/* Filter panel */}
@@ -329,22 +300,48 @@ function LeftIslandContent({ onUploadClick, loading }) {
 
         {/* Bottom actions - Tracks tab only */}
         <div style={{ padding: 'var(--space-2) var(--space-3) var(--space-3)', borderTop: '1px solid var(--border)', flexShrink: 0 }}>
-          <button
-            className="btn-secondary"
-            style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 'var(--space-2)', padding: 'var(--space-2)' }}
+          <Button
+            variant="secondary"
+            style={{ width: '100%' }}
             onClick={onUploadClick}
           >
             <Plus size={14} /> {t('tracks.add_track')}
-          </button>
+          </Button>
         </div>
         </div>
 
         {/* POI Tab — always mounted, toggled via display (see POLISH.md) */}
         <div style={{ display: currentTab === 'poi' ? 'flex' : 'none', flexDirection: 'column', flex: 1, minHeight: 0 }}>
-          <POITab onCollapse={handleCollapse} />
+          <POITab />
         </div>
       </Panel>}
     </div>
+
+    {/* Floating collapse/expand toggle — replaces old inline collapse button
+        and mini reopen-island; always visible, docked to the right edge of
+        the island regardless of open/collapsed state (see tasks note). */}
+    <Panel
+      onClick={(e) => e.stopPropagation()}
+      style={{
+        position: 'fixed',
+        left: sidebarOpen ? 16 + 300 + 8 : 16 + 8,
+        top: '50%',
+        transform: 'translateY(-50%)',
+        zIndex: 1000,
+        padding: 'var(--space-2)',
+        transition: 'left 0.2s ease',
+      }}
+    >
+      <Button
+        variant="ghost"
+        iconOnly
+        onClick={() => setSidebarOpen(!sidebarOpen)}
+        title={sidebarOpen ? t('chart.collapse') : t('tracks.show_sidebar')}
+      >
+        {sidebarOpen ? <ChevronLeft size={16} /> : <ChevronRight size={16} />}
+      </Button>
+    </Panel>
+    </>
   );
 }
 

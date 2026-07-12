@@ -26,7 +26,7 @@ import LoadingIndicator from './components/LoadingIndicator.jsx';
 import { fetchTracks, createTrackFromPoints, uploadTrack } from './api/tracks.js';
 import { uploadPOI, fetchPOI } from './api/poi.js';
 import { getMe } from './api/auth.js';
-import { Search, RotateCcw, Eye, EyeOff } from 'lucide-react';
+import { Search, RotateCcw } from 'lucide-react';
 
 // Lazy-load the public track page so it doesn't pull leaflet into the main bundle
 const PublicTrackPage = lazy(() => import('./pages/PublicTrackPage.jsx'));
@@ -240,14 +240,6 @@ function MainPage() {
       }}>
         <button
           className="btn-glass"
-          onClick={handleToggleVisibility}
-          title={allTracksVisible ? 'Hide all tracks' : 'Show all tracks'}
-          style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 32, height: 32, padding: 0 }}
-        >
-          {allTracksVisible ? <Eye size={14} /> : <EyeOff size={14} />}
-        </button>
-        <button
-          className="btn-glass"
           onClick={handleFindInArea}
           title={t('tracks.find_in_area')}
           style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 32, height: 32, padding: 0 }}
@@ -263,7 +255,12 @@ function MainPage() {
           <RotateCcw size={14} />
         </button>
       </div>
-      <LeftIsland onUploadClick={handleUploadClick} loading={tracksLoading} />
+      <LeftIsland
+        onUploadClick={handleUploadClick}
+        loading={tracksLoading}
+        allTracksVisible={allTracksVisible}
+        onToggleVisibility={handleToggleVisibility}
+      />
       <RightIsland />
       {selectedTrackId && <BottomIsland />}
       <LoadingIndicator isLoading={tracksLoading} />

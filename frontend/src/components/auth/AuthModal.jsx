@@ -1,89 +1,48 @@
 import React, { useState } from 'react';
 import { toast } from 'react-toastify';
 import { useTranslation } from 'react-i18next';
-import { X, Mail, Lock, Eye, EyeOff } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff } from 'lucide-react';
 import useAuthStore from '../../store/authStore.js';
 import { login as apiLogin, register as apiRegister, forgotPassword } from '../../api/auth.js';
+import Modal from '../../ui/Modal.jsx';
+import Button from '../../ui/Button.jsx';
+import Input from '../../ui/Input.jsx';
 
 const styles = {
-  overlay: {
-    position: 'fixed',
-    inset: 0,
-    background: 'rgba(0,0,0,0.4)',
-    backdropFilter: 'blur(4px)',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    zIndex: 9999,
-  },
-  modal: {
-    width: '100%',
-    maxWidth: 400,
-    padding: '28px 28px 24px',
-    position: 'relative',
-  },
   title: {
     fontSize: 22,
     fontWeight: 700,
-    marginBottom: 4,
+    marginBottom: 'var(--space-1)',
     color: 'var(--text)',
   },
   subtitle: {
     fontSize: 13,
     color: 'var(--text-secondary)',
-    marginBottom: 20,
+    marginBottom: 'var(--space-4)',
   },
   tabs: {
     display: 'flex',
-    gap: 4,
-    marginBottom: 20,
+    gap: 'var(--space-1)',
+    marginBottom: 'var(--space-4)',
     background: 'var(--bg)',
     borderRadius: 10,
-    padding: 4,
+    padding: 'var(--space-1)',
   },
-  tab: (active) => ({
-    flex: 1,
-    padding: '7px 0',
-    borderRadius: 8,
-    fontSize: 14,
-    fontWeight: 600,
-    background: active ? 'var(--surface)' : 'transparent',
-    color: active ? 'var(--text)' : 'var(--text-secondary)',
-    boxShadow: active ? '0 1px 4px rgba(0,0,0,0.08)' : 'none',
-    transition: 'all 0.15s',
-    cursor: 'pointer',
-    border: 'none',
-  }),
   field: {
-    marginBottom: 12,
+    marginBottom: 'var(--space-3)',
   },
   label: {
     display: 'block',
     fontSize: 12,
     fontWeight: 600,
     color: 'var(--text-secondary)',
-    marginBottom: 5,
+    marginBottom: 'var(--space-1)',
     textTransform: 'uppercase',
     letterSpacing: '0.05em',
   },
-  inputWrap: {
-    position: 'relative',
-  },
-  inputIcon: {
-    position: 'absolute',
-    left: 10,
-    top: '50%',
-    transform: 'translateY(-50%)',
-    color: 'var(--text-secondary)',
-    pointerEvents: 'none',
-  },
-  input: {
-    paddingLeft: 34,
-    paddingRight: 34,
-  },
   eyeBtn: {
     position: 'absolute',
-    right: 8,
+    right: 'var(--space-2)',
     top: '50%',
     transform: 'translateY(-50%)',
     background: 'none',
@@ -99,41 +58,26 @@ const styles = {
     color: 'var(--accent)',
     fontSize: 13,
     cursor: 'pointer',
-    marginTop: 4,
+    marginTop: 'var(--space-1)',
     padding: 0,
   },
   submitBtn: {
     width: '100%',
-    marginTop: 16,
-    padding: '11px',
-    fontSize: 15,
-  },
-  closeBtn: {
-    position: 'absolute',
-    top: 16,
-    right: 16,
-    background: 'none',
-    border: 'none',
-    color: 'var(--text-secondary)',
-    cursor: 'pointer',
-    display: 'flex',
-    alignItems: 'center',
-    borderRadius: 8,
-    padding: 4,
+    marginTop: 'var(--space-4)',
   },
 };
 
 function PasswordInput({ value, onChange, placeholder }) {
   const [show, setShow] = useState(false);
   return (
-    <div style={styles.inputWrap}>
-      <span style={styles.inputIcon}><Lock size={15} /></span>
-      <input
+    <div style={{ position: 'relative' }}>
+      <Input
         type={show ? 'text' : 'password'}
         value={value}
         onChange={onChange}
         placeholder={placeholder || 'Password'}
-        style={styles.input}
+        leftIcon={<Lock size={15} />}
+        style={{ paddingRight: 34 }}
       />
       <button type="button" style={styles.eyeBtn} onClick={() => setShow(!show)}>
         {show ? <EyeOff size={15} /> : <Eye size={15} />}
@@ -204,104 +148,93 @@ export default function AuthModal() {
   }
 
   return (
-    <div style={styles.overlay}>
-      <div className="island" style={styles.modal}>
-        {forgotMode ? (
-          <>
-            <div style={styles.title}>Reset password</div>
-            <div style={styles.subtitle}>We'll send a link to your email</div>
-            <form onSubmit={handleForgot}>
+    <Modal open={true}>
+      {forgotMode ? (
+        <>
+          <div style={styles.title}>Reset password</div>
+          <div style={styles.subtitle}>We'll send a link to your email</div>
+          <form onSubmit={handleForgot}>
+            <div style={styles.field}>
+              <label style={styles.label}>Email</label>
+              <Input
+                type="email"
+                value={forgotEmail}
+                onChange={(e) => setForgotEmail(e.target.value)}
+                placeholder="you@example.com"
+                leftIcon={<Mail size={15} />}
+              />
+            </div>
+            <Button type="submit" style={styles.submitBtn} disabled={loading}>
+              {loading ? 'Sending…' : 'Send reset link'}
+            </Button>
+            <button type="button" style={{ ...styles.forgot, display: 'block', marginTop: 'var(--space-3)' }} onClick={() => setForgotMode(false)}>
+              Back to login
+            </button>
+          </form>
+        </>
+      ) : (
+        <>
+          <div style={styles.title}>GPS Heatmap</div>
+          <div style={styles.subtitle}>Sign in to track your adventures</div>
+          <div style={styles.tabs}>
+            <Button variant="ghost" active={tab === 'login'} style={{ flex: 1 }} onClick={() => setTab('login')}>Login</Button>
+            <Button variant="ghost" active={tab === 'register'} style={{ flex: 1 }} onClick={() => setTab('register')}>Register</Button>
+          </div>
+
+          {tab === 'login' ? (
+            <form onSubmit={handleLogin}>
               <div style={styles.field}>
                 <label style={styles.label}>Email</label>
-                <div style={styles.inputWrap}>
-                  <span style={styles.inputIcon}><Mail size={15} /></span>
-                  <input
-                    type="email"
-                    value={forgotEmail}
-                    onChange={(e) => setForgotEmail(e.target.value)}
-                    placeholder="you@example.com"
-                    style={styles.input}
-                  />
-                </div>
+                <Input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="you@example.com"
+                  leftIcon={<Mail size={15} />}
+                />
               </div>
-              <button type="submit" className="btn-primary" style={styles.submitBtn} disabled={loading}>
-                {loading ? 'Sending…' : 'Send reset link'}
-              </button>
-              <button type="button" style={{ ...styles.forgot, display: 'block', marginTop: 12 }} onClick={() => setForgotMode(false)}>
-                Back to login
-              </button>
+              <div style={styles.field}>
+                <label style={styles.label}>Password</label>
+                <PasswordInput value={password} onChange={(e) => setPassword(e.target.value)} />
+                <button type="button" style={styles.forgot} onClick={() => setForgotMode(true)}>
+                  Forgot password?
+                </button>
+              </div>
+              <Button type="submit" style={styles.submitBtn} disabled={loading}>
+                {loading ? 'Signing in…' : 'Sign in'}
+              </Button>
             </form>
-          </>
-        ) : (
-          <>
-            <div style={styles.title}>GPS Heatmap</div>
-            <div style={styles.subtitle}>Sign in to track your adventures</div>
-            <div style={styles.tabs}>
-              <button style={styles.tab(tab === 'login')} onClick={() => setTab('login')}>Login</button>
-              <button style={styles.tab(tab === 'register')} onClick={() => setTab('register')}>Register</button>
-            </div>
-
-            {tab === 'login' ? (
-              <form onSubmit={handleLogin}>
-                <div style={styles.field}>
-                  <label style={styles.label}>Email</label>
-                  <div style={styles.inputWrap}>
-                    <span style={styles.inputIcon}><Mail size={15} /></span>
-                    <input
-                      type="email"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      placeholder="you@example.com"
-                      style={styles.input}
-                    />
-                  </div>
-                </div>
-                <div style={styles.field}>
-                  <label style={styles.label}>Password</label>
-                  <PasswordInput value={password} onChange={(e) => setPassword(e.target.value)} />
-                  <button type="button" style={styles.forgot} onClick={() => setForgotMode(true)}>
-                    Forgot password?
-                  </button>
-                </div>
-                <button type="submit" className="btn-primary" style={styles.submitBtn} disabled={loading}>
-                  {loading ? 'Signing in…' : 'Sign in'}
-                </button>
-              </form>
-            ) : (
-              <form onSubmit={handleRegister}>
-                <div style={styles.field}>
-                  <label style={styles.label}>Email</label>
-                  <div style={styles.inputWrap}>
-                    <span style={styles.inputIcon}><Mail size={15} /></span>
-                    <input
-                      type="email"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      placeholder="you@example.com"
-                      style={styles.input}
-                    />
-                  </div>
-                </div>
-                <div style={styles.field}>
-                  <label style={styles.label}>Password</label>
-                  <PasswordInput value={password} onChange={(e) => setPassword(e.target.value)} />
-                </div>
-                <div style={styles.field}>
-                  <label style={styles.label}>Confirm password</label>
-                  <PasswordInput
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    placeholder="Confirm password"
-                  />
-                </div>
-                <button type="submit" className="btn-primary" style={styles.submitBtn} disabled={loading}>
-                  {loading ? 'Creating account…' : 'Create account'}
-                </button>
-              </form>
-            )}
-          </>
-        )}
-      </div>
-    </div>
+          ) : (
+            <form onSubmit={handleRegister}>
+              <div style={styles.field}>
+                <label style={styles.label}>Email</label>
+                <Input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="you@example.com"
+                  leftIcon={<Mail size={15} />}
+                />
+              </div>
+              <div style={styles.field}>
+                <label style={styles.label}>Password</label>
+                <PasswordInput value={password} onChange={(e) => setPassword(e.target.value)} />
+              </div>
+              <div style={styles.field}>
+                <label style={styles.label}>Confirm password</label>
+                <PasswordInput
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  placeholder="Confirm password"
+                />
+              </div>
+              <Button type="submit" style={styles.submitBtn} disabled={loading}>
+                {loading ? 'Creating account…' : 'Create account'}
+              </Button>
+            </form>
+          )}
+        </>
+      )}
+    </Modal>
   );
 }

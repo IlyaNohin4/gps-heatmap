@@ -9,6 +9,8 @@ import useAppStore from '../../store/appStore.js';
 import useMapStore from '../../store/mapStore.js';
 import { getTrack } from '../../api/tracks.js';
 import { MAP_ANIMATIONS } from '../../config/mapAnimations.js';
+import Panel from '../../ui/Panel.jsx';
+import Button from '../../ui/Button.jsx';
 
 const TABS = ['Elevation', 'Speed', 'Slope'];
 
@@ -153,21 +155,9 @@ export default function BottomIsland() {
   const colors = { Elevation: '#34c759', Speed: '#007aff', Slope: '#ff9500' };
   const color = colors[activeTab];
 
-  const tabStyle = (active) => ({
-    padding: '5px 14px',
-    borderRadius: 8,
-    fontSize: 13,
-    fontWeight: 600,
-    background: active ? color : 'transparent',
-    color: active ? '#fff' : 'var(--text-secondary)',
-    border: 'none',
-    cursor: 'pointer',
-    transition: 'all 0.15s',
-  });
-
   const stat = (label, value, icon) => (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: 'var(--text-secondary)', fontSize: 11 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 'var(--space-1)' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-1)', color: 'var(--text-secondary)', fontSize: 11 }}>
         {icon} {label}
       </div>
       <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--text)' }}>{value}</div>
@@ -183,31 +173,37 @@ export default function BottomIsland() {
       zIndex: 1000,
       width: 'min(680px, calc(100vw - 32px))',
     }}>
-      <div className="island" style={{ padding: 0, overflow: 'hidden' }}>
+      <Panel style={{ padding: 0, overflow: 'hidden' }}>
 
         {/* Header — always visible */}
         <div style={{
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          padding: '8px 12px 8px 16px',
+          padding: 'var(--space-2) var(--space-3) var(--space-2) var(--space-4)',
           borderBottom: expanded ? '1px solid var(--border)' : 'none',
           minHeight: 40,
         }}>
           {/* Tabs — only when a track is selected */}
           {selectedTrackId ? (
-            <div style={{ display: 'flex', gap: 4 }}>
+            <div style={{ display: 'flex', gap: 'var(--space-1)' }}>
               {TABS.map((tab) => (
-                <button key={tab} style={tabStyle(activeTab === tab)} onClick={() => setActiveTab(tab)}>
+                <Button
+                  key={tab}
+                  variant="ghost"
+                  active={activeTab === tab}
+                  style={activeTab === tab ? { background: colors[tab], color: '#fff' } : undefined}
+                  onClick={() => setActiveTab(tab)}
+                >
                   {t(`chart.${tab.toLowerCase()}`)}
-                </button>
+                </Button>
               ))}
             </div>
           ) : (
             <div />
           )}
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
             {selectedTrackId && track && (
               <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>
                 {track.name || 'Track'}
@@ -215,39 +211,41 @@ export default function BottomIsland() {
             )}
             {selectedTrackId && (
               <>
-                <button
+                <Button
+                  variant="ghost"
+                  iconOnly
+                  size="sm"
                   onClick={handleZoomToTrack}
-                  style={{ display: 'flex', alignItems: 'center', color: 'var(--text-secondary)', background: 'none', border: 'none', cursor: 'pointer', borderRadius: 8, padding: 4, transition: 'color 0.15s' }}
-                  onMouseEnter={(e) => e.currentTarget.style.color = 'var(--accent)'}
-                  onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-secondary)'}
                   title={t('card.zoom_to_track') || 'Zoom to track'}
                 >
                   <ZoomIn size={16} />
-                </button>
-                <button
+                </Button>
+                <Button
+                  variant="ghost"
+                  iconOnly
+                  size="sm"
                   onClick={handleDeselectTrack}
-                  style={{ display: 'flex', alignItems: 'center', color: 'var(--text-secondary)', background: 'none', border: 'none', cursor: 'pointer', borderRadius: 8, padding: 4, transition: 'color 0.15s' }}
-                  onMouseEnter={(e) => e.currentTarget.style.color = 'var(--accent)'}
-                  onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-secondary)'}
                   title={t('card.deselect') || 'Deselect track'}
                 >
                   <X size={16} />
-                </button>
+                </Button>
               </>
             )}
-            <button
+            <Button
+              variant="ghost"
+              iconOnly
+              size="sm"
               onClick={() => setExpanded((v) => !v)}
-              style={{ display: 'flex', alignItems: 'center', color: 'var(--text-secondary)', background: 'none', border: 'none', cursor: 'pointer', borderRadius: 8, padding: 4 }}
               title={expanded ? t('chart.collapse') : t('chart.expand')}
             >
               {expanded ? <ChevronDown size={16} /> : <ChevronUp size={16} />}
-            </button>
+            </Button>
           </div>
         </div>
 
         {/* Body — visible only when expanded */}
         {expanded && (
-          <div style={{ padding: '12px 16px 14px', animation: 'fadeIn 0.3s ease-out' }}>
+          <div style={{ padding: 'var(--space-3) var(--space-4)', animation: 'fadeIn 0.3s ease-out' }}>
             {!selectedTrackId ? (
               <div style={{ height: 80, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-secondary)', fontSize: 13 }}>
                 {t('chart.select_track')}
@@ -303,11 +301,11 @@ export default function BottomIsland() {
               <div style={{
                 display: 'flex',
                 justifyContent: 'space-around',
-                marginTop: 12,
-                paddingTop: 12,
+                marginTop: 'var(--space-3)',
+                paddingTop: 'var(--space-3)',
                 borderTop: '1px solid var(--border)',
                 flexWrap: 'wrap',
-                gap: 8,
+                gap: 'var(--space-2)',
               }}>
                 {stat(t('chart.distance'), fmtDist(track.distance_km, unitSystem), <Route size={11} />)}
                 {stat(t('chart.duration'), fmtDuration(track.duration_sec), <Clock size={11} />)}
@@ -319,7 +317,7 @@ export default function BottomIsland() {
             )}
           </div>
         )}
-      </div>
+      </Panel>
     </div>
   );
 }

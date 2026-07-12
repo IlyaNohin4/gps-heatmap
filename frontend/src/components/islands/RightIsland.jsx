@@ -9,6 +9,9 @@ import useMapStore from '../../store/mapStore.js';
 import useAppStore from '../../store/appStore.js';
 import { LAYER_OPTIONS } from '../../map/MapLayers.js';
 import { MAP_ANIMATIONS } from '../../config/mapAnimations.js';
+import Panel from '../../ui/Panel.jsx';
+import Button from '../../ui/Button.jsx';
+import Input from '../../ui/Input.jsx';
 
 // Speed breakpoints: [max_kmh, label_km, label_mi, color]
 const SPEED_LEGEND = [
@@ -89,46 +92,34 @@ export default function RightIsland() {
     setCityResults([]);
   }
 
-  const iconBtn = (active) => ({
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    color: active ? 'var(--accent)' : 'var(--text)',
-    background: active ? 'rgba(0,122,255,0.1)' : 'none',
-    border: 'none',
-    cursor: 'pointer',
-    transition: 'background 0.15s',
-  });
-
   const divider = <div style={{ height: 1, background: 'var(--border)', margin: '4px 2px' }} />;
 
   return (
     <div onClick={(e) => e.stopPropagation()} style={{ position: 'fixed', right: 16, top: '50%', transform: 'translateY(-50%)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
-      <div className="island" style={{ padding: '6px', display: 'flex', flexDirection: 'column', gap: 2 }}>
-        <button style={iconBtn()} onClick={zoomIn} title={t('map.zoom_in')}><Plus size={16} /></button>
-        <button style={iconBtn()} onClick={zoomOut} title={t('map.zoom_out')}><Minus size={16} /></button>
+      <Panel style={{ padding: '6px', display: 'flex', flexDirection: 'column', gap: 2 }}>
+        <Button variant="ghost" iconOnly onClick={zoomIn} title={t('map.zoom_in')}><Plus size={16} /></Button>
+        <Button variant="ghost" iconOnly onClick={zoomOut} title={t('map.zoom_out')}><Minus size={16} /></Button>
         {divider}
-        <button style={iconBtn(cityOpen)} onClick={() => togglePanel('right:city')} title={t('map.city_search')}>
+        <Button variant="ghost" iconOnly active={cityOpen} onClick={() => togglePanel('right:city')} title={t('map.city_search')}>
           <Search size={16} />
-        </button>
-        <button style={iconBtn()} onClick={geolocate} title={t('map.my_location')}><Navigation size={16} /></button>
+        </Button>
+        <Button variant="ghost" iconOnly onClick={geolocate} title={t('map.my_location')}><Navigation size={16} /></Button>
         {divider}
-        <button style={iconBtn(layersOpen)} onClick={() => togglePanel('right:layers')} title={t('map.map_layers')}>
+        <Button variant="ghost" iconOnly active={layersOpen} onClick={() => togglePanel('right:layers')} title={t('map.map_layers')}>
           <Layers size={16} />
-        </button>
+        </Button>
         {divider}
-        <button style={iconBtn(showSpeed)} onClick={toggleSpeed} title={t('map.speed_mode')}>
+        <Button variant="ghost" iconOnly active={showSpeed} onClick={toggleSpeed} title={t('map.speed_mode')}>
           <Gauge size={16} />
-        </button>
-        <button style={iconBtn(showHeatmap)} onClick={toggleHeatmap} title={t('map.visit_heatmap')}>
+        </Button>
+        <Button variant="ghost" iconOnly active={showHeatmap} onClick={toggleHeatmap} title={t('map.visit_heatmap')}>
           <Flame size={16} />
-        </button>
+        </Button>
         {divider}
-        <button
-          style={iconBtn(showTrackCreator)}
+        <Button
+          variant="ghost"
+          iconOnly
+          active={showTrackCreator}
           onClick={() => {
             toggleTrackCreator();
             if (!showTrackCreator) setSelectedTrackId(null);
@@ -136,35 +127,36 @@ export default function RightIsland() {
           title={t('map.create_track')}
         >
           <PenLine size={16} />
-        </button>
+        </Button>
         {divider}
-        <button style={iconBtn(attrOpen)} onClick={() => togglePanel('right:attr')} title={t('map.attribution')}>
+        <Button variant="ghost" iconOnly active={attrOpen} onClick={() => togglePanel('right:attr')} title={t('map.attribution')}>
           <Info size={16} />
-        </button>
-      </div>
+        </Button>
+      </Panel>
 
       {/* City search popover */}
       {cityOpen && (
-        <div className="island panel-animate-in-right" style={{ position: 'absolute', right: 52, width: 260, padding: 10 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <input
+        <Panel className="panel-animate-in-right" style={{ position: 'absolute', right: 52, width: 260, padding: 'var(--space-2)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+            <Input
               value={citySearch}
               onChange={handleCityInput}
               placeholder={t('map.search_city')}
+              leftIcon={<Search size={14} />}
               autoFocus
               style={{ flex: 1 }}
             />
-            <button onClick={() => { setActivePanel(null); setCitySearch(''); setCityResults([]); }} style={{ color: 'var(--text-secondary)', display: 'flex', background: 'none', border: 'none', cursor: 'pointer' }}>
+            <Button variant="ghost" iconOnly size="sm" onClick={() => { setActivePanel(null); setCitySearch(''); setCityResults([]); }} title={t('map.search_city')}>
               <X size={14} />
-            </button>
+            </Button>
           </div>
-          {searching && <div style={{ textAlign: 'center', padding: '8px', fontSize: 12, color: 'var(--text-secondary)' }}>{t('map.searching')}</div>}
+          {searching && <div style={{ textAlign: 'center', padding: 'var(--space-2)', fontSize: 12, color: 'var(--text-secondary)' }}>{t('map.searching')}</div>}
           {cityResults.length > 0 && (
-            <div style={{ marginTop: 8 }}>
+            <div style={{ marginTop: 'var(--space-2)' }}>
               {cityResults.map((r) => (
                 <button key={r.place_id} onClick={() => flyToResult(r)} style={{
                   display: 'block', width: '100%', textAlign: 'left',
-                  padding: '7px 8px', borderRadius: 8, border: 'none',
+                  padding: 'var(--space-2)', borderRadius: 8, border: 'none',
                   background: 'none', cursor: 'pointer', fontSize: 12, color: 'var(--text)', lineHeight: 1.3,
                 }}
                   onMouseEnter={(e) => e.currentTarget.style.background = 'var(--bg)'}
@@ -175,20 +167,20 @@ export default function RightIsland() {
               ))}
             </div>
           )}
-        </div>
+        </Panel>
       )}
 
       {/* Layers popover */}
       {layersOpen && (
-        <div className="island panel-animate-in-right" style={{ position: 'absolute', right: 52, width: 200, padding: 10, maxHeight: '70vh', overflowY: 'auto' }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: 8 }}>{t('map.map_layers')}</div>
+        <Panel className="panel-animate-in-right" style={{ position: 'absolute', right: 52, width: 200, padding: 'var(--space-2)', maxHeight: '70vh', overflowY: 'auto' }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: 'var(--space-2)' }}>{t('map.map_layers')}</div>
           {LAYER_OPTIONS.map((l) => (
             <button
               key={l.id}
               onClick={() => setActiveLayer(l.id)}
               style={{
                 display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                width: '100%', padding: '7px 8px', borderRadius: 8, border: 'none',
+                width: '100%', padding: 'var(--space-2)', borderRadius: 8, border: 'none',
                 background: activeLayer === l.id ? 'rgba(0,122,255,0.1)' : 'none',
                 color: activeLayer === l.id ? 'var(--accent)' : 'var(--text)',
                 cursor: 'pointer', fontSize: 13,
@@ -199,20 +191,20 @@ export default function RightIsland() {
               {activeLayer === l.id && <ChevronRight size={12} />}
             </button>
           ))}
-        </div>
+        </Panel>
       )}
 
 
       {/* Attribution popover */}
       {attrOpen && (
-        <div className="island panel-animate-in-right" style={{ position: 'absolute', right: 52, width: 240, padding: '12px 14px' }}>
+        <Panel className="panel-animate-in-right" style={{ position: 'absolute', right: 52, width: 240, padding: 'var(--space-3)' }}>
           <div style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.7 }}>
             Map data © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent)' }}>OpenStreetMap</a> contributors.<br />
             Geocoding by <a href="https://nominatim.org" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent)' }}>Nominatim</a>.<br />
             POI via <a href="https://overpass-api.de" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent)' }}>Overpass API</a>.<br />
             Routing by <a href="https://openrouteservice.org" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent)' }}>OpenRouteService</a>.
           </div>
-        </div>
+        </Panel>
       )}
 
     </div>

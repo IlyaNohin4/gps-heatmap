@@ -42,7 +42,10 @@
 | 15e | ✅ T23a пересборка LeftIsland (v2, чекпоинты) | Sonnet | `task/t23a-leftisland-v2` |
 | 15f | ✅ T25 точность статистики (moving-скорость, стата до RDP) | **Sonnet, thinking** | `task/t25-moving-speed` |
 | 15g | T26 аудит статистики vs gpx.studio (read-only) | Sonnet | `task/t26-stats-audit` |
-| 15h | T23b-e остальные острова и модалки | Sonnet | `task/t23x-...` |
+| 15h | ✅ T23b Top+RightIsland | Sonnet | `task/t23b-top-right-island` |
+| 15i | ✅ T23c BottomIsland (без recharts-логики) | Sonnet | `task/t23c-bottom-island` |
+| 15j | ✅ T23d модалки треков + Auth (переход на kit Modal) | **Sonnet, thinking** | `task/t23d-track-auth-modals` |
+| 15k | ✅ T23e модалки POI | Sonnet | `task/t23e-poi-modals` |
 | 16 | T12 бэкапы | Haiku | `task/t12-backups` |
 | 17 | T13 синхронизация доков | Sonnet | `task/t13-docs-sync` |
 

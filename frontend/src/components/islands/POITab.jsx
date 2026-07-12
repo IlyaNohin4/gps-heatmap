@@ -1,29 +1,42 @@
 import React, { useState, useRef, useEffect, useCallback, Suspense, lazy } from 'react';
-import { Plus, Upload, X as XIcon, Loader, Search, ChevronLeft, Eye, EyeOff } from 'lucide-react';
+import { Plus, Upload, X as XIcon, Loader, Search, Filter, Eye, EyeOff } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { useTranslation } from 'react-i18next';
+import useAppStore from '../../store/appStore.js';
 import useAuthStore from '../../store/authStore.js';
 import useMapStore from '../../store/mapStore.js';
-import { fetchPOI, fetchPOIPage, deletePOI, uploadPOI } from '../../api/poi.js';
+import { fetchPOI, fetchPOIPage, fetchPOICategories, deletePOI, uploadPOI } from '../../api/poi.js';
 import POICard from '../poi/POICard.jsx';
 import useInfiniteScroll from '../../hooks/useInfiniteScroll.js';
 import Button from '../../ui/Button.jsx';
+import Input from '../../ui/Input.jsx';
+import Chip from '../../ui/Chip.jsx';
+import SkeletonCard from '../shared/SkeletonCard.jsx';
 import '../../styles/poi.css';
 const POIRenameModal = lazy(() => import('../poi/POIRenameModal.jsx'));
 const POIDeleteModal = lazy(() => import('../poi/POIDeleteModal.jsx'));
 
-export default React.memo(function POITab({ onCollapse }) {
+export default React.memo(function POITab() {
   const { t } = useTranslation();
   const { pois, setPOIs, setPoiCreationMode, poiCreationMode, mapInstance, showPOI, togglePOI } = useMapStore();
   const { isAuthenticated } = useAuthStore();
+  const { activePanel, setActivePanel } = useAppStore();
+  const filterOpen = activePanel === 'left:poi-filter';
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [search, setSearch] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState('all');
+  const [categories, setCategories] = useState([]);
   const [showRenameModal, setShowRenameModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [selectedPOI, setSelectedPOI] = useState(null);
   const fileInputRef = useRef(null);
   const requestVersion = useRef(0);
+
+  useEffect(() => {
+    if (!isAuthenticated) { setCategories([]); return; }
+    fetchPOICategories().then(setCategories).catch((err) => console.error(err));
+  }, [isAuthenticated]);
 
   // Локальный список для рендера в табе, пагинированный через сервер —
   // отдельно от mapStore.pois (который питает маркеры на карте всеми POI).
@@ -108,8 +121,9 @@ export default React.memo(function POITab({ onCollapse }) {
   const buildListParams = useCallback((offset) => {
     const params = { limit: 50, offset };
     if (search.trim()) params.search = search.trim();
+    if (categoryFilter !== 'all') params.category = categoryFilter;
     return params;
-  }, [search]);
+  }, [search, categoryFilter]);
 
   // Список в табе пагинирован через сервер (отдельно от mapStore.pois,
   // который карта получает целиком — см. loadPOIs выше, не трогать).
@@ -167,58 +181,74 @@ export default React.memo(function POITab({ onCollapse }) {
   return (
     <div className="poi-tab">
       {/* Search bar */}
-      <div className="poi-header">
-        <div className="poi-search-wrapper">
-          <Search size={14} className="poi-search-icon" />
-          <input
-            className="poi-search-input"
+      <div style={{ padding: 'var(--space-3) var(--space-2) 0', display: 'flex', gap: 'var(--space-2)', flexShrink: 0 }}>
+        <div style={{ position: 'relative', flex: 1, display: 'flex', alignItems: 'center' }}>
+          <Input
+            leftIcon={<Search size={14} />}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search POI..."
+            style={{ borderRadius: 'var(--radius-search)', height: '34px', paddingRight: search ? 30 : undefined }}
           />
           {search && (
-            <button className="poi-search-clear" onClick={() => setSearch('')}>
+            <button onClick={() => setSearch('')} style={{ position: 'absolute', right: 'var(--space-2)', background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', display: 'flex' }}>
               <XIcon size={13} />
             </button>
           )}
         </div>
-        <button
-          className="icon-btn"
+        <Button
+          variant="ghost"
+          iconOnly
+          active={showPOI}
           onClick={togglePOI}
           title={showPOI ? 'Hide all POI' : 'Show all POI'}
         >
-          {showPOI ? <Eye size={14} /> : <EyeOff size={14} />}
-        </button>
-        {onCollapse && (
-          <button
-            className="icon-btn"
-            onClick={onCollapse}
-            title="Collapse sidebar"
-          >
-            <ChevronLeft size={15} />
-          </button>
-        )}
+          {showPOI ? <Eye size={15} /> : <EyeOff size={15} />}
+        </Button>
+        <Button
+          variant="ghost"
+          iconOnly
+          active={filterOpen}
+          onClick={() => setActivePanel(filterOpen ? null : 'left:poi-filter')}
+          title="Filters"
+        >
+          <Filter size={15} />
+        </Button>
       </div>
 
+      {/* Filter panel */}
+      {filterOpen && (
+        <div style={{ padding: 'var(--space-3)', borderBottom: '1px solid var(--border)', animation: 'fadeIn 0.3s ease-out', flexShrink: 0 }}>
+          <div style={{ fontSize: 'var(--text-xs)', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: 'var(--space-2)', textTransform: 'uppercase' }}>Category</div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-1)' }}>
+            <Chip active={categoryFilter === 'all'} onClick={() => setCategoryFilter('all')}>All</Chip>
+            {categories.map((c) => (
+              <Chip key={c.name} active={categoryFilter === c.name} onClick={() => setCategoryFilter(c.name)}>
+                {c.name} ({c.count})
+              </Chip>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* POI List */}
-      <div className="poi-list-container" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
+      <div style={{ flex: 1, overflowY: 'auto', padding: 'var(--space-2) var(--space-3) var(--space-1)', minHeight: 0, display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
         {listError ? (
-          <div className="poi-empty-state">
-            {t('errors.poi_load_failed')}
-            <br />
-            <button className="btn-secondary" style={{ marginTop: 10 }} onClick={handleListRetry}>
-              {t('errors.retry')}
-            </button>
+          <div style={{ textAlign: 'center', padding: 'var(--space-5) 0', color: 'var(--text-secondary)', fontSize: 'var(--text-sm)' }}>
+            <div style={{ marginBottom: 'var(--space-2)' }}>{t('errors.poi_load_failed')}</div>
+            <button className="btn-secondary" onClick={handleListRetry}>{t('errors.retry')}</button>
           </div>
         ) : loading || listLoading ? (
-          <div className="poi-loading">Loading POI...</div>
+          [1, 2, 3].map((i) => <SkeletonCard key={i} />)
         ) : pois.length === 0 ? (
-          <div className="poi-empty-state">
+          <div style={{ textAlign: 'center', padding: 'var(--space-5) 0', color: 'var(--text-secondary)', fontSize: 'var(--text-sm)' }}>
             No POI yet<br />
             Click the + button then left-click on map
           </div>
         ) : listItems.length === 0 ? (
-          <div className="poi-empty-state">No results found</div>
+          <div style={{ textAlign: 'center', padding: 'var(--space-5) 0', color: 'var(--text-secondary)', fontSize: 'var(--text-sm)' }}>
+            No results found
+          </div>
         ) : (
           <>
             {listItems.map((poi) => (
@@ -239,12 +269,12 @@ export default React.memo(function POITab({ onCollapse }) {
       </div>
 
       {/* Bottom actions */}
-      <div className="poi-actions">
+      <div style={{ padding: 'var(--space-2) var(--space-3) var(--space-3)', borderTop: '1px solid var(--border)', display: 'flex', gap: 'var(--space-2)', flexShrink: 0 }}>
         <Button
           variant="secondary"
           onClick={() => fileInputRef.current?.click()}
           disabled={uploading}
-          style={{ flex: 1, gap: 'var(--space-2)' }}
+          style={{ flex: 1, border: 'none' }}
           title="Import KML/KMZ file"
         >
           {uploading ? <Loader size={14} style={{ animation: 'spin 1s linear infinite' }} /> : <Upload size={14} />}
@@ -261,7 +291,7 @@ export default React.memo(function POITab({ onCollapse }) {
         <Button
           variant={poiCreationMode ? 'primary' : 'secondary'}
           onClick={handleToggleCreation}
-          style={{ flex: 1 }}
+          style={{ flex: 1, border: 'none' }}
           title="Create POI"
         >
           <Plus size={14} /> Create

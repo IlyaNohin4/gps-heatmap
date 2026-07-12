@@ -19,13 +19,13 @@ export default function CoordinatesContextMenu({ lat, lon, x, y, onClose }) {
         position: 'fixed',
         left: `${x}px`,
         top: `${y}px`,
-        background: '#ffffff',
+        background: 'var(--surface)',
         border: '1px solid var(--border)',
         borderRadius: 8,
         padding: '12px',
         zIndex: 2000,
         minWidth: 220,
-        boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+        boxShadow: 'var(--shadow)',
       }}
       onClick={(e) => e.stopPropagation()}
     >

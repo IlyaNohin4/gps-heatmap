@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
-import { X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'react-toastify';
+import Modal from '../../ui/Modal.jsx';
+import Button from '../../ui/Button.jsx';
+import Input from '../../ui/Input.jsx';
 
 const FORMAT_OPTIONS = [
   { id: 'gpx', label: 'GPX (.gpx)' },
@@ -128,8 +130,6 @@ export default function SaveTrackModal({
   const [format, setFormat] = useState('gpx');
   const [isSaving, setIsSaving] = useState(false);
 
-  if (!isOpen) return null;
-
   const handleDownload = () => {
     if (!trackName.trim()) {
       toast.error(t('validation.track_name_required'));
@@ -174,165 +174,63 @@ export default function SaveTrackModal({
   };
 
   return (
-    <div
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
-      }}
-      style={{
-        position: 'fixed',
-        inset: 0,
-        backgroundColor: 'rgba(0, 0, 0, 0.5)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        zIndex: 2000,
-      }}
-    >
-      <div
-        onClick={(e) => e.stopPropagation()}
-        style={{
-          background: 'var(--bg)',
-          border: '1px solid var(--border)',
-          borderRadius: 'var(--radius)',
-          boxShadow: 'var(--shadow)',
-          padding: 24,
-          maxWidth: 400,
-          width: '90%',
-        }}
-      >
-        {/* Header */}
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            marginBottom: 20,
-          }}
-        >
-          <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>Save Track</h2>
-          <button
-            onClick={onClose}
-            style={{
-              background: 'none',
-              border: 'none',
-              cursor: 'pointer',
-              color: 'var(--text-secondary)',
-              display: 'flex',
-            }}
-          >
-            <X size={20} />
-          </button>
-        </div>
-
-        {/* Track name input */}
-        <div style={{ marginBottom: 16 }}>
-          <label style={{ display: 'block', fontSize: 12, fontWeight: 600, marginBottom: 6 }}>
-            Track name
-          </label>
-          <input
-            type="text"
-            value={trackName}
-            onChange={(e) => setTrackName(e.target.value)}
-            placeholder="e.g., City Route"
-            style={{
-              width: '100%',
-              padding: '8px 12px',
-              fontSize: 14,
-              border: '1px solid var(--border)',
-              borderRadius: 8,
-              background: 'var(--surface)',
-              color: 'var(--text)',
-              boxSizing: 'border-box',
-            }}
-          />
-        </div>
-
-        {/* Format select */}
-        <div style={{ marginBottom: 20 }}>
-          <label style={{ display: 'block', fontSize: 12, fontWeight: 600, marginBottom: 6 }}>
-            File format
-          </label>
-          <select
-            value={format}
-            onChange={(e) => setFormat(e.target.value)}
-            style={{
-              width: '100%',
-              padding: '8px 12px',
-              fontSize: 14,
-              border: '1px solid var(--border)',
-              borderRadius: 8,
-              background: 'var(--surface)',
-              color: 'var(--text)',
-              boxSizing: 'border-box',
-            }}
-          >
-            {FORMAT_OPTIONS.map((opt) => (
-              <option key={opt.id} value={opt.id}>
-                {opt.label}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        {/* Buttons */}
-        <div
-          style={{
-            display: 'flex',
-            gap: 8,
-            justifyContent: 'flex-end',
-          }}
-        >
-          <button
-            onClick={onClose}
-            style={{
-              padding: '8px 16px',
-              fontSize: 12,
-              fontWeight: 600,
-              border: '1px solid var(--border)',
-              background: 'var(--bg)',
-              color: 'var(--text)',
-              borderRadius: 8,
-              cursor: 'pointer',
-            }}
-          >
+    <Modal
+      open={isOpen}
+      onClose={onClose}
+      title="Save Track"
+      actions={
+        <>
+          <Button variant="secondary" onClick={onClose}>
             Cancel
-          </button>
-
-          <button
-            onClick={handleDownload}
-            style={{
-              padding: '8px 16px',
-              fontSize: 12,
-              fontWeight: 600,
-              border: '1px solid var(--border)',
-              background: 'var(--surface)',
-              color: 'var(--text)',
-              borderRadius: 8,
-              cursor: 'pointer',
-            }}
-          >
+          </Button>
+          <Button variant="secondary" onClick={handleDownload}>
             Download
-          </button>
-
-          <button
-            onClick={handleSaveToDb}
-            disabled={isSaving || saving}
-            style={{
-              padding: '8px 16px',
-              fontSize: 12,
-              fontWeight: 600,
-              background: 'var(--accent)',
-              color: '#fff',
-              border: 'none',
-              borderRadius: 8,
-              cursor: isSaving || saving ? 'not-allowed' : 'pointer',
-              opacity: isSaving || saving ? 0.6 : 1,
-            }}
-          >
+          </Button>
+          <Button onClick={handleSaveToDb} disabled={isSaving || saving}>
             {isSaving || saving ? 'Saving...' : 'Save to DB'}
-          </button>
-        </div>
+          </Button>
+        </>
+      }
+    >
+      {/* Track name input */}
+      <div style={{ marginBottom: 'var(--space-3)' }}>
+        <label style={{ display: 'block', fontSize: 12, fontWeight: 600, marginBottom: 'var(--space-1)' }}>
+          Track name
+        </label>
+        <Input
+          type="text"
+          value={trackName}
+          onChange={(e) => setTrackName(e.target.value)}
+          placeholder="e.g., City Route"
+        />
       </div>
-    </div>
+
+      {/* Format select */}
+      <div>
+        <label style={{ display: 'block', fontSize: 12, fontWeight: 600, marginBottom: 'var(--space-1)' }}>
+          File format
+        </label>
+        <select
+          value={format}
+          onChange={(e) => setFormat(e.target.value)}
+          style={{
+            width: '100%',
+            padding: 'var(--space-2) var(--space-3)',
+            fontSize: 14,
+            border: '1px solid var(--border)',
+            borderRadius: 8,
+            background: 'var(--surface)',
+            color: 'var(--text)',
+            boxSizing: 'border-box',
+          }}
+        >
+          {FORMAT_OPTIONS.map((opt) => (
+            <option key={opt.id} value={opt.id}>
+              {opt.label}
+            </option>
+          ))}
+        </select>
+      </div>
+    </Modal>
   );
 }
