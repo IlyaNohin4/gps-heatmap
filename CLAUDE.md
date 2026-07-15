@@ -32,7 +32,7 @@ GitHub Actions (`.github/workflows/ci.yml`) runs backend pytest + frontend build
 
 ### Backend
 ```bash
-docker compose exec backend python -m pytest      # Run all 132 tests
+docker compose exec backend python -m pytest      # Run all 162 tests
 docker compose exec backend python -m pytest tests/test_parser.py -v
 
 # Database
@@ -111,16 +111,19 @@ Only push if user says "push" or "commit and push"
 - **Track processing:** sequential (Redis lock), 6 phases (drift collapse, outlier removal, Kalman, elevation smoothing, grade classification, simplification)
 - **Frontend state:** `appStore` (Zustand, not persisted), `authStore` (persisted to localStorage)
 - **Speed segments format:** `[{from:[lat,lon], to:[lat,lon], speed_kmh}]` — NOT by index
-- **Testing:** 132 backend tests (pytest), E2E tests (Playwright)
-- **Production:** not ready yet (see IMPROVEMENTS.md)
+- **Testing:** 162 backend tests (pytest), E2E tests (Playwright — browsers not
+  installed in the frontend container yet, see POLISH.md § окружение)
+- **Production:** deployable (`docker-compose.prod.yml` + nginx, T11; CI test-gate,
+  T14; DB backups, T12) — monitoring/Sentry and automated SSL still open, see IMPROVEMENTS.md
 
 ---
 
 ## 📖 For More Info
 
-- **Full architecture details:** `architecture/ARCHITECTURE.md` (588 lines)
-- **GPS parsing details:** `architecture/PARSER.md` (687 lines, 6 phases)
+- **Full architecture details:** `architecture/ARCHITECTURE.md`
+- **GPS parsing details:** `architecture/PARSER.md` (6 phases)
+- **Deployment & backups:** `deploy/README.md`
 - **Navigation & quick ref:** `architecture/INDEX.md` (40 lines)
 - **Known issues & TODOs:** `POLISH.md` (65 lines)
-- **Project improvements:** `IMPROVEMENTS.md` (9 recommendations, MVP roadmap)
+- **Project improvements:** `IMPROVEMENTS.md` (MVP roadmap, updated by status)
 - **About this refactor:** `DOCUMENTATION_REFACTOR.md`

@@ -42,55 +42,37 @@
 
 ---
 
-### 2. Database Индексы (performance)
-**Файл:** backend/alembic/ (новая миграция 0004)
+### 2. Database Индексы (performance) — ✅ СДЕЛАНО (T03/T07, миграция 0007)
+**Файл:** `backend/alembic/versions/0007_add_filter_indices.py`
 
-**Что сейчас:** Таблица Track растёт, но нет индексов на частые фильтры
-
-**Что добавить:**
-```sql
--- На фильтрацию по пользователю (GET /api/tracks)
-CREATE INDEX idx_track_user_id ON track(user_id);
-
--- На сортировку по дате (sort=newest|oldest)
-CREATE INDEX idx_track_recorded_at ON track(recorded_at DESC);
-
--- На bbox фильтрацию (ST_Intersects)
-CREATE INDEX idx_track_geom ON track USING GIST(geom);
-
--- На поиск по публичности (is_public toggle)
-CREATE INDEX idx_track_is_public ON track(is_public);
-```
-
-**Почему:** Без индексов запросы будут медленнеть при 1000+ треков
-
-**Est. Time:** 1 часа (включая тест)
+Добавлены индексы на `tracks.recorded_at/uploaded_at/speed_avg/distance_km/
+file_format`, `poi.name`, плюс `user_id`/`id` (index=True в моделях изначально).
+PostGIS GIST на `geom` — часть initial schema (0001), не отдельной миграцией.
 
 ---
 
-### 3. Production Deployment
-**Файлы:** Dockerfile, docker-compose.yml (production version), .env template
+### 3. Production Deployment — ✅ В ОСНОВНОМ СДЕЛАНО (T11, T12, T14)
+**Файлы:** `docker-compose.prod.yml`, `frontend/Dockerfile.prod`, `deploy/nginx.conf`,
+`deploy/README.md`, `.github/workflows/ci.yml`, `deploy/backup.sh`/`restore.sh`
 
-**Что нужно:**
-- [ ] Оптимизированный Dockerfile (multi-stage build, меньше размер)
-- [ ] nginx reverse proxy конфигурация
-- [ ] Environment variable management (.env.example → .env.prod)
-- [ ] CI/CD pipeline (GitHub Actions)
-  - Auto-run tests на PR
-  - Auto-deploy на main
-- [ ] Database backup strategy
-- [ ] Monitoring & logging (Sentry или similar)
-
-**Текущий статус:** ❌ не сделано
-
-**Est. Time:** 4-6 часов
+- [x] Оптимизированный Dockerfile (multi-stage `frontend/Dockerfile.prod`)
+- [x] nginx reverse proxy (`deploy/nginx.conf`)
+- [x] Environment variable management (`.env.example`, guard на dev JWT_SECRET
+      в проде — `backend/app/core/config.py`)
+- [x] CI/CD: тесты на PR/push (`.github/workflows/ci.yml`, T14). Auto-deploy на
+      main — не сделано, вне scope личного инструмента (ручной `git pull` +
+      `docker compose up -d --build` на VDS, см. `deploy/README.md`)
+- [x] Database backup strategy (T12: `deploy/backup.sh`/`restore.sh` + cron)
+- [ ] Monitoring & logging (Sentry) — не сделано, см. `tasks/FUTURE.md`
+- [ ] Автоматизация HTTPS/SSL (certbot) — не сделано, см. `deploy/README.md` § 5
 
 ---
 
 ## 🟡 NICE-TO-HAVE (улучшают UX)
 
 ### 1. Speed Legend Positioning Fix
-**Файл:** frontend/src/components/SpeedLegend.jsx
+**Файл:** `frontend/src/App.jsx` (инлайн JSX, ~строка 267 — отдельного
+компонента `SpeedLegend.jsx` в кодовой базе нет)
 
 **Проблема:** fixed position fixed левый нижний угол, но может перекрывать контент на мобильных
 
@@ -118,7 +100,7 @@ CREATE INDEX idx_track_is_public ON track(is_public);
 ---
 
 ### 3. POI Search UI Полирование
-**Файлы:** frontend/src/components/POILayer.jsx
+**Файлы:** frontend/src/map/POILayer.jsx
 
 **Текущий статус:** Overpass API вызывается, но UI может быть лучше
 
@@ -133,7 +115,7 @@ CREATE INDEX idx_track_is_public ON track(is_public);
 ---
 
 ### 4. Reset Bearing Button Fix
-**Файл:** frontend/src/components/RightIsland.jsx
+**Файл:** frontend/src/components/islands/RightIsland.jsx
 
 **Проблема:** Кнопка в RightIsland не работает
 
@@ -162,7 +144,7 @@ CREATE INDEX idx_track_is_public ON track(is_public);
 ## 🔵 FUTURE FEATURES (не для MVP)
 
 ### 1. Track Creation Tool (TrackCreator улучшение)
-**Файлы:** frontend/src/components/TrackCreator.jsx, backend/app/api/tracks.py
+**Файлы:** frontend/src/map/TrackCreator.jsx, backend/app/api/tracks.py
 
 **Текущий статус:** Ручной режим (клик → точки → линия) существует
 
@@ -225,13 +207,13 @@ CREATE INDEX idx_track_is_public ON track(is_public);
 - ✅ FastAPI setup
 - ✅ JWT auth
 - ✅ PostgreSQL + PostGIS
-- ✅ Celery + Redis
-- ✅ Трёх парсера готовы (GPX, KML, TCX, FIT, GeoJSON)
+- ✅ Celery + Redis (retry/backoff, T09)
+- ✅ 5 парсеров готовы (GPX, KML, TCX, FIT, GeoJSON)
 - ✅ Нормализация (6 фаз) готова
-- ✅ 107 тестов пасс
+- ✅ 162 теста пасс
+- ✅ Database индексы (T03/T07)
+- ✅ Production deployment (T11/T12/T14) — monitoring/SSL ещё нет
 - ❌ Email отправка (не интегрирована)
-- ❌ Database индексы (нет оптимизации)
-- ❌ Production deployment (не готово)
 
 ### Frontend
 - ✅ React 18 + Vite
@@ -250,22 +232,24 @@ CREATE INDEX idx_track_is_public ON track(is_public);
 ### DevOps
 - ✅ Docker Compose setup
 - ✅ Hot reload (Vite + uvicorn + watchdog)
-- ✅ Playwright E2E tests
-- ❌ CI/CD pipeline (нет GitHub Actions)
-- ❌ Production setup (нет nginx, нет оптимизированного Dockerfile)
+- ⚠️ Playwright E2E tests написаны, но браузеры не установлены в контейнере
+  (`npm run test:e2e` падает — см. POLISH.md § окружение)
+- ✅ CI/CD pipeline (T14, `.github/workflows/ci.yml`)
+- ✅ Production setup (T11: nginx, оптимизированный `Dockerfile.prod`)
+- ✅ DB backups (T12)
 
 ---
 
 ## 🎯 Рекомендуемый порядок
 
 **Для готовности к продакшену:**
-1. Full Integration Test (MVP blocker) — 1-2 часа
-2. Email интеграция (Resend) — 1 час
-3. Database индексы (performance) — 1 час
-4. Production deployment setup — 4-6 часов
-5. GitHub Actions CI/CD — 2-3 часа
+1. Full Integration Test (MVP blocker) — 1-2 часа — ❌ ещё не сделано
+2. Email интеграция (Resend) — 1 час — ❌ ещё не сделано
+3. ~~Database индексы (performance)~~ — ✅ сделано (T03/T07)
+4. ~~Production deployment setup~~ — ✅ сделано (T11/T12/T14)
+5. ~~GitHub Actions CI/CD~~ — ✅ сделано (T14)
 
-**Всего для MVP:** ~14-17 часов
+**Осталось для MVP:** пункты 1-2, ~2-3 часа
 
 **После MVP (nice-to-have):**
 1. Speed Legend fix — 30 мин
@@ -279,7 +263,7 @@ CREATE INDEX idx_track_is_public ON track(is_public);
 
 **Strengths:**
 - ✅ Чистая архитектура (separated concerns)
-- ✅ Хорошее покрытие тестами (107 backend tests)
+- ✅ Хорошее покрытие тестами (162 backend tests)
 - ✅ Type hints в Python (Pydantic models)
 - ✅ Consistent naming conventions
 

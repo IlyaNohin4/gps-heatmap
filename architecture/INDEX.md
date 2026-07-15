@@ -16,12 +16,14 @@ Quick reference for which file to read for different tasks.
 | **Fix known bug** | POLISH.md | § Known Issues / Critical Tasks |
 | **Understand project stack** | ../CLAUDE.md | § Project Overview |
 | **Development setup / commands** | ../CLAUDE.md | § Common Development Commands |
+| **Deploy to VDS / prod compose** | ARCHITECTURE.md | § Deployment (прод, T11) |
+| **DB backups / restore** | ../deploy/README.md | § Backups (T12) |
 
 ---
 
 ## 📂 File Descriptions
 
-### ARCHITECTURE.md (588 lines)
+### ARCHITECTURE.md
 Single source of truth for all architecture decisions.
 - Stack overview
 - Database models (User, Track, PasswordReset)
@@ -35,7 +37,7 @@ Single source of truth for all architecture decisions.
 - Authorization & sessions
 - Testing approach
 
-### PARSER.md (687 lines)
+### PARSER.md
 Specialized file for GPS parsing and normalization.
 - Supported file formats (GPX, KML, TCX, FIT, GeoJSON)
 - Parser implementation details
@@ -50,6 +52,11 @@ Status of the 6-phase normalization pipeline (all phases complete, all tests pas
 
 ### INDEX_LEGACY.md
 Archived copy of old INDEX.md (not used, kept for history).
+
+### ../deploy/README.md
+VDS deployment cheat sheet: Docker install, `.env` setup, prod compose
+(`docker-compose.prod.yml`), updates, backups (T12: `deploy/backup.sh`/
+`deploy/restore.sh`), HTTPS next steps.
 
 ---
 
@@ -103,7 +110,7 @@ Archived copy of old INDEX.md (not used, kept for history).
 - Main app: ../backend/app/main.py
 - Auth API: ../backend/app/api/auth.py
 - Tracks API: ../backend/app/api/tracks.py
-- Parser: ../backend/app/services/parser.py
+- Parser: ../backend/app/services/parser_factory.py
 - Normalizer: ../backend/app/services/normalizer.py
 - Celery task: ../backend/app/tasks/process_track.py
 
