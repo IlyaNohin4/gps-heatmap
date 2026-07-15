@@ -64,6 +64,10 @@
     Phase 4/5 и его тестовый эталон).
   - **Не решено, вне scope:** трек 152 (см. ниже) — отдельная аномалия в raw_points,
     не в методике.
+  - **Backfill подтверждён (T27, 2026-07-15):** `backfill_elevation.py --dry-run`
+    на все 31 трек в БД — `0 updated, 31 unchanged/skipped, 0 errors`, все
+    сохранённые `elevation_gain/loss` уже совпадают с пересчётом через текущую
+    методику, повторный прогон не требуется.
 
   - **Исходный аудит (архив, до фикса выше), 2026-07-12:**
   - **Скрипт:** `backend/scripts/compare_gpxstudio.py` (read-only, `docker compose

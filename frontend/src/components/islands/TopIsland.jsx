@@ -210,7 +210,7 @@ export default function TopIsland() {
             {isAuthenticated && (
               <>
                 <div style={sectionLabel}>{t('settings.account')}</div>
-                <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 5 }}>
+                <div style={{ fontSize: 'var(--text-sm)', color: 'var(--text-secondary)', marginBottom: 'var(--space-2)', display: 'flex', alignItems: 'center', gap: 'var(--space-1)' }}>
                   <User size={13} /> {user?.email}
                 </div>
 
