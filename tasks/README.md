@@ -63,6 +63,7 @@
 | [T21](T21-auth-switch-resets-data.md) | ✅ Смена аккаунта сбрасывает клиентские данные (готово 2026-07-09) | Frontend | P1 | 1-1.5h |
 | [T27](T27-elevation-tests-and-cleanup.md) | ✅ Тесты elevation-методики + px-хвосты + проверка backfill (готово 2026-07-15) | Backend+Frontend | P1 | 1h |
 | [T24](T24-poi-css-cleanup.md) | ✅ Чистка мёртвого poi.css после серии T23 (готово 2026-07-15, последняя в блоке T22-T24) | Frontend | P2 | 30-45m |
+| [T28](T28-tcx-fit-export-fix.md) | TCX/FIT экспорт из Track Creator невалиден — нужно решение пользователя (см. файл, шаг 0) | Backend | P2 | 1-3h |
 | [T13](T13-docs-sync.md) | Синхронизация архитектурной документации (последняя) | Docs | P1 | 1-2h |
 
 ## Правила для агента (обязательны, см. также /CLAUDE.md)
