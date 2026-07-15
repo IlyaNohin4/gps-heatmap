@@ -62,6 +62,7 @@
 | [T26](T26-stats-parity-audit.md) | ✅ Аудит статистики vs gpx.studio (готово 2026-07-12; elevation gain/loss фикс + backfill 2026-07-13, медиана дельты 1.14%/1.35%, см. POLISH.md) | Backend | P2 | 2h |
 | [T21](T21-auth-switch-resets-data.md) | ✅ Смена аккаунта сбрасывает клиентские данные (готово 2026-07-09) | Frontend | P1 | 1-1.5h |
 | [T27](T27-elevation-tests-and-cleanup.md) | ✅ Тесты elevation-методики + px-хвосты + проверка backfill (готово 2026-07-15) | Backend+Frontend | P1 | 1h |
+| [T24](T24-poi-css-cleanup.md) | ✅ Чистка мёртвого poi.css после серии T23 (готово 2026-07-15, последняя в блоке T22-T24) | Frontend | P2 | 30-45m |
 | [T13](T13-docs-sync.md) | Синхронизация архитектурной документации (последняя) | Docs | P1 | 1-2h |
 
 ## Правила для агента (обязательны, см. также /CLAUDE.md)

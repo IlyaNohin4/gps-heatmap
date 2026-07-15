@@ -22,22 +22,21 @@
     поддерживаемых форматов экспорта/создания трека, если усилия не оправданы
     для личного инструмента
 
-- [ ] **T23a leftovers (LeftIsland → UI-kit)** — вне scope T23a, не чинил:
-  - `poi.css` (`frontend/src/styles/poi.css`) не удалён (запрещено правилами T23),
-    но классы `.poi-action-btn` (Import/Create теперь `Button`) и косвенно
-    `marginBottom` в `.poi-status`/`.poi-actions` стали частично избыточны —
-    снос/чистка запланирован на T24
-  - Строка поиска POI-таба (`POITab.jsx`, классы `.poi-search-*`) осталась на
-    legacy-вёрстке (сырые px: `left:10px`, `padding-left:30px`,
-    `top:50%/translateY(-50%)` у крестика) — не переведена на kit `Input`,
-    в отличие от поиска Tracks-таба (`LeftIsland.jsx`, T23a). Высота
-    Tracks-инпута подогнана вручную (`height:34px` инлайн) под POI ради
-    визуального единства, но это точечный костыль, не системное решение —
-    правильная унификация (обе строки поиска через kit `Input`) — задача
-    T23b-e или T24
+- [x] **RESOLVED** — T23a leftovers: мёртвый `poi.css` после серии T23 (T24, 2026-07-15)
+  - **Было:** `poi.css` не удалялся в T23a (запрещено правилами T23), но к T24
+    классы `.poi-header`, `.poi-search-wrapper/icon/input/clear`,
+    `.poi-list-container`, `.poi-empty-state`, `.poi-loading`, `.poi-actions`,
+    `.poi-action-btn` больше нигде не использовались в JSX — строка поиска
+    POI-таба и Import/Create к моменту T24 уже были переведены на kit
+    `Input`/`Button` (в рамках T23b-e, не осталось отдельной legacy-вёрстки).
+  - **Решение:** мёртвые классы удалены из `poi.css`, остались только
+    используемые `.poi-tab` и `.poi-status`.
+  - **Не трогали:** инлайн `height: '34px'` на инпутах поиска в
+    `POITab.jsx`/`LeftIsland.jsx` — это активный код (не мёртвый CSS),
+    унификация вне scope T24.
   - Собранное состояние `!sidebarOpen` (свёрнутый остров, маленький div с
-    одной кнопкой в `LeftIsland.jsx`) не переведено на `Panel`/`Button` —
-    вне списка файлов чекпоинтов T23a
+    одной кнопкой в `LeftIsland.jsx`) всё ещё не переведено на
+    `Panel`/`Button` — вне scope T23a/T24, не чинили.
 
 - [x] **RESOLVED** — T26 audit: elevation_gain/loss расходились с gpx.studio на порядок (2026-07-12, зафиксировано 2026-07-13)
   - **Решение (вариант B, обсуждено с пользователем):** точечный фикс только для
