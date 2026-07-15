@@ -218,7 +218,7 @@ export default function TopIsland() {
                   <Button
                     variant="ghost"
                     size="sm"
-                    style={{ flex: 1, color: 'var(--accent)', justifyContent: 'flex-start' }}
+                    style={{ flex: 1, color: 'var(--accent)' }}
                     onClick={() => { setChangeEmailOpen(!changeEmailOpen); setChangePassOpen(false); }}
                   >
                     <Mail size={13} /> {t('settings.change_email')}
@@ -226,7 +226,7 @@ export default function TopIsland() {
                   <Button
                     variant="ghost"
                     size="sm"
-                    style={{ flex: 1, color: 'var(--accent)', justifyContent: 'flex-start' }}
+                    style={{ flex: 1, color: 'var(--accent)' }}
                     onClick={() => { setChangePassOpen(!changePassOpen); setChangeEmailOpen(false); }}
                   >
                     <Key size={13} /> {t('settings.change_password')}
