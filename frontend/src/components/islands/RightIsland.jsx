@@ -96,7 +96,7 @@ export default function RightIsland() {
 
   return (
     <div onClick={(e) => e.stopPropagation()} style={{ position: 'fixed', right: 16, top: '50%', transform: 'translateY(-50%)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
-      <Panel style={{ padding: '6px', display: 'flex', flexDirection: 'column', gap: 2 }}>
+      <Panel style={{ padding: 'var(--space-1)', display: 'flex', flexDirection: 'column', gap: 'var(--space-1)' }}>
         <Button variant="ghost" iconOnly onClick={zoomIn} title={t('map.zoom_in')}><Plus size={16} /></Button>
         <Button variant="ghost" iconOnly onClick={zoomOut} title={t('map.zoom_out')}><Minus size={16} /></Button>
         {divider}
