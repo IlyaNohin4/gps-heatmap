@@ -231,7 +231,20 @@
     SPA fallback, `client_max_body_size 25m`, gzip
   - `deploy/README.md` — шпаргалка деплоя на VDS
   - CI/CD pipeline — частично закрыто: CI есть (`.github/workflows/ci.yml`, T14: pytest + frontend build на push/PR); CD (деплой) — см. FUTURE.md
-  - Ещё не сделано: Database backup strategy (T12), Monitoring & logging setup (Sentry, см. FUTURE.md), автоматизация SSL (см. deploy/README.md § HTTPS)
+  - Ещё не сделано: Monitoring & logging setup (Sentry, см. FUTURE.md), автоматизация SSL (см. deploy/README.md § HTTPS)
+
+- [x] **RESOLVED** — Database backup strategy (T12, 2026-07-15)
+  - `deploy/backup.sh` — `pg_dump -Fc` (custom format) в `backups/` (в `.gitignore`),
+    ротация файлов старше `KEEP_DAYS` (default 14) через `find -mtime +N -delete`
+  - `deploy/restore.sh` — `pg_restore --clean --if-exists` с подтверждением `[y/N]`
+    перед перезаписью БД
+  - `deploy/README.md` § Backups — cron-строка (`0 3 * * *`), проверка дампа
+    (`pg_restore --list`), восстановление, рекомендация `rsync` за пределы VDS
+  - **Проверено** на изолированном локальном прод-стеке
+    (`docker compose -p gps-heatmap-prod -f docker-compose.prod.yml`, не задевая
+    dev-стек): создал тестовый трек → `backup.sh` → удалил трек через SQL →
+    `restore.sh` → трек вернулся; отдельно проверена ротация (фейковый файл с
+    датой 20 дней назад удалился при следующем запуске `backup.sh`)
 
 ---
 

@@ -229,3 +229,6 @@ frontend/playwright-report/
 
 # Claude Code project files
 .claude/
+
+# DB backups (deploy/backup.sh)
+/backups/

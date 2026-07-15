@@ -44,7 +44,7 @@
 | [T09](T09-celery-retry-backoff.md) | ✅ Retry с exponential backoff в Celery (готово 2026-07-08) | Backend | P1 | 1h |
 | [T10](T10-env-secrets-hygiene.md) | ✅ Секреты из compose в .env (готово 2026-07-06, PR #3) | DevOps | P0 | 1h |
 | [T11](T11-prod-docker-nginx.md) | ✅ Прод-компоуз: nginx, prod Dockerfiles, закрытые порты (готово 2026-07-09) | DevOps | P1 | 3-4h |
-| [T12](T12-db-backup.md) | Бэкапы PostgreSQL (pg_dump + cron) | DevOps | P2 | 1h |
+| [T12](T12-db-backup.md) | ✅ Бэкапы PostgreSQL (pg_dump + cron, готово 2026-07-15) | DevOps | P2 | 1h |
 | [T14](T14-ci-test-gate.md) | ✅ CI test-gate: pytest + build на каждый push (готово 2026-07-06, PR #1) | DevOps | P1 | 1-2h |
 | [T17](T17-fix-failing-tests.md) | ✅ Починить красные тесты на main (готово 2026-07-06, PR #2 — 132 passed) | Backend | P0 | 2-3h |
 | [T15](T15-auth-rate-limit.md) | ✅ Rate limiting на auth-эндпоинты (готово 2026-07-08) | Backend | P1 | 1h |
@@ -63,6 +63,7 @@
 | [T21](T21-auth-switch-resets-data.md) | ✅ Смена аккаунта сбрасывает клиентские данные (готово 2026-07-09) | Frontend | P1 | 1-1.5h |
 | [T27](T27-elevation-tests-and-cleanup.md) | ✅ Тесты elevation-методики + px-хвосты + проверка backfill (готово 2026-07-15) | Backend+Frontend | P1 | 1h |
 | [T24](T24-poi-css-cleanup.md) | ✅ Чистка мёртвого poi.css после серии T23 (готово 2026-07-15, последняя в блоке T22-T24) | Frontend | P2 | 30-45m |
+| [T28](T28-tcx-fit-export-fix.md) | TCX/FIT экспорт из Track Creator невалиден — нужно решение пользователя (см. файл, шаг 0) | Backend | P2 | 1-3h |
 | [T13](T13-docs-sync.md) | Синхронизация архитектурной документации (последняя) | Docs | P1 | 1-2h |
 
 ## Правила для агента (обязательны, см. также /CLAUDE.md)
