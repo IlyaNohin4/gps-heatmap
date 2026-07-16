@@ -47,12 +47,6 @@ Specialized file for GPS parsing and normalization.
 - Algorithm parameters and rationale
 - Real-world validation examples
 
-### NORMALIZATION_COMPLETE.md
-Status of the 6-phase normalization pipeline (all phases complete, all tests passing).
-
-### INDEX_LEGACY.md
-Archived copy of old INDEX.md (not used, kept for history).
-
 ### ../deploy/README.md
 VDS deployment cheat sheet: Docker install, `.env` setup, prod compose
 (`docker-compose.prod.yml`), updates, backups (T12: `deploy/backup.sh`/
@@ -92,9 +86,8 @@ VDS deployment cheat sheet: Docker install, `.env` setup, prod compose
 
 ### I need to fix a bug in track processing
 1. ../POLISH.md (check if known issue)
-2. PARSER.md (understand normalization pipeline)
-3. NORMALIZATION_COMPLETE.md (check phase status)
-4. ../backend/app/services/normalizer.py (examine code)
+2. PARSER.md (understand normalization pipeline, all 6 phases)
+3. ../backend/app/services/normalizer.py (examine code)
 
 ### I need to change the UI
 1. ARCHITECTURE.md § Frontend — Islands Layout (find the island)

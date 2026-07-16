@@ -123,7 +123,6 @@ Only push if user says "push" or "commit and push"
 - **Full architecture details:** `architecture/ARCHITECTURE.md`
 - **GPS parsing details:** `architecture/PARSER.md` (6 phases)
 - **Deployment & backups:** `deploy/README.md`
-- **Navigation & quick ref:** `architecture/INDEX.md` (40 lines)
-- **Known issues & TODOs:** `POLISH.md` (65 lines)
+- **Navigation & quick ref:** `architecture/INDEX.md`
+- **Known issues & TODOs:** `POLISH.md`
 - **Project improvements:** `IMPROVEMENTS.md` (MVP roadmap, updated by status)
-- **About this refactor:** `DOCUMENTATION_REFACTOR.md`
