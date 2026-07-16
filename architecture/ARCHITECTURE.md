@@ -142,8 +142,8 @@ POST   /api/tracks/create              — создать трек из точе
        (Track Creator), не из файла. body: {name, points: [{lat, lon}], format}.
        format ∈ ALLOWED_FORMATS (gpx|kml|tcx|fit|geojson) — конвертация точек в
        файл нужного формата на лету (`_points_to_*` в tracks.py). Точки содержат
-       только lat/lon (без elevation/time) — см. tasks/T28-tcx-fit-export-fix.md
-       про известную проблему валидности TCX/FIT для этого потока.
+       только lat/lon (без elevation/time) — TCX/FIT получают синтетическое
+       время экспорта вместо реального (см. POLISH.md, T28).
 GET    /api/tracks/geometries          — bulk: [{id, normalized_points}] для всех треков
        юзера, одним запросом (T04). Должен быть объявлен ВЫШЕ /{id}, иначе
        FastAPI матчит "geometries" как track_id. raw_points/speed_segments не
@@ -582,16 +582,20 @@ backend, celery_worker, postgres, redis — только во внутренне
 `ENVIRONMENT=production`, запуск, обновление, HTTPS через certbot как
 следующий шаг) — `deploy/README.md`.
 
-Не сделано (см. `tasks/T12-db-backup.md`, `FUTURE.md`): backup-стратегия БД,
+Backup-стратегия БД — сделана (`deploy/backup.sh`/`restore.sh`, см.
+`deploy/README.md` § Backups). Не сделано (см. `FUTURE.md`):
 мониторинг/логирование (Sentry), автоматизация выпуска SSL.
 
 ---
 
 ## 📚 Архивные файлы
 
-**Удалены / архивированы:**
-- `AGENTS.md` — инструкции по фазам (проект готов)
-- `PROJECT_STATUS.md` — дублирует POLISH.md
-- `state.md` — фазовое состояние (не актуально)
-- `POI_IMPORT_PLAN.md` — неясный статус
+Ранние планировочные документы проекта (инструкции по фазам, снимки статуса,
+черновики фич, отчёты об одноразовых рефакторах документации) удалены из
+рабочей копии 2026-07-15 — они были полностью вытеснены текущей системой
+(`CLAUDE.md` + `architecture/` + `POLISH.md` + `tasks/`) и только сбивали с
+толку. Полный текст сохранён в git-истории: `AGENTS.md`, `PROJECT_STATUS.md`,
+`state.md`, `POI_IMPORT_PLAN.md`, `DOCUMENTATION_REFACTOR.md`,
+`REFACTOR_SUMMARY.md`, `architecture/INDEX_LEGACY.md`,
+`architecture/NORMALIZATION_COMPLETE.md`.
 

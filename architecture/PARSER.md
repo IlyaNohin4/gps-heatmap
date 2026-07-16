@@ -284,36 +284,65 @@ def apply_kalman_filter(points: List[Dict],
 
 ## Elevation Gain/Loss Calculation
 
-**Алгоритм:**
-1. Для каждой пары последовательных точек: `delta_ele = next.ele - prev.ele`
-2. Если `delta_ele > 0` → `elevation_gain += delta_ele`
-3. Если `delta_ele < 0` → `elevation_loss += abs(delta_ele)`
+**Методика gpx.studio (T26, заменила старую построчную сумму дельт —
+см. POLISH.md T26 audit: наивная сумма переоценивала gain/loss на
+230-275% медианно из-за GPS-шума высоты, который point-wise Savitzky-Golay
+из Phase 4 сглаживает слишком слабо).**
 
-**Note:** GPS шум суммируется — нужно сглаживание перед расчетом (TODO в POLISH.md)
+Реализация — `parser_factory.py`: `_rdp_profile_1d`,
+`_windowed_average_by_distance`, `_elevation_gain_loss`. Считается
+**отдельно** от per-point `elevation` в `normalized_points` (тот массив
+идёт на график Elevation и в grade-классификацию Phase 5 — не трогается
+этим расчётом, разные степени сглаживания одного трека сознательно
+допускаются, см. POLISH.md).
+
+**Алгоритм:**
+1. Собрать профиль (кумулятивная дистанция по haversine, высота) по точкам
+   с непустым `elevation`.
+2. Douglas-Peucker (`_rdp_profile_1d`) по этому профилю с `eps=20` —
+   упрощает (дистанция, высота) как 2D-кривую, а не (lat, lon) траекторию
+   (это отдельная функция от `_simplify_trajectory`/Phase 6).
+3. Скользящее среднее по оставшимся точкам (`_windowed_average_by_distance`,
+   окно 0.1км по дистанции, а не по числу точек).
+4. Просуммировать дельты сглаженного профиля: рост дельты → `gain`,
+   падение → `loss`.
 
 ```python
-def calculate_elevation_gain_loss(points: List[Dict]) -> Tuple[float, float]:
-    """
-    Calculate total elevation gain and loss.
-    Points must have 'elevation' field.
-    """
-    gain = 0.0
-    loss = 0.0
-    
-    for i in range(len(points) - 1):
-        ele_current = points[i].get('elevation')
-        ele_next = points[i + 1].get('elevation')
-        
-        if ele_current is not None and ele_next is not None:
-            delta = ele_next - ele_current
-            
-            if delta > 0:
-                gain += delta
-            else:
-                loss += abs(delta)
-    
+_ELEVATION_RDP_EPSILON_M = 20.0
+_ELEVATION_WINDOW_KM = 0.1
+
+def _elevation_gain_loss(points: list[dict]) -> tuple[float, float]:
+    pts_with_ele = [p for p in points if p.get("elevation") is not None]
+    if len(pts_with_ele) < 2:
+        return 0.0, 0.0
+
+    cum_km = [0.0]
+    for i in range(1, len(pts_with_ele)):
+        p0, p1 = pts_with_ele[i - 1], pts_with_ele[i]
+        cum_km.append(cum_km[-1] + _haversine(p0["lat"], p0["lon"], p1["lat"], p1["lon"]))
+    eles = [p["elevation"] for p in pts_with_ele]
+
+    kept_idx = _rdp_profile_1d(cum_km, eles, _ELEVATION_RDP_EPSILON_M)
+    kept_x = [cum_km[i] for i in kept_idx]
+    kept_y = [eles[i] for i in kept_idx]
+    smoothed = _windowed_average_by_distance(kept_x, kept_y, _ELEVATION_WINDOW_KM)
+
+    gain = loss = 0.0
+    for i in range(1, len(smoothed)):
+        delta = smoothed[i] - smoothed[i - 1]
+        if delta > 0:
+            gain += delta
+        else:
+            loss += abs(delta)
     return gain, loss
 ```
+
+**Известное свойство методики:** на синтетическом входе с несколькими
+пиками одинаковой высоты (идеальная симметричная пила) верхнеуровневая
+рекурсия RDP схлопывает все пики в один «представительный» — это не баг,
+так же ведёт себя и оригинал у gpx.studio; реальные треки почти никогда не
+дают точно равных по высоте пиков, так что на практике не проявляется (тесты
+— `backend/tests/test_elevation_methodology.py`, T27).
 
 ---
 

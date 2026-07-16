@@ -5,6 +5,11 @@
 Контекст: **личный инструмент** (1-5 пользователей, до ~10k треков), деплой на VDS (2 CPU / 8GB RAM)
 через docker compose. Полный CI/CD и enterprise-фичи не нужны — они вынесены в [FUTURE.md](FUTURE.md).
 
+Все задачи блока T01-T28 выполнены — таблица ниже теперь исторический индекс.
+Файлы отдельных задач (`Txx-*.md`) удалены из рабочей копии (2026-07-15) —
+полный текст каждой задачи, включая решения и обсуждение, сохранился в git-истории
+и в закрытых PR (номера указаны там, где известны).
+
 ## Целевая архитектура (после выполнения всех задач)
 
 - **Backend владеет бизнес-логикой**: фильтрация/сортировка/пагинация — в SQL, под индексами.
@@ -33,38 +38,38 @@
 
 | # | Задача | Область | Приоритет | Оценка |
 |---|--------|---------|-----------|--------|
-| [T01](T01-tracks-api-pagination.md) | ✅ Пагинация и envelope для GET /api/tracks (готово 2026-07-08, PR #5) | Backend+API client | P0 | 2-3h |
-| [T02](T02-poi-api-pagination-search.md) | ✅ Пагинация и поиск для GET /api/poi (готово 2026-07-08) | Backend+API client | P0 | 1-2h |
-| [T03](T03-db-indices.md) | ✅ Индексы БД под фильтры (готово 2026-07-08, PR #4) | Database | P0 | 1h |
-| [T04](T04-bulk-geometry-endpoint.md) | ✅ Bulk-endpoint геометрий вместо N preload-запросов (готово 2026-07-08) | Backend+Frontend | P0 | 2-3h |
-| [T05](T05-server-side-filtering.md) | ✅ Серверная фильтрация списка треков (готово 2026-07-08) | Frontend | P0 | 2h |
-| [T06](T06-infinite-scroll.md) | ✅ Infinite scroll для списков Tracks и POI (готово 2026-07-08) | Frontend | P1 | 2h |
-| [T07](T07-loading-error-states.md) | ✅ Loading/error states, фикс useEffect (готово 2026-07-09) | Frontend | P1 | 1-2h |
-| [T08](T08-error-boundary.md) | ✅ Глобальный ErrorBoundary (готово 2026-07-09) | Frontend | P1 | 1h |
-| [T09](T09-celery-retry-backoff.md) | ✅ Retry с exponential backoff в Celery (готово 2026-07-08) | Backend | P1 | 1h |
-| [T10](T10-env-secrets-hygiene.md) | ✅ Секреты из compose в .env (готово 2026-07-06, PR #3) | DevOps | P0 | 1h |
-| [T11](T11-prod-docker-nginx.md) | ✅ Прод-компоуз: nginx, prod Dockerfiles, закрытые порты (готово 2026-07-09) | DevOps | P1 | 3-4h |
-| [T12](T12-db-backup.md) | ✅ Бэкапы PostgreSQL (pg_dump + cron, готово 2026-07-15) | DevOps | P2 | 1h |
-| [T14](T14-ci-test-gate.md) | ✅ CI test-gate: pytest + build на каждый push (готово 2026-07-06, PR #1) | DevOps | P1 | 1-2h |
-| [T17](T17-fix-failing-tests.md) | ✅ Починить красные тесты на main (готово 2026-07-06, PR #2 — 132 passed) | Backend | P0 | 2-3h |
-| [T15](T15-auth-rate-limit.md) | ✅ Rate limiting на auth-эндпоинты (готово 2026-07-08) | Backend | P1 | 1h |
-| [T16](T16-poi-clustering.md) | ✅ Кластеризация POI-маркеров на карте (готово 2026-07-08) | Frontend | P1 | 2h |
-| [T18](T18-notifications-style.md) | ✅ Единый стиль уведомлений: i18n всех тостов + эмодзи (готово 2026-07-09) | Frontend | P2 | 1h |
-| [T19](T19-upload-refreshes-list.md) | ✅ Список треков обновляется после загрузки/удаления (готово 2026-07-09) | Frontend | P1 | 30-60m |
-| [T20](T20-ui-spacing.md) | ❌ ОТМЕНЕНА (2026-07-10) в пользу блока UI-kit: T22 → T23a-e → T24 | Frontend | — | — |
-| [T22](T22-ui-kit.md) | ✅ UI-kit: дизайн-токены + 6 базовых компонентов + /ui-demo (готово 2026-07-10) | Frontend | P1 | 3-4h |
-| [T23a](T23a-rebuild-leftisland.md) | ✅ Пересборка LeftIsland на UI-kit (образец серии T23, готово 2026-07-11, v2 по чекпоинтам) | Frontend | P1 | 2-3h |
-| [T23b](T23b-rebuild-top-right-island.md) | ✅ Пересборка TopIsland + RightIsland на UI-kit (готово 2026-07-12, по чекпоинтам) | Frontend | P1 | 2-3h |
-| [T23c](T23c-rebuild-bottom-island.md) | ✅ Пересборка BottomIsland на UI-kit (готово 2026-07-12, без recharts-логики) | Frontend | P1 | 2h |
-| [T23d](T23d-rebuild-track-auth-modals.md) | ✅ Пересборка модалок треков + AuthModal на UI-kit (готово 2026-07-12, kit Modal теперь всегда портальный) | Frontend | P1 | 2-3h |
-| [T23e](T23e-rebuild-poi-modals.md) | ✅ Пересборка POI-модалок на UI-kit (готово 2026-07-12, последняя в серии T23) | Frontend | P1 | 1.5-2h |
-| [T25](T25-moving-avg-speed.md) | ✅ Средняя скорость по методике gpx.studio (moving time, готово 2026-07-11) | Backend | P1 | 2-3h |
-| [T26](T26-stats-parity-audit.md) | ✅ Аудит статистики vs gpx.studio (готово 2026-07-12; elevation gain/loss фикс + backfill 2026-07-13, медиана дельты 1.14%/1.35%, см. POLISH.md) | Backend | P2 | 2h |
-| [T21](T21-auth-switch-resets-data.md) | ✅ Смена аккаунта сбрасывает клиентские данные (готово 2026-07-09) | Frontend | P1 | 1-1.5h |
-| [T27](T27-elevation-tests-and-cleanup.md) | ✅ Тесты elevation-методики + px-хвосты + проверка backfill (готово 2026-07-15) | Backend+Frontend | P1 | 1h |
-| [T24](T24-poi-css-cleanup.md) | ✅ Чистка мёртвого poi.css после серии T23 (готово 2026-07-15, последняя в блоке T22-T24) | Frontend | P2 | 30-45m |
-| [T28](T28-tcx-fit-export-fix.md) | ✅ TCX/FIT экспорт из Track Creator — валидный FIT (fit-tool), честный TCX (готово 2026-07-15) | Backend | P2 | 1-3h |
-| [T13](T13-docs-sync.md) | ✅ Синхронизация архитектурной документации (готово 2026-07-15, последняя) | Docs | P1 | 1-2h |
+| **T01** | ✅ Пагинация и envelope для GET /api/tracks (готово 2026-07-08, PR #5) | Backend+API client | P0 | 2-3h |
+| **T02** | ✅ Пагинация и поиск для GET /api/poi (готово 2026-07-08) | Backend+API client | P0 | 1-2h |
+| **T03** | ✅ Индексы БД под фильтры (готово 2026-07-08, PR #4) | Database | P0 | 1h |
+| **T04** | ✅ Bulk-endpoint геометрий вместо N preload-запросов (готово 2026-07-08) | Backend+Frontend | P0 | 2-3h |
+| **T05** | ✅ Серверная фильтрация списка треков (готово 2026-07-08) | Frontend | P0 | 2h |
+| **T06** | ✅ Infinite scroll для списков Tracks и POI (готово 2026-07-08) | Frontend | P1 | 2h |
+| **T07** | ✅ Loading/error states, фикс useEffect (готово 2026-07-09) | Frontend | P1 | 1-2h |
+| **T08** | ✅ Глобальный ErrorBoundary (готово 2026-07-09) | Frontend | P1 | 1h |
+| **T09** | ✅ Retry с exponential backoff в Celery (готово 2026-07-08) | Backend | P1 | 1h |
+| **T10** | ✅ Секреты из compose в .env (готово 2026-07-06, PR #3) | DevOps | P0 | 1h |
+| **T11** | ✅ Прод-компоуз: nginx, prod Dockerfiles, закрытые порты (готово 2026-07-09) | DevOps | P1 | 3-4h |
+| **T12** | ✅ Бэкапы PostgreSQL (pg_dump + cron, готово 2026-07-15) | DevOps | P2 | 1h |
+| **T14** | ✅ CI test-gate: pytest + build на каждый push (готово 2026-07-06, PR #1) | DevOps | P1 | 1-2h |
+| **T17** | ✅ Починить красные тесты на main (готово 2026-07-06, PR #2 — 132 passed) | Backend | P0 | 2-3h |
+| **T15** | ✅ Rate limiting на auth-эндпоинты (готово 2026-07-08) | Backend | P1 | 1h |
+| **T16** | ✅ Кластеризация POI-маркеров на карте (готово 2026-07-08) | Frontend | P1 | 2h |
+| **T18** | ✅ Единый стиль уведомлений: i18n всех тостов + эмодзи (готово 2026-07-09) | Frontend | P2 | 1h |
+| **T19** | ✅ Список треков обновляется после загрузки/удаления (готово 2026-07-09) | Frontend | P1 | 30-60m |
+| **T20** | ❌ ОТМЕНЕНА (2026-07-10) в пользу блока UI-kit: T22 → T23a-e → T24 | Frontend | — | — |
+| **T22** | ✅ UI-kit: дизайн-токены + 6 базовых компонентов + /ui-demo (готово 2026-07-10) | Frontend | P1 | 3-4h |
+| **T23a** | ✅ Пересборка LeftIsland на UI-kit (образец серии T23, готово 2026-07-11, v2 по чекпоинтам) | Frontend | P1 | 2-3h |
+| **T23b** | ✅ Пересборка TopIsland + RightIsland на UI-kit (готово 2026-07-12, по чекпоинтам) | Frontend | P1 | 2-3h |
+| **T23c** | ✅ Пересборка BottomIsland на UI-kit (готово 2026-07-12, без recharts-логики) | Frontend | P1 | 2h |
+| **T23d** | ✅ Пересборка модалок треков + AuthModal на UI-kit (готово 2026-07-12, kit Modal теперь всегда портальный) | Frontend | P1 | 2-3h |
+| **T23e** | ✅ Пересборка POI-модалок на UI-kit (готово 2026-07-12, последняя в серии T23) | Frontend | P1 | 1.5-2h |
+| **T25** | ✅ Средняя скорость по методике gpx.studio (moving time, готово 2026-07-11) | Backend | P1 | 2-3h |
+| **T26** | ✅ Аудит статистики vs gpx.studio (готово 2026-07-12; elevation gain/loss фикс + backfill 2026-07-13, медиана дельты 1.14%/1.35%, см. POLISH.md) | Backend | P2 | 2h |
+| **T21** | ✅ Смена аккаунта сбрасывает клиентские данные (готово 2026-07-09) | Frontend | P1 | 1-1.5h |
+| **T27** | ✅ Тесты elevation-методики + px-хвосты + проверка backfill (готово 2026-07-15) | Backend+Frontend | P1 | 1h |
+| **T24** | ✅ Чистка мёртвого poi.css после серии T23 (готово 2026-07-15, последняя в блоке T22-T24) | Frontend | P2 | 30-45m |
+| **T28** | ✅ TCX/FIT экспорт из Track Creator — валидный FIT (fit-tool), честный TCX (готово 2026-07-15) | Backend | P2 | 1-3h |
+| **T13** | ✅ Синхронизация архитектурной документации (готово 2026-07-15, последняя) | Docs | P1 | 1-2h |
 
 ## Правила для агента (обязательны, см. также /CLAUDE.md)
 
