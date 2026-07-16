@@ -1,4 +1,6 @@
+import datetime
 from typing import List, Optional
+from xml.sax.saxutils import escape as xml_escape
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, Response, UploadFile, status
 from fastapi.responses import StreamingResponse
@@ -12,6 +14,7 @@ from app.core.database import get_db
 from app.core.deps import get_current_user
 from app.models.track import Track
 from app.models.user import User
+from app.services.parser_factory import _haversine
 from app.tasks.process_track import process_track
 
 router = APIRouter(prefix="/api/tracks", tags=["tracks"])
@@ -65,14 +68,17 @@ def _detect_format(header: bytes, filename: str) -> str:
 def _points_to_gpx(points: List[Point]) -> str:
     """Convert points to GPX format."""
     header = '<?xml version="1.0" encoding="UTF-8"?>\n<gpx version="1.1" xmlns="http://www.topografix.com/GPX/1/1">\n<trk><name>Track</name><trkseg>\n'
-    trkpts = "\n".join([f'<trkpt lat="{p.lat}" lon="{p.lon}"><ele>0</ele></trkpt>' for p in points])
+    trkpts = "\n".join([
+        f'<trkpt lat="{xml_escape(str(p.lat))}" lon="{xml_escape(str(p.lon))}"><ele>0</ele></trkpt>'
+        for p in points
+    ])
     footer = '\n</trkseg></trk>\n</gpx>'
     return header + trkpts + footer
 
 
 def _points_to_kml(points: List[Point]) -> str:
     """Convert points to KML format."""
-    coords = " ".join([f"{p.lon},{p.lat},0" for p in points])
+    coords = " ".join([f"{xml_escape(str(p.lon))},{xml_escape(str(p.lat))},0" for p in points])
     return f'''<?xml version="1.0" encoding="UTF-8"?>
 <kml xmlns="http://www.opengis.net/kml/2.2">
   <Document>
@@ -105,16 +111,26 @@ def _points_to_geojson(points: List[Point]) -> str:
 
 
 def _points_to_tcx(points: List[Point]) -> str:
-    """Convert points to TCX format."""
+    """Convert points to TCX format.
+
+    Points from Track Creator carry no elevation/time (see Point schema) — so
+    unlike a real GPS recording, Time here is synthetic (export time + 1s per
+    point) rather than fabricated. AltitudeMeters is omitted entirely (optional
+    in the TCX schema) instead of a false hardcoded 0.
+    """
+    start = datetime.datetime.now(datetime.timezone.utc)
     trackpoints = "\n".join([
-        f'    <Trackpoint><Position><LatitudeDegrees>{p.lat}</LatitudeDegrees><LongitudeDegrees>{p.lon}</LongitudeDegrees></Position><AltitudeMeters>0</AltitudeMeters><Time>2024-01-01T00:00:00Z</Time></Trackpoint>'
-        for p in points
+        f'    <Trackpoint><Position><LatitudeDegrees>{xml_escape(str(p.lat))}</LatitudeDegrees>'
+        f'<LongitudeDegrees>{xml_escape(str(p.lon))}</LongitudeDegrees></Position>'
+        f'<Time>{(start + datetime.timedelta(seconds=i)).strftime("%Y-%m-%dT%H:%M:%SZ")}</Time></Trackpoint>'
+        for i, p in enumerate(points)
     ])
+    start_str = start.strftime("%Y-%m-%dT%H:%M:%SZ")
     return f'''<?xml version="1.0" encoding="UTF-8"?>
 <TrainingCenterDatabase xmlns="http://www.garmin.com/xmlschemas/TrainingCenterDatabase/v2">
   <Activities>
     <Activity Sport="Other">
-      <Lap StartTime="2024-01-01T00:00:00Z">
+      <Lap StartTime="{start_str}">
         <Track>
 {trackpoints}
         </Track>
@@ -125,18 +141,77 @@ def _points_to_tcx(points: List[Point]) -> str:
 
 
 def _points_to_fit(points: List[Point]) -> bytes:
-    """Convert points to FIT format (simplified binary)."""
-    import struct
-    fit_data = bytearray()
-    fit_data.extend(b'.FIT')
-    fit_data.extend(struct.pack('<H', 0))
-    fit_data.extend(struct.pack('<H', len(points) * 26 + 14))
+    """Convert points to a valid FIT course file via fit-tool.
+
+    Replaces the previous hand-rolled binary (no CRC, no message definitions,
+    rejected by Strava/Garmin Connect) with a spec-compliant FIT course:
+    FileId -> Course -> Event(START) -> Record* -> Event(STOP_ALL) -> Lap.
+    Like _points_to_tcx, timestamps are synthetic (no real time data for a
+    drawn track) and distance is accumulated via haversine between points.
+    """
+    from fit_tool.fit_file_builder import FitFileBuilder
+    from fit_tool.profile.messages.course_message import CourseMessage
+    from fit_tool.profile.messages.event_message import EventMessage
+    from fit_tool.profile.messages.file_id_message import FileIdMessage
+    from fit_tool.profile.messages.lap_message import LapMessage
+    from fit_tool.profile.messages.record_message import RecordMessage
+    from fit_tool.profile.profile_type import Event, EventType, FileType, Manufacturer, Sport
+
+    builder = FitFileBuilder(auto_define=True, min_string_size=50)
+
+    start_dt = datetime.datetime.now(datetime.timezone.utc)
+    start_ts = round(start_dt.timestamp() * 1000)
+
+    file_id = FileIdMessage()
+    file_id.type = FileType.COURSE
+    file_id.manufacturer = Manufacturer.DEVELOPMENT.value
+    file_id.product = 0
+    file_id.time_created = start_ts
+    builder.add(file_id)
+
+    course = CourseMessage()
+    course.course_name = "Track"
+    course.sport = Sport.CYCLING
+    builder.add(course)
+
+    start_event = EventMessage()
+    start_event.event = Event.TIMER
+    start_event.event_type = EventType.START
+    start_event.timestamp = start_ts
+    builder.add(start_event)
+
+    records = []
+    distance_m = 0.0
+    prev: Optional[Point] = None
+    ts = start_ts
     for p in points:
-        fit_data.extend(struct.pack('<d', p.lat))
-        fit_data.extend(struct.pack('<d', p.lon))
-        fit_data.extend(struct.pack('<I', 0))
-    fit_data.extend(b'\x00' * 4)
-    return bytes(fit_data)
+        if prev is not None:
+            distance_m += _haversine(prev.lat, prev.lon, p.lat, p.lon) * 1000
+        record = RecordMessage()
+        record.position_lat = p.lat
+        record.position_long = p.lon
+        record.distance = distance_m
+        record.timestamp = ts
+        records.append(record)
+        prev = p
+        ts += 1000  # synthetic 1s spacing — no real timing data for a drawn track
+    builder.add_all(records)
+
+    stop_event = EventMessage()
+    stop_event.event = Event.TIMER
+    stop_event.event_type = EventType.STOP_ALL
+    stop_event.timestamp = ts
+    builder.add(stop_event)
+
+    lap = LapMessage()
+    lap.timestamp = ts
+    lap.start_time = start_ts
+    lap.total_elapsed_time = (ts - start_ts) / 1000
+    lap.total_timer_time = (ts - start_ts) / 1000
+    lap.total_distance = distance_m
+    builder.add(lap)
+
+    return builder.build().to_bytes()
 
 
 # ── Schemas ────────────────────────────────────────────────────────────────────
