@@ -13,6 +13,7 @@ gpxpy==1.6.2
 fastkml==1.0.0
 lxml==5.2.2
 fitparse==1.2.0
+fit-tool==0.9.15
 python-multipart==0.0.9
 resend==2.2.0
 python-dotenv==1.0.1

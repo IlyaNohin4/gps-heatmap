@@ -32,7 +32,7 @@ GitHub Actions (`.github/workflows/ci.yml`) runs backend pytest + frontend build
 
 ### Backend
 ```bash
-docker compose exec backend python -m pytest      # Run all 162 tests
+docker compose exec backend python -m pytest      # Run all 170 tests
 docker compose exec backend python -m pytest tests/test_parser.py -v
 
 # Database
@@ -111,7 +111,7 @@ Only push if user says "push" or "commit and push"
 - **Track processing:** sequential (Redis lock), 6 phases (drift collapse, outlier removal, Kalman, elevation smoothing, grade classification, simplification)
 - **Frontend state:** `appStore` (Zustand, not persisted), `authStore` (persisted to localStorage)
 - **Speed segments format:** `[{from:[lat,lon], to:[lat,lon], speed_kmh}]` — NOT by index
-- **Testing:** 162 backend tests (pytest), E2E tests (Playwright — browsers not
+- **Testing:** 170 backend tests (pytest), E2E tests (Playwright — browsers not
   installed in the frontend container yet, see POLISH.md § окружение)
 - **Production:** deployable (`docker-compose.prod.yml` + nginx, T11; CI test-gate,
   T14; DB backups, T12) — monitoring/Sentry and automated SSL still open, see IMPROVEMENTS.md
