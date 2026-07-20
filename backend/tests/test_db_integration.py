@@ -62,7 +62,7 @@ def test_parse_and_save_track_to_db(db_session, test_user):
     assert result is not None
     assert "points" in result
     assert "normalized_points" in result
-    assert "grade_stats" in result
+    assert "speed_segments" in result
     assert "distance_km" in result
 
     print(f"✓ Parse successful: {len(result['points'])} raw points")
