@@ -2,6 +2,7 @@ import { useEffect, useRef, memo } from 'react';
 import { useMap } from 'react-leaflet';
 import L from 'leaflet';
 import { MAP_ANIMATIONS } from '../config/mapAnimations.js';
+import { escapeHtml } from '../utils/escapeHtml.js';
 
 const TRACK_COLORS = [
   '#007aff', '#34c759', '#ff9500', '#af52de',
@@ -41,7 +42,7 @@ const TrackLayer = memo(function TrackLayer({ tracks, selectedTrackId, showHeatm
         opacity: isSelected ? 1 : 0.7,
       });
 
-      line.bindTooltip(track.name || 'Track', { sticky: true, offset: [0, -4] });
+      line.bindTooltip(escapeHtml(track.name || 'Track'), { sticky: true, offset: [0, -4] });
       line.addTo(group);
 
       // Start marker (green circle with play icon)
