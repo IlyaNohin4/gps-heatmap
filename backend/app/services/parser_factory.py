@@ -682,7 +682,6 @@ def _parse_gpx(data: bytes) -> dict:
         "duration_sec": dur,
         "moving_time_sec": stats.get("moving_time_sec"),
         "recorded_at": recorded_at,
-        "grade_stats": stats,
     }
 
 
@@ -723,7 +722,6 @@ def _parse_kml(data: bytes) -> dict:
         "duration_sec": None,
         "moving_time_sec": stats.get("moving_time_sec"),
         "recorded_at": None,
-        "grade_stats": stats,
     }
 
 
@@ -775,7 +773,6 @@ def _parse_tcx(data: bytes) -> dict:
         "duration_sec": dur,
         "moving_time_sec": stats.get("moving_time_sec"),
         "recorded_at": recorded_at,
-        "grade_stats": stats,
     }
 
 
@@ -822,7 +819,6 @@ def _parse_fit(data: bytes) -> dict:
         "duration_sec": dur,
         "moving_time_sec": stats.get("moving_time_sec"),
         "recorded_at": recorded_at,
-        "grade_stats": stats,
     }
 
 
@@ -868,7 +864,6 @@ def _parse_geojson(data: bytes) -> dict:
         "duration_sec": None,
         "moving_time_sec": stats.get("moving_time_sec"),
         "recorded_at": None,
-        "grade_stats": stats,
     }
 
 
