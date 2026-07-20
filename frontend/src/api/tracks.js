@@ -59,16 +59,30 @@ export async function getPublicTrack(token) {
   return data;
 }
 
+function normalizePoint(p) {
+  if (Array.isArray(p)) return { lat: p[0], lon: p[1] };
+  return { lat: p.lat, lon: p.lng || p.lon };
+}
+
 export async function createTrackFromPoints(name, points, format = 'gpx') {
-  const normalizePoint = (p) => {
-    if (Array.isArray(p)) return { lat: p[0], lon: p[1] };
-    return { lat: p.lat, lon: p.lng || p.lon };
-  };
   const { data } = await client.post('/api/tracks/create', {
     name,
     points: points.map(normalizePoint),
     format,
   });
+  return data;
+}
+
+/** Convert waypoints straight to a downloadable file, without saving a
+ * track (Track Creator's "Download" button). Returns a Blob — the caller
+ * triggers the browser download. Reuses the backend's _points_to_* (T28),
+ * so TCX/FIT stay correct in one place instead of being duplicated in JS. */
+export async function exportTrackFile(name, points, format = 'gpx') {
+  const { data } = await client.post(
+    '/api/tracks/export',
+    { name, points: points.map(normalizePoint), format },
+    { responseType: 'blob' },
+  );
   return data;
 }
 

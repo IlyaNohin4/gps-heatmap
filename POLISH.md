@@ -77,23 +77,27 @@
     ключ (`settings.track_info` или похожий) в `frontend/src/i18n/
     translations.js` для всех 5 языков.
 
-- [ ] **SaveTrackModal client-side Download дублирует и усугубляет баги TCX/FIT** (найдено
-  при работе над T28, 2026-07-15)
-  - `frontend/src/components/track/SaveTrackModal.jsx` — кнопка **Download** генерирует файл
-    целиком в браузере (`generateFile()`), никогда не обращаясь к бэкенду, независимо от
-    кнопки **Save to DB** (которая шлёт на `POST /api/tracks/create`, использует
-    исправленные в T28 `_points_to_*` из `tracks.py`)
-  - `generateTCX()` (строки ~65-77) — те же баги, что были в бэкенде до T28: хардкод
-    `AltitudeMeters=0` и `Time="2024-01-01T00:00:00Z"` на каждую точку
-  - `generateFIT()` (строки ~79-87) — **вообще не FIT-формат**: это
-    `JSON.stringify(массив чисел)` с расширением `.fit`, даже не бинарные данные;
-    хуже, чем был бэкендовый кастомный бинарник (тот хотя бы напоминал структуру байт)
-  - Итог: T28 закрыл только серверный путь (`/create` → «Save to DB»); клиентский
-    путь («Download») для TCX/FIT остаётся сломанным полностью независимо
-  - Не чинил — вне заявленного scope T28 (там речь только про
-    `backend/app/api/tracks.py`), решение по фиксу (портировать ту же логику на клиент,
-    убрать FIT/TCX из клиентского Download, или звать бэкендовые `_points_to_*` через
-    отдельный download-эндпоинт) — за пользователем, отдельная задача
+- [x] **RESOLVED** — SaveTrackModal client-side Download дублировал и усугублял баги
+  TCX/FIT (найдено при работе над T28, 2026-07-15; починено 2026-07-15)
+  - **Было:** `frontend/src/components/track/SaveTrackModal.jsx` — кнопка **Download**
+    генерировала файл целиком в браузере (`generateFile()`), никогда не обращаясь к
+    бэкенду, независимо от кнопки **Save to DB** (`POST /api/tracks/create`, уже
+    использовала исправленные в T28 `_points_to_*`). `generateTCX()` — те же баги, что
+    были в бэкенде до T28 (хардкод `AltitudeMeters=0`/`Time="2024-01-01"`).
+    `generateFIT()` — **вообще не FIT-формат**: `JSON.stringify(массив чисел)` с
+    расширением `.fit`, даже не бинарные данные.
+  - **Решение:** новый no-persist эндпоинт `POST /api/tracks/export`
+    (`backend/app/api/tracks.py`) — переиспользует те же `_points_to_*`/
+    `_validate_track_points`, что и `/create` (вынесены в общие хелперы, чтобы не
+    дублировать валидацию). `SaveTrackModal.jsx` заменил всю самописную генерацию
+    (~90 строк: `generateGPX/KML/GeoJSON/TCX/FIT`) на вызов `exportTrackFile()`
+    (`frontend/src/api/tracks.js`) → `Blob` → тот же `downloadBlob()`. Теперь единственный
+    источник правды для TCX/FIT — бэкенд, дублирования в двух местах больше нет.
+  - **Тесты:** `backend/tests/test_track_export_endpoint.py` (6 тестов: auth, GPX
+    контент, FIT round-trip через `fit-tool`, валидация точек/формата, дефолтное имя).
+  - **Проверено вживую:** прямой вызов `/api/tracks/export` из браузера — FIT с
+    правильной сигнатурой `.FIT`, TCX без хардкода даты/высоты, корректный
+    `Content-Disposition` с именем файла.
 
 - [ ] **`grade_stats` вычисляется, но никогда не персистится и не отдаётся** (найдено при
   синхронизации документации, T13, 2026-07-15)
@@ -132,8 +136,9 @@
   - **Тесты:** `backend/tests/test_track_export_formats.py` (8 тестов) — TCX без хардкода даты/
     высоты, валидный XML; FIT проходит round-trip через собственный декодер `fit-tool`
     (валидирует CRC), record-сообщения совпадают с точками на входе
-  - **Не закрыто, см. отдельную запись выше:** клиентский путь (`SaveTrackModal.jsx`, кнопка
-    Download) генерирует файл в браузере независимо от бэкенда и не был затронут T28
+  - Клиентский путь (`SaveTrackModal.jsx`, кнопка Download) не был затронут T28,
+    генерировал файл независимо в браузере — закрыто отдельно, см. запись выше
+    («SaveTrackModal client-side Download»).
 
 - [x] **RESOLVED** — T23a leftovers: мёртвый `poi.css` после серии T23 (T24, 2026-07-15)
   - **Было:** `poi.css` не удалялся в T23a (запрещено правилами T23), но к T24
