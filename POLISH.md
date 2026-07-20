@@ -18,12 +18,20 @@
     в `api/poi.py`) **до** `z.read()`. Тесты:
     `test_kmz_zip_bomb_is_rejected`, `test_kmz_within_size_limit_still_parses`
     в `backend/tests/test_poi_parser.py`.
-  - [ ] **Stored XSS** в `POILayer.jsx` (`bindPopup`) и `TrackLayer.jsx:44`
-    (`bindTooltip`) — `poi.name`/`description` и `track.name` идут в HTML
-    без экранирования. Для трека — реальный вектор через публичный шаринг
+  - [x] **RESOLVED** — Stored XSS в `POILayer.jsx` (`bindPopup`) и
+    `TrackLayer.jsx:44` (`bindTooltip`) (2026-07-15). Было: `poi.name`/
+    `description` и `track.name` шли в Leaflet-попап/тултип HTML-строкой без
+    экранирования — Leaflet рендерит их как `innerHTML`, React здесь не
+    защищает. Для трека это реальный вектор через публичный шаринг
     (`is_public`/`public_token`): злоумышленник переименовывает свой трек во
-    вредоносную строку, делает публичным — XSS у анонимного зрителя.
-    Не починено, следующее в очереди.
+    вредоносную строку и делает публичным — XSS у анонимного зрителя, не
+    только self-XSS. Решение: общая `frontend/src/utils/escapeHtml.js`,
+    применена к обоим местам. Проверено вживую в браузере: создал POI/трек с
+    payload `<img src=x onerror=...>`/`<script>...</script>` через прямой
+    API-вызов, открыл попап — payload отрендерился как экранированный текст
+    (`&lt;img...&gt;`), JS не выполнился (`window.__xss_fired` осталось
+    `false`). `SpeedLayer.jsx`/`TrackCreator.jsx` проверены отдельно — там
+    только фиксированные строки/числа, не уязвимы, не трогал.
   - [ ] **`/api/tasks/{id}/status` без авторизации** — `backend/app/api/tasks.py`,
     вообще нет `Depends(get_current_user)`. Любой обладатель `task_id`
     (UUID) видит `result`/`detail` чужой задачи. Не починено.

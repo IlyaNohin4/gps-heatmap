@@ -7,6 +7,7 @@ import 'leaflet.markercluster/dist/MarkerCluster.Default.css';
 
 import useMapStore from '../store/mapStore.js';
 import { fetchPOI } from '../api/poi.js';
+import { escapeHtml } from '../utils/escapeHtml.js';
 
 const CATEGORY_COLORS = {
   food: '#ff9500',
@@ -81,9 +82,9 @@ export default function POILayer() {
 
       return L.marker([poi.lat, poi.lon], { icon }).bindPopup(`
           <div style="font-size: 12px; max-width: 200px;">
-            <strong>${poi.name}</strong>
-            <br><small style="color: #666;">${category}</small>
-            ${poi.description ? `<br><small>${poi.description}</small>` : ''}
+            <strong>${escapeHtml(poi.name)}</strong>
+            <br><small style="color: #666;">${escapeHtml(category)}</small>
+            ${poi.description ? `<br><small>${escapeHtml(poi.description)}</small>` : ''}
           </div>
         `);
     });
