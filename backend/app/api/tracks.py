@@ -370,6 +370,68 @@ async def upload_track(
     return {"track_id": track.id, "task_id": task.id}
 
 
+def _validate_track_points(points: List[Point]) -> None:
+    if len(points) < 2:
+        raise HTTPException(status_code=400, detail="At least 2 points required")
+    for point in points:
+        if not (-90 <= point.lat <= 90):
+            raise HTTPException(status_code=400, detail="Invalid latitude")
+        if not (-180 <= point.lon <= 180):
+            raise HTTPException(status_code=400, detail="Invalid longitude")
+
+
+def _convert_points_to_file(points: List[Point], fmt: str) -> bytes:
+    if fmt == "gpx":
+        return _points_to_gpx(points).encode("utf-8")
+    elif fmt == "kml":
+        return _points_to_kml(points).encode("utf-8")
+    elif fmt == "geojson":
+        return _points_to_geojson(points).encode("utf-8")
+    elif fmt == "tcx":
+        return _points_to_tcx(points).encode("utf-8")
+    elif fmt == "fit":
+        return _points_to_fit(points)
+    raise HTTPException(status_code=400, detail="Unsupported format")
+
+
+_EXPORT_MEDIA_TYPES = {
+    "gpx": "application/gpx+xml",
+    "kml": "application/vnd.google-earth.kml+xml",
+    "geojson": "application/geo+json",
+    "tcx": "application/vnd.garmin.tcx+xml",
+    "fit": "application/octet-stream",
+}
+
+
+class ExportTrackBody(BaseModel):
+    name: str = "Track"
+    points: List[Point]
+    format: str = "gpx"
+
+
+@router.post("/export")
+async def export_track(
+    body: ExportTrackBody,
+    current_user: User = Depends(get_current_user),
+):
+    """Convert waypoints straight to a downloadable file, without saving a
+    track — used by Track Creator's "Download" button (as opposed to
+    /create, which persists). Reuses the same _points_to_* functions as
+    /create so TCX/FIT stay correct in one place instead of two (T28)."""
+    if body.format not in ALLOWED_FORMATS:
+        raise HTTPException(status_code=400, detail=f"Format must be one of {ALLOWED_FORMATS}")
+    _validate_track_points(body.points)
+    content = _convert_points_to_file(body.points, body.format)
+
+    name = (body.name or "Track").strip() or "Track"
+    filename = f"{name}.{body.format}"
+    return Response(
+        content=content,
+        media_type=_EXPORT_MEDIA_TYPES[body.format],
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
 @router.post("/create", response_model=TrackOut, status_code=status.HTTP_201_CREATED)
 async def create_track(
     body: CreateTrackBody,
@@ -383,29 +445,8 @@ async def create_track(
     if body.format not in ALLOWED_FORMATS:
         raise HTTPException(status_code=400, detail=f"Format must be one of {ALLOWED_FORMATS}")
 
-    if len(body.points) < 2:
-        raise HTTPException(status_code=400, detail="At least 2 points required")
-
-    # Validate coordinates
-    for point in body.points:
-        if not (-90 <= point.lat <= 90):
-            raise HTTPException(status_code=400, detail="Invalid latitude")
-        if not (-180 <= point.lon <= 180):
-            raise HTTPException(status_code=400, detail="Invalid longitude")
-
-    # Convert points to file format
-    if body.format == "gpx":
-        content = _points_to_gpx(body.points).encode("utf-8")
-    elif body.format == "kml":
-        content = _points_to_kml(body.points).encode("utf-8")
-    elif body.format == "geojson":
-        content = _points_to_geojson(body.points).encode("utf-8")
-    elif body.format == "tcx":
-        content = _points_to_tcx(body.points).encode("utf-8")
-    elif body.format == "fit":
-        content = _points_to_fit(body.points)
-    else:
-        raise HTTPException(status_code=400, detail="Unsupported format")
+    _validate_track_points(body.points)
+    content = _convert_points_to_file(body.points, body.format)
 
     # Create track record
     name = body.name.strip()
