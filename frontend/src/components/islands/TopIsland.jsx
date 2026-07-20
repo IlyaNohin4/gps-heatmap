@@ -152,7 +152,7 @@ export default function TopIsland() {
             <div style={sectionLabel}>{t('settings.display')}</div>
 
             <div style={row}>
-              <span style={{ fontSize: 13, color: 'var(--text)' }}>{t('settings.units')}</span>
+              <span style={{ fontSize: 'var(--text-sm)', color: 'var(--text)' }}>{t('settings.units')}</span>
               <div style={chipGroup}>
                 <Chip active={unitSystem === 'metric'} onClick={() => handleUnitSystem('metric')}>{t('settings.metric')}</Chip>
                 <Chip active={unitSystem === 'imperial'} onClick={() => handleUnitSystem('imperial')}>{t('settings.imperial')}</Chip>
@@ -160,7 +160,7 @@ export default function TopIsland() {
             </div>
 
             <div style={row}>
-              <span style={{ fontSize: 13, color: 'var(--text)' }}>{t('settings.theme')}</span>
+              <span style={{ fontSize: 'var(--text-sm)', color: 'var(--text)' }}>{t('settings.theme')}</span>
               <Button variant="secondary" size="sm" onClick={handleTheme}>
                 {theme === 'light' ? <Moon size={13} /> : <Sun size={13} />}
                 {theme === 'light' ? t('settings.dark') : t('settings.light')}
@@ -168,7 +168,7 @@ export default function TopIsland() {
             </div>
 
             <div style={row}>
-              <span style={{ fontSize: 13, color: 'var(--text)' }}>{t('settings.language')}</span>
+              <span style={{ fontSize: 'var(--text-sm)', color: 'var(--text)' }}>{t('settings.language')}</span>
               <select
                 value={language}
                 onChange={(e) => handleLanguage(e.target.value)}
@@ -181,7 +181,7 @@ export default function TopIsland() {
             </div>
 
             <div style={row}>
-              <span style={{ fontSize: 13, color: 'var(--text)' }}>Track Info</span>
+              <span style={{ fontSize: 'var(--text-sm)', color: 'var(--text)' }}>{t('settings.track_info')}</span>
               <div style={chipGroup}>
                 <Chip
                   active={expandedTrackInfo === 'off'}

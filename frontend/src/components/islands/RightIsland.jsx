@@ -183,7 +183,7 @@ export default function RightIsland() {
                 width: '100%', padding: 'var(--space-2)', borderRadius: 8, border: 'none',
                 background: activeLayer === l.id ? 'rgba(0,122,255,0.1)' : 'none',
                 color: activeLayer === l.id ? 'var(--accent)' : 'var(--text)',
-                cursor: 'pointer', fontSize: 13,
+                cursor: 'pointer', fontSize: 'var(--text-sm)',
                 fontWeight: activeLayer === l.id ? 600 : 400,
               }}
             >
