@@ -9,6 +9,12 @@ from typing import List, Dict, Tuple
 class POIParser:
     """Parse KML/KMZ files and extract POI coordinates, names, descriptions."""
 
+    # Matches the 5MB upload limit enforced on the raw KML/KMZ file in
+    # api/poi.py — applied here to the *decompressed* KML, since ZIP can
+    # compress text ~1000:1 and a small KMZ could otherwise unzip to
+    # gigabytes and exhaust worker memory.
+    MAX_DECOMPRESSED_BYTES = 5 * 1024 * 1024
+
     CATEGORY_KEYWORDS = {
         'food': ['cafe', 'restaurant', 'bar', 'pizza', 'burger', 'coffee'],
         'water': ['water', 'fountain', 'well', 'spring', 'stream'],
@@ -50,6 +56,9 @@ class POIParser:
                     kml_files = [f for f in z.namelist() if f.endswith('.kml')]
                     if not kml_files:
                         raise ValueError("No KML file found in KMZ archive")
+                    info = z.getinfo(kml_files[0])
+                    if info.file_size > POIParser.MAX_DECOMPRESSED_BYTES:
+                        raise ValueError("KML inside KMZ exceeds size limit (zip bomb protection)")
                     return z.read(kml_files[0])
             except zipfile.BadZipFile as e:
                 raise ValueError(f"Invalid KMZ file: {str(e)}")
