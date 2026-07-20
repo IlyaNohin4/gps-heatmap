@@ -177,3 +177,55 @@ def test_parse_kmz_format():
     # Should fail with ZIP error, not XML error
     assert error is not None
     assert 'zip' in error.lower() or 'kml' in error.lower()
+
+
+def test_kmz_zip_bomb_is_rejected():
+    """A KMZ whose inner doc.kml declares an uncompressed size over the
+    5MB limit must be rejected before it's ever decompressed, even though
+    the ZIP itself compresses down to a tiny size (highly repetitive
+    content compresses ~1000:1)."""
+    import zipfile
+    from io import BytesIO
+
+    huge_kml = b"<!-- " + b"A" * (6 * 1024 * 1024) + b" -->"
+
+    buf = BytesIO()
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as z:
+        z.writestr("doc.kml", huge_kml)
+    kmz_bytes = buf.getvalue()
+
+    # The compressed archive itself is small (repetitive content), but the
+    # declared uncompressed size of doc.kml is > 5MB.
+    assert len(kmz_bytes) < 1024 * 1024
+
+    poi_list, error = POIParser.parse(kmz_bytes)
+
+    assert poi_list == []
+    assert error is not None
+    assert "size" in error.lower() or "large" in error.lower() or "bomb" in error.lower()
+
+
+def test_kmz_within_size_limit_still_parses():
+    """Control case: a KMZ under the size limit is unaffected by the guard."""
+    import zipfile
+    from io import BytesIO
+
+    kml = b"""<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2">
+  <Document>
+    <Placemark>
+      <name>Test POI</name>
+      <Point><coordinates>30.5,50.5,0</coordinates></Point>
+    </Placemark>
+  </Document>
+</kml>"""
+
+    buf = BytesIO()
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as z:
+        z.writestr("doc.kml", kml)
+
+    poi_list, error = POIParser.parse(buf.getvalue())
+
+    assert error is None
+    assert len(poi_list) == 1
+    assert poi_list[0]["name"] == "Test POI"

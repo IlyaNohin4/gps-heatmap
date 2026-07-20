@@ -1,5 +1,49 @@
 # Polish / known issues
 
+- [ ] **Security review (Fable 5, 2026-07-15) — перепроверено вручную, статус по пунктам**
+  - **Не подтвердилось:** заявленный CRITICAL — XXE во всех XML-парсерах
+    (`parser_factory.py`/`poi_parser.py`). Протестировано эмпирически в
+    контейнере: `lxml.etree.fromstring()` (5.2.2) и stdlib
+    `xml.etree.ElementTree.fromstring()` блокируют внешние `SYSTEM`-сущности
+    по умолчанию (payload с `file:///etc/hostname` падает с ошибкой парсинга,
+    не подставляет содержимое); «billion laughs» тоже блокируется — libxml2
+    кидает `Maximum entity amplification factor exceeded`. Не проблема,
+    фиксить не нужно.
+  - [x] **RESOLVED** — Zip-бомба в KMZ-импорте POI (2026-07-15). Было:
+    `POIParser._extract_kml` (`backend/app/services/poi_parser.py`) читал
+    содержимое ZIP без проверки распакованного размера — компактный
+    (<1МБ) KMZ с высокосжимаемым содержимым мог развернуться в
+    гигабайты и уронить воркер по памяти. Решение: проверка
+    `ZipInfo.file_size` против лимита 5MB (тот же, что у самого upload'а
+    в `api/poi.py`) **до** `z.read()`. Тесты:
+    `test_kmz_zip_bomb_is_rejected`, `test_kmz_within_size_limit_still_parses`
+    в `backend/tests/test_poi_parser.py`.
+  - [ ] **Stored XSS** в `POILayer.jsx` (`bindPopup`) и `TrackLayer.jsx:44`
+    (`bindTooltip`) — `poi.name`/`description` и `track.name` идут в HTML
+    без экранирования. Для трека — реальный вектор через публичный шаринг
+    (`is_public`/`public_token`): злоумышленник переименовывает свой трек во
+    вредоносную строку, делает публичным — XSS у анонимного зрителя.
+    Не починено, следующее в очереди.
+  - [ ] **`/api/tasks/{id}/status` без авторизации** — `backend/app/api/tasks.py`,
+    вообще нет `Depends(get_current_user)`. Любой обладатель `task_id`
+    (UUID) видит `result`/`detail` чужой задачи. Не починено.
+  - **Подтверждено, не критично, не в этой волне:** Redis без пароля +
+    порт 6379 наружу в dev `docker-compose.yml` (в проде порта нет, T11);
+    backend-контейнеры без `USER` (root); нет `soft_time_limit`/`time_limit`
+    у Celery-таски `process_track`; нет лимита на количество точек в файле
+    (`MAX_POINTS`); JWT не отзывается при смене пароля (`decode_token`
+    проверяет только подпись+`exp`); `MAX_FILE_BYTES` в `tracks.py`
+    захардкожен вместо чтения `settings.MAX_FILE_SIZE_MB`.
+  - **Подтверждено, но не проблема:** `regions.py` — `_reverse_geocode`
+    (async) реально использует несуществующее имя `_HEADERS`, но эта
+    функция мёртвый код, нигде не вызывается; рабочий путь
+    (`_reverse_geocode_sync`, вызывается из `get_regions`/`process_track.py`)
+    использует правильный `_headers()`. Регионы у треков считаются нормально.
+  - **Мелкие LOW, не тронуты:** неиспользуемые импорты (`traceback` в
+    `process_track.py`, `io` в `poi.py`), мёртвый `EMAIL_RE` в `auth.py`,
+    CORS `allow_methods/headers=["*"]` (в коде уже есть комментарий, что в
+    проде за nginx не срабатывает — dev-only).
+
 - [x] **RESOLVED** — CLAUDE.md тестовое число (T28, 2026-07-15): поправлено на 170
   (162 из T13 + 8 новых из `test_track_export_formats.py`) в том же коммите, что и T28.
 
