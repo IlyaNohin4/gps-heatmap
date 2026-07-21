@@ -23,6 +23,11 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    # Content-Disposition isn't on the CORS-safelisted response header list,
+    # so without this the frontend's cross-origin download requests (dev:
+    # VITE_API_URL points :5173 at :8000, a different origin) can't read the
+    # filename/extension from it and silently fall back to a default name.
+    expose_headers=["Content-Disposition"],
 )
 
 # Security headers
