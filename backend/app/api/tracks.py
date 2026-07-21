@@ -721,15 +721,7 @@ _DOWNLOAD_MEDIA_TYPES = {
 }
 
 
-@router.get("/{track_id}/download")
-def download_track(
-    track_id: int,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-):
-    track = db.query(Track).filter(Track.id == track_id, Track.user_id == current_user.id).first()
-    if not track:
-        raise HTTPException(status_code=404, detail="Track not found")
+def _track_file_response(track: Track) -> Response:
     if not track.raw_points:
         raise HTTPException(status_code=404, detail="No file data available")
 
@@ -756,6 +748,26 @@ def download_track(
             "Cache-Control": "no-store",
         },
     )
+
+
+@router.get("/public/{public_token}/download")
+def download_public_track(public_token: str, db: Session = Depends(get_db)):
+    track = db.query(Track).filter(Track.public_token == public_token, Track.is_public == True).first()
+    if not track:
+        raise HTTPException(status_code=404, detail="Track not found")
+    return _track_file_response(track)
+
+
+@router.get("/{track_id}/download")
+def download_track(
+    track_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    track = db.query(Track).filter(Track.id == track_id, Track.user_id == current_user.id).first()
+    if not track:
+        raise HTTPException(status_code=404, detail="Track not found")
+    return _track_file_response(track)
 
 
 @router.patch("/{track_id}/publish", response_model=TrackOut)
