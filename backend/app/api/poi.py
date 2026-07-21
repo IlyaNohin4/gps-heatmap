@@ -6,13 +6,14 @@ import io
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
 from fastapi.responses import StreamingResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 import xml.etree.ElementTree as ET
 
 from app.core.database import get_db
 from app.core.deps import get_current_user
+from app.core.http_utils import safe_content_disposition
 from app.models.poi import POI
 from app.models.user import User
 from app.services.poi_parser import POIParser
@@ -60,17 +61,17 @@ class RenameImportRequest(BaseModel):
 
 
 class CreatePOIRequest(BaseModel):
-    name: str
+    name: str = Field(..., max_length=255)
     lat: float
     lon: float
-    category: str
-    description: Optional[str] = None
+    category: str = Field(..., max_length=255)
+    description: Optional[str] = Field(None, max_length=2000)
 
 
 class UpdatePOIRequest(BaseModel):
-    name: Optional[str] = None
-    category: Optional[str] = None
-    description: Optional[str] = None
+    name: Optional[str] = Field(None, max_length=255)
+    category: Optional[str] = Field(None, max_length=255)
+    description: Optional[str] = Field(None, max_length=2000)
 
 
 @router.post("/create", response_model=POIResponse, status_code=status.HTTP_201_CREATED)
@@ -314,5 +315,5 @@ def export_import(
     return StreamingResponse(
         iter([kml_str]),
         media_type="application/vnd.google-earth.kml+xml",
-        headers={"Content-Disposition": f"attachment; filename={import_name}.kml"}
+        headers={"Content-Disposition": safe_content_disposition(f"{import_name}.kml")}
     )

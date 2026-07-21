@@ -9,6 +9,7 @@ import useAppStore from '../../store/appStore.js';
 import useAuthStore from '../../store/authStore.js';
 import client from '../../api/client.js';
 import { updatePrefs } from '../../api/auth.js';
+import { apiErrorMessage } from '../../utils/apiError.js';
 import Panel from '../../ui/Panel.jsx';
 import Button from '../../ui/Button.jsx';
 import Chip from '../../ui/Chip.jsx';
@@ -40,7 +41,7 @@ export default function TopIsland() {
       const updated = await updatePrefs(patch);
       setUser(updated);
     } catch (err) {
-      toast.error(err.response?.data?.detail || t('settings.save_failed'));
+      toast.error(apiErrorMessage(err, t('settings.save_failed')));
     }
   }
 
@@ -83,7 +84,8 @@ export default function TopIsland() {
       toast.success(t('settings.password_changed'));
       setOldPass(''); setNewPass(''); setChangePassOpen(false);
     } catch (err) {
-      toast.error(t('settings.password_change_failed', { detail: err.response?.data?.detail ? ': ' + err.response.data.detail : '' }));
+      const msg = apiErrorMessage(err, '');
+      toast.error(t('settings.password_change_failed', { detail: msg ? ': ' + msg : '' }));
     }
   }
 
@@ -98,7 +100,7 @@ export default function TopIsland() {
       setNewEmail('');
       setChangeEmailOpen(false);
     } catch (err) {
-      toast.error(err.response?.data?.detail || t('toast.email_failed'));
+      toast.error(apiErrorMessage(err, t('toast.email_failed')));
     }
   }
 
@@ -118,7 +120,7 @@ export default function TopIsland() {
       toast.success(t('toast.account_deleted'));
     } catch (err) {
       console.error('[delete account]', err.response?.status, err.response?.data, err);
-      toast.error(err.response?.data?.detail || err.message || t('settings.account_delete_failed'));
+      toast.error(apiErrorMessage(err, err.message || t('settings.account_delete_failed')));
     }
   }
 

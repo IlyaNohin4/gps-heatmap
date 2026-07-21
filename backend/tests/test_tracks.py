@@ -200,7 +200,7 @@ class TestListGeometries:
         track = _make_track(1, fake_user.id)
         track.normalized_points = [{"lat": 48.8, "lon": 2.3}]
         _setup_mock_db_user(mock_db, fake_user)
-        mock_db.query.return_value.filter.return_value.all.return_value = [track]
+        mock_db.query.return_value.filter.return_value.limit.return_value.all.return_value = [track]
 
         app.dependency_overrides[get_db] = lambda: (yield mock_db)
         r = client.get("/api/tracks/geometries", headers=auth_headers)
@@ -215,7 +215,7 @@ class TestListGeometries:
 
         fake_user = _make_fake_user()
         _setup_mock_db_user(mock_db, fake_user)
-        mock_db.query.return_value.filter.return_value.all.return_value = []
+        mock_db.query.return_value.filter.return_value.limit.return_value.all.return_value = []
 
         app.dependency_overrides[get_db] = lambda: (yield mock_db)
         r = client.get("/api/tracks/geometries", headers=auth_headers)

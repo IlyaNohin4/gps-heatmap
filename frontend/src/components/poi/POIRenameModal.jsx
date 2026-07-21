@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { toast } from 'react-toastify';
 import { useTranslation } from 'react-i18next';
 import { updatePOI } from '../../api/poi.js';
+import { apiErrorMessage } from '../../utils/apiError.js';
 import Modal from '../../ui/Modal.jsx';
 import Button from '../../ui/Button.jsx';
 import Input from '../../ui/Input.jsx';
@@ -45,7 +46,7 @@ export default function POIRenameModal({ poi, isOpen, onClose, onRenamed }) {
       onRenamed?.({ ...poi, name: nameValue, category: categoryValue });
       onClose();
     } catch (err) {
-      toast.error(err.response?.data?.detail || t('poi.update_failed'));
+      toast.error(apiErrorMessage(err, t('poi.update_failed')));
     } finally {
       setRenaming(false);
     }

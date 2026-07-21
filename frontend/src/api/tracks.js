@@ -49,9 +49,18 @@ export async function renameTrack(id, name) {
   return data;
 }
 
-export function getTrackDownloadUrl(id) {
-  const base = import.meta.env.VITE_API_URL || '';
-  return `${base}/api/tracks/${id}/download`;
+export async function downloadTrackFile(id) {
+  // Cache-bust: browsers may have cached an earlier response for this exact
+  // URL (e.g. from before a server-side format fix), and GET requests are
+  // cacheable by default absent explicit headers.
+  const { data, headers } = await client.get(`/api/tracks/${id}/download`, {
+    responseType: 'blob',
+    params: { _: Date.now() },
+  });
+  const disposition = headers['content-disposition'] || '';
+  const match = disposition.match(/filename="((?:[^"\\]|\\.)*)"/);
+  const filename = match ? match[1].replace(/\\(.)/g, '$1') : `track-${id}.geojson`;
+  return { blob: data, filename };
 }
 
 export async function getPublicTrack(token) {

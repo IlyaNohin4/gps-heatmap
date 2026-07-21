@@ -112,14 +112,6 @@ function useVisibleTracks() {
   return { visibleTracks, selectedTrackId };
 }
 
-// Heatmap must reflect ALL of the user's tracks (not just the manually-toggled ones),
-// so merge in cached geometry (bulk-loaded or full-detail) for every track in appStore.tracks.
-function useAllTracksWithGeometry() {
-  const trackDetailCache = useMapStore((s) => s.trackDetailCache);
-  const tracks = useAppStore((s) => s.tracks);
-  return tracks.map((t) => trackDetailCache[t.id] || t);
-}
-
 function MapLayers() {
   const {
     showSpeed, showHeatmap, showPOI, showTrackCreator, toggleTrackCreator,
@@ -129,8 +121,9 @@ function MapLayers() {
     redoWaypoint,
     clearTrackCreatorState,
   } = useMapStore();
-  const allTracksWithGeometry = useAllTracksWithGeometry();
   const { visibleTracks, selectedTrackId } = useVisibleTracks();
+  const visibleTrackIds = useMapStore((s) => s.visibleTrackIds);
+  const hasVisibleTracks = visibleTrackIds.size > 0 || !!selectedTrackId;
 
 
   return (
@@ -149,9 +142,9 @@ function MapLayers() {
         <SpeedLayer tracks={visibleTracks} />
       )}
 
-      {/* Heatmap across all loaded tracks */}
-      {showHeatmap && (
-        <VisitLayer tracks={allTracksWithGeometry} />
+      {/* Heatmap across the currently visible/selected tracks only */}
+      {showHeatmap && hasVisibleTracks && (
+        <VisitLayer tracks={visibleTracks} />
       )}
 
       {/* POI markers */}

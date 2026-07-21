@@ -5,6 +5,7 @@ import { toast } from 'react-toastify';
 
 import useMapStore from '../../store/mapStore.js';
 import { uploadPOI, getImports, renameImport, deleteImport, exportImport } from '../../api/poi.js';
+import { sniffKmlKind, isKml } from '../../utils/fileSniff.js';
 
 export default function POIImportPanel({ onClose }) {
   const { t } = useTranslation();
@@ -36,6 +37,15 @@ export default function POIImportPanel({ onClose }) {
     if (!file.name.match(/\.(kml|kmz)$/i)) {
       toast.error(t('poi.invalid_format'));
       return;
+    }
+
+    if (isKml(file.name)) {
+      const kind = await sniffKmlKind(file).catch(() => 'unknown');
+      if (kind === 'track') {
+        toast.error(t('validation.kml_looks_like_track', { name: file.name }));
+        if (fileInputRef.current) fileInputRef.current.value = '';
+        return;
+      }
     }
 
     setUploading(true);

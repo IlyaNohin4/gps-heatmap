@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { TrendingUp, Gauge, Route, Clock, Mountain, ChevronDown, ChevronUp, ZoomIn, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -34,8 +34,9 @@ function fmtDuration(seconds) {
   return `${m}m ${Math.floor(seconds % 60)}s`;
 }
 
-function fmtElevation(m) {
+function fmtElevation(m, unitSystem) {
   if (m === null || m === undefined) return '—';
+  if (unitSystem === 'imperial') return `${Math.round(m * 3.28084)} ft`;
   return `${Math.round(m)} m`;
 }
 
@@ -44,7 +45,7 @@ function CustomTooltip({ active, payload, label, tab, unitSystem }) {
   const val = payload[0]?.value;
   let display = val;
   if (tab === 'Speed') display = fmtSpeed(val, unitSystem);
-  else if (tab === 'Elevation') display = fmtElevation(val);
+  else if (tab === 'Elevation') display = fmtElevation(val, unitSystem);
   else if (tab === 'Slope') display = `${val?.toFixed(1)}°`;
   return (
     <div style={{
@@ -62,7 +63,7 @@ function CustomTooltip({ active, payload, label, tab, unitSystem }) {
 
 export default function BottomIsland() {
   const { t } = useTranslation();
-  const { selectedTrackId, unitSystem, setSelectedTrackId } = useAppStore();
+  const { selectedTrackId, unitSystem, setSelectedTrackId, tracks } = useAppStore();
   const { mapInstance, trackDetailCache } = useMapStore();
   const [trackData, setTrackData] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -102,7 +103,10 @@ export default function BottomIsland() {
     setSelectedTrackId(null);
   }
 
-  const track = trackData;
+  // Name comes from the list (kept in sync on rename via appStore.updateTrack) —
+  // trackData is fetched once on selection and doesn't otherwise pick up renames.
+  const listTrack = tracks.find((t) => t.id === selectedTrackId);
+  const track = trackData ? { ...trackData, name: listTrack?.name ?? trackData.name } : trackData;
 
   const chartData = (() => {
     const points = track?.normalized_points || track?.raw_points || [];
@@ -138,18 +142,50 @@ export default function BottomIsland() {
       const prevElev = i > 0 ? (points[i - 1].elevation ?? points[i - 1].ele ?? null) : null;
       let slope = null;
       if (i > 0 && elev !== null && prevElev !== null && segDistKm > 0) {
-        slope = parseFloat(((elev - prevElev) / (segDistKm * 1000) * 100).toFixed(1));
-        if (slope > 80) slope = 80;
-        if (slope < -80) slope = -80;
+        // rise/run ratio, clamped to suppress GPS noise outliers before
+        // converting to a real angle (atan), not just labelling % as "°".
+        let ratio = (elev - prevElev) / (segDistKm * 1000);
+        if (ratio > 0.8) ratio = 0.8;
+        if (ratio < -0.8) ratio = -0.8;
+        slope = parseFloat((Math.atan(ratio) * (180 / Math.PI)).toFixed(1));
       }
       return {
         dist: parseFloat(cumDist.toFixed(3)),
         elevation: elev,
         speed: speedByIdx[i],
         slope,
+        lat: pt.lat,
+        lon: pt.lon,
       };
     });
   })();
+
+  const hoverMarkerRef = useRef(null);
+
+  function showHoverMarker(lat, lon) {
+    if (!mapInstance || lat == null || lon == null) return;
+    if (!hoverMarkerRef.current) {
+      hoverMarkerRef.current = L.circleMarker([lat, lon], {
+        radius: 6,
+        color: '#fff',
+        weight: 2,
+        fillColor: color,
+        fillOpacity: 1,
+      }).addTo(mapInstance);
+    } else {
+      hoverMarkerRef.current.setLatLng([lat, lon]);
+      hoverMarkerRef.current.setStyle({ fillColor: color });
+    }
+  }
+
+  function hideHoverMarker() {
+    if (hoverMarkerRef.current) {
+      hoverMarkerRef.current.remove();
+      hoverMarkerRef.current = null;
+    }
+  }
+
+  useEffect(() => hideHoverMarker, [selectedTrackId, activeTab]);
 
   const dataKey = activeTab === 'Elevation' ? 'elevation' : activeTab === 'Speed' ? 'speed' : 'slope';
   const colors = { Elevation: '#34c759', Speed: '#007aff', Slope: '#ff9500' };
@@ -255,8 +291,21 @@ export default function BottomIsland() {
                 {t('chart.loading')}
               </div>
             ) : chartData.length > 0 ? (
-              <ResponsiveContainer width="100%" height={100}>
-                <AreaChart data={chartData} margin={{ top: 0, right: 0, bottom: 0, left: 0 }} isAnimationActive={true}>
+              <ResponsiveContainer width="100%" height={100} style={{ userSelect: 'none' }}>
+                <AreaChart
+                  data={chartData}
+                  margin={{ top: 0, right: 0, bottom: 0, left: 0 }}
+                  isAnimationActive={true}
+                  onMouseMove={(state) => {
+                    if (state?.isTooltipActive && state.activePayload?.length) {
+                      const pt = state.activePayload[0].payload;
+                      showHoverMarker(pt.lat, pt.lon);
+                    } else {
+                      hideHoverMarker();
+                    }
+                  }}
+                  onMouseLeave={hideHoverMarker}
+                >
                   <defs>
                     <linearGradient id={`grad-${activeTab}`} x1="0" y1="0" x2="0" y2="1">
                       <stop offset="5%" stopColor={color} stopOpacity={0.3} />
@@ -311,8 +360,8 @@ export default function BottomIsland() {
                 {stat(t('chart.duration'), fmtDuration(track.duration_sec), <Clock size={11} />)}
                 {stat(t('chart.avg_speed'), fmtSpeed(track.speed_avg, unitSystem), <Gauge size={11} />)}
                 {stat(t('chart.max_speed'), fmtSpeed(track.speed_max, unitSystem), <TrendingUp size={11} />)}
-                {stat(t('chart.elev_gain'), fmtElevation(track.elevation_gain), <Mountain size={11} />)}
-                {stat(t('chart.elev_loss'), fmtElevation(track.elevation_loss), <ChevronDown size={11} />)}
+                {stat(t('chart.elev_gain'), fmtElevation(track.elevation_gain, unitSystem), <Mountain size={11} />)}
+                {stat(t('chart.elev_loss'), fmtElevation(track.elevation_loss, unitSystem), <ChevronDown size={11} />)}
               </div>
             )}
           </div>

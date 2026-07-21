@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { Upload } from 'lucide-react';
 import useAppStore from '../../store/appStore.js';
 import { uploadTrack, pollTaskStatus, fetchTracks } from '../../api/tracks.js';
+import { sniffKmlKind, isKml } from '../../utils/fileSniff.js';
 
 const TRACK_FORMATS = ['.gpx', '.kml', '.tcx', '.fit', '.geojson'];
 const POI_FORMATS = ['.kml', '.kmz'];
@@ -45,6 +46,13 @@ export default function UploadZone({ inputRef: externalInputRef, onTrackFiles, o
       if (file.size > MAX_SIZE) {
         toast.error(t('validation.file_too_large', { name: file.name }));
         continue;
+      }
+      if (isKml(file.name)) {
+        const kind = await sniffKmlKind(file).catch(() => 'unknown');
+        if (kind === 'poi') {
+          toast.error(t('validation.kml_looks_like_poi', { name: file.name }));
+          continue;
+        }
       }
       validFiles.push(file);
     }
@@ -164,17 +172,19 @@ export default function UploadZone({ inputRef: externalInputRef, onTrackFiles, o
         return POI_FORMATS.includes(ext);
       });
 
-      // Route to appropriate handlers
-      if (isLeft && trackFiles.length) {
-        processFiles(trackFiles);
-      } else if (!isLeft && poiFiles.length) {
-        onPOIFiles?.(poiFiles);
-      } else if (trackFiles.length) {
-        // If no zone determined or POI zone but track files, process tracks
-        processFiles(trackFiles);
-      } else if (poiFiles.length) {
-        // If no zone determined or track zone but POI files, process POI
-        onPOIFiles?.(poiFiles);
+      // Route strictly by the zone the files were dropped on — don't silently
+      // reroute to the other handler, that's how a GeoJSON dropped on the POI
+      // side used to get uploaded as a track.
+      const zoneFiles = isLeft ? trackFiles : poiFiles;
+      const otherZoneFiles = isLeft ? poiFiles : trackFiles;
+
+      if (zoneFiles.length) {
+        if (isLeft) processFiles(zoneFiles);
+        else onPOIFiles?.(zoneFiles);
+      } else if (otherZoneFiles.length) {
+        toast.error(t(isLeft ? 'validation.dropped_poi_on_tracks' : 'validation.dropped_track_on_poi'));
+      } else {
+        files.forEach((f) => toast.error(t('validation.unsupported_format', { name: f.name })));
       }
     }
 
@@ -227,7 +237,7 @@ export default function UploadZone({ inputRef: externalInputRef, onTrackFiles, o
             whiteSpace: 'nowrap',
           }}>
             <Upload size={14} color="var(--accent)" style={{ animation: 'pulse 1s ease-in-out infinite' }} />
-            Uploading {queueProgress.current} of {queueProgress.total}…
+            {t('tracks.processing_progress', { current: queueProgress.current, total: queueProgress.total })}
           </div>
         </div>
       )}

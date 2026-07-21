@@ -5,13 +5,15 @@ from xml.sax.saxutils import escape as xml_escape
 from fastapi import APIRouter, Depends, File, HTTPException, Query, Response, UploadFile, status
 from fastapi.responses import StreamingResponse
 from geoalchemy2.functions import ST_Intersects, ST_MakeEnvelope
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy import cast, func
 from sqlalchemy.dialects.postgresql import ARRAY as PG_ARRAY
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.core.deps import get_current_user
+from app.core.http_utils import safe_content_disposition
+from app.core.redis_client import redis_client
 from app.models.track import Track
 from app.models.user import User
 from app.services.parser_factory import _haversine
@@ -20,6 +22,14 @@ from app.tasks.process_track import process_track
 router = APIRouter(prefix="/api/tracks", tags=["tracks"])
 
 MAX_FILE_BYTES = 20 * 1024 * 1024  # 20 MB
+
+# task_id -> user_id mapping for ownership checks in /api/tasks/{id}/status,
+# TTL matches how long a client might reasonably still be polling.
+TASK_OWNER_TTL_SECONDS = 24 * 3600
+
+
+def _register_task_owner(task_id: str, user_id: int) -> None:
+    redis_client.setex(f"task_owner:{task_id}", TASK_OWNER_TTL_SECONDS, str(user_id))
 
 # Magic bytes for supported formats
 MAGIC = {
@@ -39,7 +49,7 @@ class Point(BaseModel):
 
 
 class CreateTrackBody(BaseModel):
-    name: str
+    name: str = Field(..., max_length=255)
     points: List[Point]
     format: str = "gpx"
 
@@ -367,6 +377,7 @@ async def upload_track(
     db.refresh(track)
 
     task = process_track.delay(track.id, content)
+    _register_task_owner(task.id, current_user.id)
     return {"track_id": track.id, "task_id": task.id}
 
 
@@ -404,7 +415,7 @@ _EXPORT_MEDIA_TYPES = {
 
 
 class ExportTrackBody(BaseModel):
-    name: str = "Track"
+    name: str = Field("Track", max_length=255)
     points: List[Point]
     format: str = "gpx"
 
@@ -428,7 +439,7 @@ async def export_track(
     return Response(
         content=content,
         media_type=_EXPORT_MEDIA_TYPES[body.format],
-        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+        headers={"Content-Disposition": safe_content_disposition(filename)},
     )
 
 
@@ -457,6 +468,7 @@ async def create_track(
 
     # Queue for async processing
     task = process_track.delay(track.id, content)
+    _register_task_owner(task.id, current_user.id)
 
     return TrackOut.from_orm_dt(track)
 
@@ -474,11 +486,14 @@ def list_track_geometries(
     """Lightweight bulk endpoint: only id + normalized_points for all of the user's tracks.
 
     Must be declared above GET /{track_id}, otherwise FastAPI would match
-    "geometries" as a track_id path param.
+    "geometries" as a track_id path param. Intentionally not paginated — the
+    heatmap/map layers need every track's geometry in one call — but capped
+    to bound the worst-case response size for a single request.
     """
     tracks = (
         db.query(Track.id, Track.normalized_points)
         .filter(Track.user_id == current_user.id)
+        .limit(5000)
         .all()
     )
     return [{"id": t.id, "normalized_points": t.normalized_points} for t in tracks]
@@ -518,7 +533,7 @@ def delete_track(
 
 
 class RenameBody(BaseModel):
-    name: str
+    name: str = Field(..., max_length=255)
 
 
 @router.patch("/{track_id}/rename", response_model=TrackOut)
@@ -540,6 +555,172 @@ def rename_track(
     return TrackOut.from_orm_dt(track)
 
 
+def _raw_points_to_gpx(points: List[dict], name: str) -> str:
+    header = (
+        '<?xml version="1.0" encoding="UTF-8"?>\n'
+        '<gpx version="1.1" xmlns="http://www.topografix.com/GPX/1/1">\n'
+        f'<trk><name>{xml_escape(name)}</name><trkseg>\n'
+    )
+    parts = []
+    for p in points:
+        attrs = f'lat="{xml_escape(str(p["lat"]))}" lon="{xml_escape(str(p["lon"]))}"'
+        children = ""
+        if p.get("elevation") is not None:
+            children += f'<ele>{p["elevation"]}</ele>'
+        if p.get("time"):
+            children += f'<time>{xml_escape(p["time"])}</time>'
+        parts.append(f'<trkpt {attrs}>{children}</trkpt>')
+    return header + "\n".join(parts) + '\n</trkseg></trk>\n</gpx>'
+
+
+def _raw_points_to_kml(points: List[dict], name: str) -> str:
+    coords = " ".join(
+        f'{p["lon"]},{p["lat"]},{p.get("elevation") or 0}' for p in points
+    )
+    return f'''<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2">
+  <Document>
+    <Placemark>
+      <name>{xml_escape(name)}</name>
+      <LineString>
+        <coordinates>{coords}</coordinates>
+      </LineString>
+    </Placemark>
+  </Document>
+</kml>'''
+
+
+def _raw_points_to_geojson(points: List[dict], name: str) -> str:
+    import json
+    coordinates = [
+        [p["lon"], p["lat"]] + ([p["elevation"]] if p.get("elevation") is not None else [])
+        for p in points
+    ]
+    geojson = {
+        "type": "FeatureCollection",
+        "features": [{
+            "type": "Feature",
+            "geometry": {"type": "LineString", "coordinates": coordinates},
+            "properties": {"name": name},
+        }],
+    }
+    return json.dumps(geojson)
+
+
+def _raw_points_to_tcx(points: List[dict], name: str) -> str:
+    start_str = points[0]["time"] if points and points[0].get("time") else \
+        datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    trackpoints = []
+    for p in points:
+        tp = (
+            f'<Trackpoint><Position><LatitudeDegrees>{xml_escape(str(p["lat"]))}</LatitudeDegrees>'
+            f'<LongitudeDegrees>{xml_escape(str(p["lon"]))}</LongitudeDegrees></Position>'
+        )
+        if p.get("time"):
+            tp += f'<Time>{xml_escape(p["time"])}</Time>'
+        if p.get("elevation") is not None:
+            tp += f'<AltitudeMeters>{p["elevation"]}</AltitudeMeters>'
+        tp += '</Trackpoint>'
+        trackpoints.append(tp)
+    return f'''<?xml version="1.0" encoding="UTF-8"?>
+<TrainingCenterDatabase xmlns="http://www.garmin.com/xmlschemas/TrainingCenterDatabase/v2">
+  <Activities>
+    <Activity Sport="Other">
+      <Lap StartTime="{start_str}">
+        <Track>
+{chr(10).join(trackpoints)}
+        </Track>
+      </Lap>
+    </Activity>
+  </Activities>
+</TrainingCenterDatabase>'''
+
+
+def _raw_points_to_fit(points: List[dict], name: str) -> bytes:
+    from fit_tool.fit_file_builder import FitFileBuilder
+    from fit_tool.profile.messages.course_message import CourseMessage
+    from fit_tool.profile.messages.event_message import EventMessage
+    from fit_tool.profile.messages.file_id_message import FileIdMessage
+    from fit_tool.profile.messages.lap_message import LapMessage
+    from fit_tool.profile.messages.record_message import RecordMessage
+    from fit_tool.profile.profile_type import Event, EventType, FileType, Manufacturer, Sport
+
+    def parse_ts(p, fallback_ms):
+        if p.get("time"):
+            try:
+                return round(datetime.datetime.fromisoformat(p["time"]).timestamp() * 1000)
+            except ValueError:
+                pass
+        return fallback_ms
+
+    builder = FitFileBuilder(auto_define=True, min_string_size=50)
+
+    start_dt = datetime.datetime.now(datetime.timezone.utc)
+    start_ts = parse_ts(points[0], round(start_dt.timestamp() * 1000)) if points else round(start_dt.timestamp() * 1000)
+
+    file_id = FileIdMessage()
+    file_id.type = FileType.COURSE
+    file_id.manufacturer = Manufacturer.DEVELOPMENT.value
+    file_id.product = 0
+    file_id.time_created = start_ts
+    builder.add(file_id)
+
+    course = CourseMessage()
+    course.course_name = name
+    course.sport = Sport.CYCLING
+    builder.add(course)
+
+    start_event = EventMessage()
+    start_event.event = Event.TIMER
+    start_event.event_type = EventType.START
+    start_event.timestamp = start_ts
+    builder.add(start_event)
+
+    records = []
+    distance_m = 0.0
+    prev = None
+    ts = start_ts
+    for i, p in enumerate(points):
+        if prev is not None:
+            distance_m += _haversine(prev["lat"], prev["lon"], p["lat"], p["lon"]) * 1000
+        ts = parse_ts(p, start_ts + i * 1000)
+        record = RecordMessage()
+        record.position_lat = p["lat"]
+        record.position_long = p["lon"]
+        record.distance = distance_m
+        record.timestamp = ts
+        if p.get("elevation") is not None:
+            record.altitude = p["elevation"]
+        records.append(record)
+        prev = p
+    builder.add_all(records)
+
+    stop_event = EventMessage()
+    stop_event.event = Event.TIMER
+    stop_event.event_type = EventType.STOP_ALL
+    stop_event.timestamp = ts
+    builder.add(stop_event)
+
+    lap = LapMessage()
+    lap.timestamp = ts
+    lap.start_time = start_ts
+    lap.total_elapsed_time = (ts - start_ts) / 1000
+    lap.total_timer_time = (ts - start_ts) / 1000
+    lap.total_distance = distance_m
+    builder.add(lap)
+
+    return builder.build().to_bytes()
+
+
+_DOWNLOAD_MEDIA_TYPES = {
+    "gpx": "application/gpx+xml",
+    "kml": "application/vnd.google-earth.kml+xml",
+    "geojson": "application/geo+json",
+    "tcx": "application/vnd.garmin.tcx+xml",
+    "fit": "application/octet-stream",
+}
+
+
 @router.get("/{track_id}/download")
 def download_track(
     track_id: int,
@@ -552,13 +733,28 @@ def download_track(
     if not track.raw_points:
         raise HTTPException(status_code=404, detail="No file data available")
 
-    import io, json
-    content = json.dumps({"type": "FeatureCollection", "features": [{"type": "Feature", "geometry": {"type": "LineString", "coordinates": [[p["lon"], p["lat"]] + ([p["elevation"]] if p.get("elevation") is not None else []) for p in track.raw_points]}, "properties": {"name": track.name}}]})
-    filename = f"{track.name}.geojson"
+    fmt = track.file_format if track.file_format in ALLOWED_FORMATS else "gpx"
+    name = track.name or "Track"
+
+    if fmt == "gpx":
+        content = _raw_points_to_gpx(track.raw_points, name).encode("utf-8")
+    elif fmt == "kml":
+        content = _raw_points_to_kml(track.raw_points, name).encode("utf-8")
+    elif fmt == "tcx":
+        content = _raw_points_to_tcx(track.raw_points, name).encode("utf-8")
+    elif fmt == "fit":
+        content = _raw_points_to_fit(track.raw_points, name)
+    else:
+        content = _raw_points_to_geojson(track.raw_points, name).encode("utf-8")
+
+    filename = f"{name}.{fmt}"
     return Response(
-        content=content.encode(),
-        media_type="application/geo+json",
-        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+        content=content,
+        media_type=_DOWNLOAD_MEDIA_TYPES[fmt],
+        headers={
+            "Content-Disposition": safe_content_disposition(filename),
+            "Cache-Control": "no-store",
+        },
     )
 
 

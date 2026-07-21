@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { toast } from 'react-toastify';
 import { useTranslation } from 'react-i18next';
 import { deletePOI } from '../../api/poi.js';
+import { apiErrorMessage } from '../../utils/apiError.js';
 import Modal from '../../ui/Modal.jsx';
 import Button from '../../ui/Button.jsx';
 
@@ -17,7 +18,7 @@ export default function POIDeleteModal({ poi, isOpen, onClose, onDeleted }) {
       onDeleted?.(poi.id);
       onClose();
     } catch (err) {
-      toast.error(err.response?.data?.detail || t('poi.delete_failed'));
+      toast.error(apiErrorMessage(err, t('poi.delete_failed')));
     } finally {
       setDeleting(false);
     }

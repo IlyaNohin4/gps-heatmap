@@ -207,7 +207,9 @@ def update_me(
 
 
 @router.post("/change-password", status_code=status.HTTP_204_NO_CONTENT)
+@limiter.limit("5/minute")
 def change_password(
+    request: Request,
     body: ChangePasswordRequest,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),

@@ -21,6 +21,7 @@ import RightIsland from './components/islands/RightIsland.jsx';
 import BottomIsland from './components/islands/BottomIsland.jsx';
 import { TrackCreatorPanel } from './map/TrackCreator.jsx';
 import SaveTrackModal from './components/track/SaveTrackModal.jsx';
+import { sniffKmlKind, isKml } from './utils/fileSniff.js';
 import LoadingIndicator from './components/LoadingIndicator.jsx';
 
 import { fetchTracks, createTrackFromPoints, uploadTrack } from './api/tracks.js';
@@ -165,6 +166,13 @@ function MainPage() {
   async function handlePOIFilesFromOverlay(files) {
     const { toast } = await import('react-toastify');
     for (const file of files) {
+      if (isKml(file.name)) {
+        const kind = await sniffKmlKind(file).catch(() => 'unknown');
+        if (kind === 'track') {
+          toast.error(i18n.t('validation.kml_looks_like_track', { name: file.name }));
+          continue;
+        }
+      }
       try {
         await uploadPOI(file);
         const pois = await fetchPOI();
@@ -201,13 +209,10 @@ function MainPage() {
   }
 
   function handleToggleVisibility() {
-    // If a track is selected, just deselect it
     if (selectedTrackId) {
       setSelectedTrack(null);
-      return;
     }
 
-    // If no track selected, toggle visibility of all tracks
     const next = !allTracksVisible;
     setAllTracksVisible(next);
 

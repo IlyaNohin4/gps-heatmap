@@ -84,6 +84,25 @@ const useMapStore = create((set, get) => ({
       return { visibleTrackIds: next };
     }),
 
+  // Remove a deleted track from map-side caches so it stops rendering.
+  evictTrack: (id) =>
+    set((s) => {
+      if (!s.trackDetailCache[id] && !s.visibleTrackIds.has(id)) return s;
+      const trackDetailCache = { ...s.trackDetailCache };
+      delete trackDetailCache[id];
+      const visibleTrackIds = new Set(s.visibleTrackIds);
+      visibleTrackIds.delete(id);
+      return { trackDetailCache, visibleTrackIds };
+    }),
+
+  // Patch a renamed track's cached detail (map tooltip reads from trackDetailCache).
+  renameTrackInCache: (id, name) =>
+    set((s) => {
+      const cached = s.trackDetailCache[id];
+      if (!cached) return s;
+      return { trackDetailCache: { ...s.trackDetailCache, [id]: { ...cached, name } } };
+    }),
+
   // Ensure a track's detail is loaded (called when track selected in BottomIsland, etc.)
   ensureTrackDetail: (id) => {
     const cached = get().trackDetailCache[id];

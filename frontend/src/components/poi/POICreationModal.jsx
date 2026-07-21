@@ -3,6 +3,7 @@ import { Loader } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { useTranslation } from 'react-i18next';
 import { createPOI } from '../../api/poi.js';
+import { apiErrorMessage } from '../../utils/apiError.js';
 import Modal from '../../ui/Modal.jsx';
 import Button from '../../ui/Button.jsx';
 import Input from '../../ui/Input.jsx';
@@ -34,7 +35,7 @@ export default function POICreationModal({ lat, lon, onClose, onSuccess }) {
       onSuccess?.(poi);
       onClose();
     } catch (err) {
-      toast.error(err.response?.data?.detail || t('poi.create_failed'));
+      toast.error(apiErrorMessage(err, t('poi.create_failed')));
     } finally {
       setSaving(false);
     }

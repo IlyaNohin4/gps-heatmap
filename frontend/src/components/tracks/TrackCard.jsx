@@ -6,7 +6,8 @@ import {
   Gauge, Route, Download, Pencil,
 } from 'lucide-react';
 import useAppStore from '../../store/appStore.js';
-import { togglePublish, getTrackDownloadUrl } from '../../api/tracks.js';
+import useMapStore from '../../store/mapStore.js';
+import { togglePublish, downloadTrackFile } from '../../api/tracks.js';
 import TrackDeleteModal from './TrackDeleteModal.jsx';
 import TrackRenameModal from './TrackRenameModal.jsx';
 import Card from '../../ui/Card.jsx';
@@ -33,6 +34,12 @@ function speedLabel(kmh, unitSystem) {
   if (kmh === null || kmh === undefined) return '—';
   if (unitSystem === 'imperial') return `${(kmh * 0.621371).toFixed(1)} mph`;
   return `${kmh.toFixed(1)} km/h`;
+}
+
+function elevationLabel(m, unitSystem) {
+  if (m === null || m === undefined) return '—';
+  if (unitSystem === 'imperial') return `${Math.round(m * 3.28084)} ft`;
+  return `${Math.round(m)} m`;
 }
 
 const FORMAT_COLORS = {
@@ -62,6 +69,23 @@ export default React.memo(function TrackCard({ track, isSelected, onClick }) {
     }
   }
 
+  async function handleDownload(e) {
+    e.stopPropagation();
+    try {
+      const { blob, filename } = await downloadTrackFile(track.id);
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch {
+      toast.error(t('tracks.download_failed'));
+    }
+  }
+
   function handleOpenRenameModal(e) {
     e.stopPropagation();
     setShowRenameModal(true);
@@ -74,11 +98,13 @@ export default React.memo(function TrackCard({ track, isSelected, onClick }) {
 
   function handleRenamed(updatedTrack) {
     updateTrack(updatedTrack);
+    useMapStore.getState().renameTrackInCache(updatedTrack.id, updatedTrack.name);
     bumpTracksListVersion();
   }
 
   function handleDeleted(trackId) {
     removeTrack(trackId);
+    useMapStore.getState().evictTrack(trackId);
     bumpTracksListVersion();
     if (selectedTrackId === trackId) {
       setSelectedTrackId(null);
@@ -177,16 +203,9 @@ export default React.memo(function TrackCard({ track, isSelected, onClick }) {
             <Button iconOnly variant="ghost" onClick={handleOpenRenameModal} title={t('card.rename')}>
               <Pencil size={14} />
             </Button>
-            <a
-              href={getTrackDownloadUrl(track.id)}
-              download
-              onClick={(e) => e.stopPropagation()}
-              className="ui-btn ui-btn--ghost ui-btn--icon-only"
-              title={t('card.download')}
-              style={{ textDecoration: 'none' }}
-            >
+            <Button iconOnly variant="ghost" onClick={handleDownload} title={t('card.download')}>
               <Download size={14} />
-            </a>
+            </Button>
             <Button iconOnly variant="ghost" onClick={handleOpenDeleteModal} title={t('card.delete')}>
               <Trash2 size={14} />
             </Button>
@@ -208,16 +227,9 @@ export default React.memo(function TrackCard({ track, isSelected, onClick }) {
               <Button iconOnly variant="ghost" onClick={handleOpenRenameModal} title={t('card.rename')}>
                 <Pencil size={14} />
               </Button>
-              <a
-                href={getTrackDownloadUrl(track.id)}
-                download
-                onClick={(e) => e.stopPropagation()}
-                className="ui-btn ui-btn--ghost ui-btn--icon-only"
-                title={t('card.download')}
-                style={{ textDecoration: 'none' }}
-              >
+              <Button iconOnly variant="ghost" onClick={handleDownload} title={t('card.download')}>
                 <Download size={14} />
-              </a>
+              </Button>
               <Button iconOnly variant="ghost" onClick={handleOpenDeleteModal} title={t('card.delete')}>
                 <Trash2 size={14} />
               </Button>
@@ -250,13 +262,13 @@ export default React.memo(function TrackCard({ track, isSelected, onClick }) {
             {track.elevation_gain != null && (
               <div>
                 <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: 600 }}>{t('card.elev_gain')}</div>
-                <div style={{ fontSize: 'var(--text-sm)' }}>{Math.round(track.elevation_gain)} m</div>
+                <div style={{ fontSize: 'var(--text-sm)' }}>{elevationLabel(track.elevation_gain, unitSystem)}</div>
               </div>
             )}
             {track.elevation_loss != null && (
               <div>
                 <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: 600 }}>{t('card.elev_loss')}</div>
-                <div style={{ fontSize: 'var(--text-sm)' }}>{Math.round(track.elevation_loss)} m</div>
+                <div style={{ fontSize: 'var(--text-sm)' }}>{elevationLabel(track.elevation_loss, unitSystem)}</div>
               </div>
             )}
             {track.regions?.length > 0 && (

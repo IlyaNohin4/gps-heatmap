@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { Mail, Lock, Eye, EyeOff } from 'lucide-react';
 import useAuthStore from '../../store/authStore.js';
 import { login as apiLogin, register as apiRegister, forgotPassword } from '../../api/auth.js';
+import { apiErrorMessage } from '../../utils/apiError.js';
 import Modal from '../../ui/Modal.jsx';
 import Button from '../../ui/Button.jsx';
 import Input from '../../ui/Input.jsx';
@@ -109,7 +110,8 @@ export default function AuthModal() {
       storeLogin(data.access_token, data.user);
       toast.success(t('auth.login_success'));
     } catch (err) {
-      toast.error(t('auth.login_error', { detail: err.response?.data?.detail ? ': ' + err.response.data.detail : '' }));
+      const msg = apiErrorMessage(err, '');
+      toast.error(t('auth.login_error', { detail: msg ? ': ' + msg : '' }));
     } finally {
       setLoading(false);
     }
@@ -126,7 +128,8 @@ export default function AuthModal() {
       storeLogin(data.access_token, data.user);
       toast.success(t('auth.register_success'));
     } catch (err) {
-      toast.error(t('auth.register_error', { detail: err.response?.data?.detail ? ': ' + err.response.data.detail : '' }));
+      const msg = apiErrorMessage(err, '');
+      toast.error(t('auth.register_error', { detail: msg ? ': ' + msg : '' }));
     } finally {
       setLoading(false);
     }
@@ -141,7 +144,8 @@ export default function AuthModal() {
       toast.success(t('auth.reset_email_sent'));
       setForgotMode(false);
     } catch (err) {
-      toast.error(t('auth.reset_email_error', { detail: err.response?.data?.detail ? ': ' + err.response.data.detail : '' }));
+      const msg = apiErrorMessage(err, '');
+      toast.error(t('auth.reset_email_error', { detail: msg ? ': ' + msg : '' }));
     } finally {
       setLoading(false);
     }

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { toast } from 'react-toastify';
 import { useTranslation } from 'react-i18next';
 import { renameTrack } from '../../api/tracks.js';
+import { apiErrorMessage } from '../../utils/apiError.js';
 import Modal from '../../ui/Modal.jsx';
 import Button from '../../ui/Button.jsx';
 import Input from '../../ui/Input.jsx';
@@ -34,7 +35,7 @@ export default function TrackRenameModal({ track, isOpen, onClose, onRenamed }) 
       onRenamed?.({ ...track, name: nameValue });
       onClose();
     } catch (err) {
-      toast.error(err.response?.data?.detail || t('tracks.rename_failed'));
+      toast.error(apiErrorMessage(err, t('tracks.rename_failed')));
     } finally {
       setRenaming(false);
     }

@@ -6,6 +6,7 @@ import useAppStore from '../../store/appStore.js';
 import useAuthStore from '../../store/authStore.js';
 import useMapStore from '../../store/mapStore.js';
 import { fetchPOI, fetchPOIPage, fetchPOICategories, deletePOI, uploadPOI } from '../../api/poi.js';
+import { apiErrorMessage } from '../../utils/apiError.js';
 import POICard from '../poi/POICard.jsx';
 import useInfiniteScroll from '../../hooks/useInfiniteScroll.js';
 import Button from '../../ui/Button.jsx';
@@ -75,7 +76,7 @@ export default React.memo(function POITab() {
       toast.success(t('poi.imported_success'));
       await loadPOIs();
     } catch (err) {
-      toast.error(err.response?.data?.detail || t('poi.import_failed'));
+      toast.error(apiErrorMessage(err, t('poi.import_failed')));
       console.error(err);
     } finally {
       setUploading(false);

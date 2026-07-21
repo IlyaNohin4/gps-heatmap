@@ -211,8 +211,9 @@ class TestXSSInInputs:
             headers=auth_headers,
         )
         app.dependency_overrides.clear()
-        # Should not 500 — either 200 (accepted) or 400 (empty name after strip)
-        assert r.status_code in (200, 400, 404)
+        # Should not 500 — either 200 (accepted), 400 (empty name after strip),
+        # or 422 (exceeds max_length validation)
+        assert r.status_code in (200, 400, 404, 422)
 
     def test_empty_name_is_rejected(self, client, auth_headers, mock_db):
         from app.main import app
