@@ -1,5 +1,57 @@
 # Polish / known issues
 
+- [x] **RESOLVED** — Security hardening + manual QA bugfix sprint (2026-07-21,
+  4 коммита: `823bce3`, `662b545`, `8f0e210`, `18e9118`)
+  - **Security (backend):**
+    - IDOR на `/api/tasks/{id}/status` — см. отдельную запись ниже в § Security review
+    - Rate limit (5/minute) на `POST /api/auth/change-password` (был единственным
+      auth-эндпоинтом без лимита — можно было брутфорсить старый пароль)
+    - `Content-Disposition` — backslash-escaping заменён на strip + RFC 5987
+      `filename*=UTF-8''...` (`backend/app/core/http_utils.py`), header injection
+      закрыт; попутно найден и закрыт CORS-баг — без `expose_headers` браузер не
+      мог прочитать заголовок на кросс-origin запросах (dev: `VITE_API_URL`
+      указывает на другой порт) → скачивание сохранялось с fallback-именем/
+      расширением, хотя содержимое всегда было верным
+    - `max_length` на name/description полях Track/POI (раньше не было лимита)
+    - `GET /api/tracks/geometries` — `.limit(5000)` как верхняя граница (без
+      полноценной пагинации — эндпоинт намеренно возвращает всё разом для heatmap)
+  - **Download был сломан на нескольких уровнях** (баг репортился пользователем
+    несколько раз, каждый раз оказывалась новая причина):
+    1. `/api/tracks/{id}/download` **всегда** отдавал GeoJSON независимо от
+       `file_format` трека — переписан на генерацию правильного формата
+       (gpx/kml/tcx/fit/geojson) из `raw_points` с реальными elevation/time
+    2. `/api/tracks/public/{token}/download` (кнопка на странице публичного
+       шаринга) вообще не существовал как роут — 404
+    3. CORS `expose_headers` (см. выше) — сервер отвечал верно, но фронтенд не
+       мог прочитать `Content-Disposition`
+  - **Карта/данные:**
+    - Download трека в сайдбаре — был `<a href download>` без auth-заголовка (401);
+      заменён на authenticated fetch → blob
+    - Rename/delete трека не обновляли `mapStore.trackDetailCache`/`visibleTrackIds`
+      — удалённый трек мог продолжать рендериться, переименованный — показывать
+      старое имя в тултипе карты и в `BottomIsland`
+    - "Показать все" не работал при выбранном треке (ранний `return` до toggle)
+    - Heatmap показывала посещения по всем трекам, а не по видимым/выбранным —
+      см. отдельную (superseded) запись T04 выше
+    - Drag-and-drop на POI-зону с неподдерживаемым для POI типом файла тихо
+      уходил в загрузку треков вместо явной ошибки
+    - `.kml`-файлы (валидны и для треков, и для POI) теперь проверяются по
+      содержимому (`<LineString>`/`<Track>` vs `<Point>`) перед отправкой —
+      `frontend/src/utils/fileSniff.js`
+  - **График (`BottomIsland`):**
+    - Hover по графику теперь двигает маркер по треку на карте (раньше не был
+      реализован вообще)
+    - Elevation gain/loss не конвертировались в футы при imperial unit system
+    - Slope — было `%`, подписанное как `°`; затем по фидбеку пользователя
+      переделано на настоящий угол через `atan(подъём/дистанция)`
+    - `user-select: none` на контейнере графика (выделение текста при драге)
+  - **Прочее:** "Uploading" → "Processing" для очереди загрузки треков (POI
+    оставлен как есть — там действительно нет фоновой обработки); FastAPI
+    422-ошибки (массив вместо строки в `detail`) больше не рендерятся как
+    `[object Object]` в toast — `frontend/src/utils/apiError.js`
+  - Все 182 backend-теста зелёные, каждый фикс проверен вживую в браузере
+    (см. коммиты для деталей по каждому пункту)
+
 - [ ] **Multi-tab session bleed** (найдено при ручном тестировании, 2026-07-21):
   `frontend/src/api/client.js` (`getToken()`) читает JWT напрямую из
   `localStorage` при **каждом** запросе (комментарий в коде: "avoid timing
@@ -47,17 +99,16 @@
     (`&lt;img...&gt;`), JS не выполнился (`window.__xss_fired` осталось
     `false`). `SpeedLayer.jsx`/`TrackCreator.jsx` проверены отдельно — там
     только фиксированные строки/числа, не уязвимы, не трогал.
-  - [x] **RESOLVED, частично** — `/api/tasks/{id}/status` без авторизации
-    (2026-07-15). Было: вообще нет `Depends(get_current_user)` — любой
-    аноним с `task_id` (UUID) видел `result`/`detail` чужой задачи. Добавлен
-    `Depends(get_current_user)` — теперь нужен валидный JWT. **Не сделано
-    (сознательно, вне этой правки):** проверка владения конкретным треком —
-    Celery/`AsyncResult` не хранит связь `task_id → user_id`, для этого
-    нужен отдельный маппинг (новая колонка или Redis), это больше, чем
-    точечный security-фикс. Для личного инструмента (1-5 известных
-    пользователей) закрыть анонимный доступ — достаточный барьер; полная
-    проверка владельца — кандидат на отдельную задачу, если понадобится.
-    Тесты: `backend/tests/test_tasks.py` (новый).
+  - [x] **RESOLVED** — `/api/tasks/{id}/status` без авторизации
+    (2026-07-15, довнесено 2026-07-21). Было: вообще нет `Depends(get_current_user)`
+    — любой аноним с `task_id` (UUID) видел `result`/`detail` чужой задачи. Сначала
+    (2026-07-15) добавлен `Depends(get_current_user)` — требовался валидный JWT, но
+    ЛЮБОЙ авторизованный юзер мог подставить чужой `task_id` и всё равно увидеть
+    чужие данные (IDOR, не только анонимный доступ). **Довнесено 2026-07-21:**
+    `redis_client.setex(f"task_owner:{task_id}", 24h, user_id)` при создании задачи
+    в `/upload`/`/create`, `/api/tasks/{id}/status` теперь сверяет владельца — чужой
+    `task_id` отдаёт 404. Тесты: `backend/tests/test_tasks.py` (owner-check case
+    добавлен).
   - **Подтверждено, не критично, не в этой волне:** Redis без пароля +
     порт 6379 наружу в dev `docker-compose.yml` (в проде порта нет, T11);
     backend-контейнеры без `USER` (root); нет `soft_time_limit`/`time_limit`
@@ -271,8 +322,13 @@
 - [x] **RESOLVED** — VisitLayer (heatmap) получал tracks без геометрии (T04, 2026-07-08)
   - **Проблема:** `VisitLayer` брал `tracks` напрямую из `appStore.tracks` (`TrackOut`, без `normalized_points`/`raw_points`) — heatmap не имел точек для отрисовки, независимо от режима визуализации
   - **Причина:** список треков (`GET /api/tracks`) — облегчённый contract без geometry; только `TrackLayer`/`SpeedLayer` мёржили геометрию через `trackDetailCache`
-  - **Решение:** добавлен `useAllTracksWithGeometry()` в `MapContainer.jsx`, мёржащий `appStore.tracks` с `mapStore.trackDetailCache` по id; `VisitLayer` теперь получает этот merged список
+  - **Решение (T04):** добавлен `useAllTracksWithGeometry()` в `MapContainer.jsx`, мёржащий `appStore.tracks` с `mapStore.trackDetailCache` по id; `VisitLayer` получал этот merged список (ВСЕ треки юзера с геометрией, не только видимые)
   - Заодно: обнаружено, что это выявилось только сейчас — до T04 preload через `ensureTrackDetail` тоже никогда не попадал в `appStore.tracks`
+  - **СУПЕРСЕДЕД 2026-07-21:** по фидбеку пользователя ("странно, что при выборе
+    одного трека heatmap показывает посещения по всем") `useAllTracksWithGeometry()`
+    убрана, `VisitLayer` переведён на тот же `visibleTracks`, что и
+    `TrackLayer`/`SpeedLayer` — heatmap теперь показывает только видимые/выбранные
+    треки. См. группу B фиксов и `ARCHITECTURE.md` § VisitLayer (актуальное описание).
 
 - [x] **RESOLVED** — LeftIsland POI tab delay when switching tabs (Performance, 2026-07-05)
   - **Проблема:** При клике на вкладку POI происходило 1.1s зависание браузера
