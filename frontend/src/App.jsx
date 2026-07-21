@@ -65,6 +65,8 @@ function MainPage() {
   const [allTracksVisible, setAllTracksVisible] = useState(false);
   const uploadInputRef = useRef(null);
   const topIslandRef = useRef(null);
+  const bottomIslandRef = useRef(null);
+  const [legendBottom, setLegendBottom] = useState(16);
 
   // On auth change: fetch user profile and apply server preferences
   useEffect(() => {
@@ -143,6 +145,25 @@ function MainPage() {
     observer.observe(el);
     return () => observer.disconnect();
   }, []);
+
+  // Speed legend sits bottom-left, but BottomIsland (the chart panel) spans
+  // nearly full width on narrow viewports and grows upward when expanded —
+  // without this it silently overlaps/clips the legend (found via manual
+  // QA on mobile/tablet widths, see POLISH.md).
+  useLayoutEffect(() => {
+    const el = bottomIslandRef.current;
+    if (!el || !selectedTrackId) {
+      setLegendBottom(16);
+      return;
+    }
+    const observer = new ResizeObserver(() => {
+      const rect = el.getBoundingClientRect();
+      const overlapsLegend = rect.top < window.innerHeight - 16 && rect.left < 200;
+      setLegendBottom(overlapsLegend ? window.innerHeight - rect.top + 8 : 16);
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [selectedTrackId]);
 
   function handleUploadClick() {
     uploadInputRef.current?.click();
@@ -267,11 +288,11 @@ function MainPage() {
         onToggleVisibility={handleToggleVisibility}
       />
       <RightIsland />
-      {selectedTrackId && <BottomIsland />}
+      {selectedTrackId && <BottomIsland ref={bottomIslandRef} />}
       <LoadingIndicator isLoading={tracksLoading} />
       {/* Speed legend — left bottom corner */}
       {showSpeed && (
-        <div className="island" style={{ position: 'fixed', left: 16, bottom: 16, padding: '8px 12px', minWidth: 120, zIndex: 900 }}>
+        <div className="island" style={{ position: 'fixed', left: 16, bottom: legendBottom, padding: '8px 12px', minWidth: 120, zIndex: 900, transition: 'bottom 0.15s ease' }}>
           <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: 6 }}>{t('map.speed_legend')}</div>
           {SPEED_LEGEND.map(({ labelKm, labelMi, color }) => (
             <div key={labelKm} style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}>

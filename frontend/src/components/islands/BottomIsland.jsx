@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, forwardRef } from 'react';
 import { TrendingUp, Gauge, Route, Clock, Mountain, ChevronDown, ChevronUp, ZoomIn, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -61,7 +61,7 @@ function CustomTooltip({ active, payload, label, tab, unitSystem }) {
   );
 }
 
-export default function BottomIsland() {
+export default forwardRef(function BottomIsland(_props, ref) {
   const { t } = useTranslation();
   const { selectedTrackId, unitSystem, setSelectedTrackId, tracks } = useAppStore();
   const { mapInstance, trackDetailCache } = useMapStore();
@@ -201,7 +201,7 @@ export default function BottomIsland() {
   );
 
   return (
-    <div onClick={(e) => e.stopPropagation()} style={{
+    <div ref={ref} onClick={(e) => e.stopPropagation()} style={{
       position: 'fixed',
       bottom: 16,
       left: '50%',
@@ -369,4 +369,4 @@ export default function BottomIsland() {
       </Panel>
     </div>
   );
-}
+});

@@ -322,7 +322,8 @@
 
 ## ⚠️ ОКРУЖЕНИЕ
 
-- [ ] Playwright браузеры не установлены в контейнере frontend (обнаружено в T16, 2026-07-08)
+- [ ] Playwright браузеры не установлены в контейнере frontend (обнаружено в T16, 2026-07-08;
+  перепроверено 2026-07-21 — статус не изменился)
   - `npm run test:e2e` падает на всех 33 тестах: `browserType.launch: Executable doesn't exist ... chrome-headless-shell`
   - Нужно `npx playwright install` (и/или chromium deps) внутри образа/контейнера frontend
   - Вне scope T16 (кластеризация POI) — не чинил
@@ -331,13 +332,19 @@
 
 ## ⭐⭐⭐ КРИТИЧНЫЕ (MVP blockers)
 
-- [ ] **Full integration test** (MVP REQUIREMENT)
-  - Загрузить реальный трек через UI
-  - Проверить что данные появились на карте (normalized_points)
-  - Проверить что все графики работают (Elevation, Speed, Slope)
-  - Проверить что Slope chart рассчитывается корректно
-  - Est. Time: 1-2 часа
-  
+- [x] **RESOLVED** — Full integration test (MVP REQUIREMENT) (2026-07-21)
+  - Загружен реальный GPX (6 точек, Киев) через API + открыт в UI: трек появился в
+    списке сразу, выбор трека отрисовал polyline на карте (авто-zoom к треку),
+    `elevation_gain`/`elevation_loss`/`distance_km`/`speed_avg` посчитаны и совпали
+    с ожидаемыми значениями, region определён (`Київ, Україна`)
+  - Все 3 графика (Elevation/Speed/Slope) в `BottomIsland` открыты и отрисовались с
+    реальными данными; hover на графике синхронно двигает маркер по треку на карте
+    (см. группа C ранее в этой же сессии правок)
+  - Slope chart считает через `atan(подъём/дистанция)` в градусах (не проценты,
+    ошибочно подписанные как °, см. фикс группы C) — на тестовом треке показал
+    корректные -0.3…-0.7°, что соответствует пологому уклону вниз
+  - Тестовый трек удалён после проверки, БД не замусорена
+
   **NOTE:** Grade stats (climbing%, flat%, descent%) НЕ нужны в UI
   Slope chart в BottomIsland достаточен для анализа уклона
 
@@ -385,20 +392,36 @@
   - Появление/исчезновение элементов (toast уведомления, модальные окна)
   - Переходы между состояниями карты/режимов визуализации (смена тайлового слоя, переключение Speed/Heatmap)
 
-- [ ] Speed legend positioning verification
-  - Проверить что легенда работает во всех размерах viewport
-  - Currently fixed в bottom-left corner
+- [x] **RESOLVED** — Speed legend positioning verification (2026-07-21)
+  - Проверено на mobile (375px)/tablet (768px)/desktop viewport: на mobile/tablet
+    легенда (`App.jsx`, fixed bottom:16/left:16) реально перекрывалась/обрезалась
+    нижней панелью графика (`BottomIsland`, тоже fixed, растёт вверх при expand,
+    занимает почти всю ширину на узких экранах) — последние 1-2 строки легенды были
+    не видны
+  - **Решение:** `BottomIsland` обёрнут в `forwardRef`, `App.jsx` меряет его
+    `getBoundingClientRect()` через `ResizeObserver` (тот же паттерн, что уже
+    использовался для `topIslandBottom`) и поднимает легенду выше панели графика,
+    когда они пересекаются по горизонтали; когда трек не выбран или панели не
+    пересекаются (обычно на desktop) — легенда остаётся на `bottom: 16`
+  - Проверено вживую на всех трёх viewport после фикса — все 6 строк легенды видны
+    без обрезки, на desktop поведение не изменилось
 
 - [ ] POI search UI (if Overpass API enabled)
   - Food, Amenities, Medical, Tourism, Bicycle, Public Transport
   - Debounced search с 350ms delay
 
-- [ ] Reset bearing button (currently broken)
-  - Кнопка в RightIsland не работает
+- [x] **STALE ENTRY, дублирует уже реализованное** — "Reset bearing button (currently
+  broken)" (обнаружено при ревизии POLISH.md, 2026-07-21): в кодовой базе такой
+  кнопки больше нет — есть только неиспользуемый i18n-ключ `map.reset_bearing`
+  (все 5 языков), нигде не подключённый к компоненту. Не "сломана", а просто
+  отсутствует; если функциональность нужна — заводить как новую задачу, не баг.
 
-- [ ] Track creation tool
-  - Возможность рисовать трек на карте
-  - Сохранение как новый трек
+- [x] **STALE ENTRY, уже реализовано** — "Track creation tool" (обнаружено при
+  ревизии POLISH.md, 2026-07-21): Track Creator полностью реализован —
+  `frontend/src/map/TrackCreator.jsx` (рисование на карте, undo/redo, routing через
+  OpenRouteService) + `POST /api/tracks/create` на бэкенде. Проверено вживую в этой
+  же сессии (созданы и скачаны тестовые треки во всех 5 форматах через Track
+  Creator). Запись была неактуальна на момент ревизии.
 
 ---
 
@@ -414,10 +437,10 @@
   - Food, Amenities, Medical, Tourism, Bicycle, Public Transport
   - Возможно не нужна
 
-- [ ] Track creation from scratch (under question)
-  - API для создания треков без файла
-  - Рисование на карте
-  - Возможно не нужна
+- [x] **STALE ENTRY, уже реализовано** — "Track creation from scratch" (обнаружено
+  при ревизии POLISH.md, 2026-07-21): см. дубликат записи выше в NICE-TO-HAVE
+  ("Track creation tool") — `POST /api/tracks/create` + Track Creator на фронтенде
+  полностью работают, вопрос "нужна ли" закрыт фактом реализации.
 
 - [ ] More granular error handling & logging
   - Улучшить error messages
