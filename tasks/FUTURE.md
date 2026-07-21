@@ -13,7 +13,7 @@
 | **Full-text search** (pg_trgm GIN-индекс на tracks.name, poi.name) | ILIKE '%…%' медленный на больших объёмах | Поиск заметно тормозит (>100ms) при >50k записей | 2h |
 | **Серверный heatmap** (пре-агрегация тайлов вместо L.heatLayer по всем точкам) | Фронтовый heatLayer пересчитывает всё при каждом движении карты | Лаги карты при >2-3k треков; сначала измерить профайлером | 4-6h |
 | **Geometries с bbox/зумом** (`GET /tracks/geometries?bbox=&simplify=`) | Один bulk-ответ станет слишком большим | Ответ /geometries > ~10-20MB | 2-3h |
-| **VisitLayer напрямую на mapStore-геометриях + bbox-фильтр** (сейчас heatmap берёт `appStore.tracks` с `limit=500`, T04) | `limit=500` перестанет вмещать все треки юзера | >500 треков у пользователя | 2-3h |
+| **VisitLayer bbox-фильтр** (heatmap теперь берёт только видимые/выбранные треки через `mapStore.visibleTrackIds` — изменено 2026-07-21, см. POLISH.md; `/api/tracks/geometries` без bbox всё ещё грузит всё разом, `limit=5000`) | Bulk-ответ `/geometries` станет слишком большим | Ответ `/geometries` > ~10-20MB (см. также строку выше про bbox/зум) | 2-3h |
 | **Партиционирование tracks** (по user_id или дате) | Таблица перестанет помещаться в индексы | >1M строк в tracks | 3-4h |
 | **Разделение appStore на слайсы** (tracks/ui slices) | Поддерживаемость store при росте фич | Store станет >300-400 строк или начнёт путать | 2-3h |
 | **Разбиение LeftIsland** (FilterPanel / TracksList / SearchBar) | Компонент растёт | LeftIsland > ~400 строк | 2-3h |

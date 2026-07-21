@@ -9,17 +9,10 @@
 ### 1. Full Integration Test (MVP requirement)
 **Файл:** POLISH.md
 
-**Что нужно:**
-- Загрузить реальный трек через UI
-- Проверить что данные появились на карте
-- Проверить что все графики работают (Elevation, Speed, Slope)
-- Проверить корректность Slope chart (grade_stats)
-
-**Почему важно:** Никакой гарантии что парсинг + фронтенд работают вместе
-
-**Est. Time:** 1-2 часа
-
-**Текущий статус:** ❌ не сделано
+**Текущий статус:** ✅ **СДЕЛАНО (2026-07-21)** — загружен реальный GPX через API,
+открыт в UI: карта, все 3 графика (Elevation/Speed/Slope) и hover-синхронизация
+графика с маркером на карте проверены вживую с реальными данными. Подробности —
+POLISH.md § Full integration test.
 
 ---
 
@@ -71,16 +64,13 @@ PostGIS GIST на `geom` — часть initial schema (0001), не отдель
 ## 🟡 NICE-TO-HAVE (улучшают UX)
 
 ### 1. Speed Legend Positioning Fix
-**Файл:** `frontend/src/App.jsx` (инлайн JSX, ~строка 267 — отдельного
-компонента `SpeedLegend.jsx` в кодовой базе нет)
+**Файл:** `frontend/src/App.jsx` (инлайн JSX — отдельного компонента
+`SpeedLegend.jsx` в кодовой базе нет)
 
-**Проблема:** fixed position fixed левый нижний угол, но может перекрывать контент на мобильных
-
-**Решение:**
-- Адаптивное позиционирование (mobile: другой угол или modal)
-- Или: прячется при открытии других島ов
-
-**Est. Time:** 30 мин
+**Статус:** ✅ **СДЕЛАНО (2026-07-21)** — подтверждено на mobile/tablet: легенда
+реально перекрывалась `BottomIsland`. `BottomIsland` обёрнут в `forwardRef`,
+`App.jsx` меряет его через `ResizeObserver` и поднимает легенду выше панели,
+когда они пересекаются. См. POLISH.md.
 
 ---
 
@@ -115,13 +105,10 @@ PostGIS GIST на `geom` — часть initial schema (0001), не отдель
 ---
 
 ### 4. Reset Bearing Button Fix
-**Файл:** frontend/src/components/islands/RightIsland.jsx
-
-**Проблема:** Кнопка в RightIsland не работает
-
-**Решение:** Вызвать `map.setRotation(0)` при клике
-
-**Est. Time:** 15 мин
+**Статус:** ⚠️ **УТОЧНЕНО (2026-07-21)** — такой кнопки в кодовой базе больше нет
+(проверено: нет ни в `RightIsland.jsx`, ни где-либо ещё), остался только
+неиспользуемый i18n-ключ `map.reset_bearing` во всех 5 языках. Не "сломана", а
+отсутствует — если функциональность нужна, это задача "добавить", не "починить".
 
 ---
 
@@ -146,30 +133,21 @@ PostGIS GIST на `geom` — часть initial schema (0001), не отдель
 ### 1. Track Creation Tool (TrackCreator улучшение)
 **Файлы:** frontend/src/map/TrackCreator.jsx, backend/app/api/tracks.py
 
-**Текущий статус:** Ручной режим (клик → точки → линия) существует
-
-**Что добавить:**
-- Auto режим с OpenRouteService: A → B через определённый profile
-- Profiles: пешком, велосипед, хайкинг, авто, мотоцикл
-- Сохранение нарисованного трека как новый
-
-**Est. Time:** 3-4 часа
+**Статус:** ✅ **УЖЕ РЕАЛИЗОВАНО** (проверено 2026-07-21, устаревшая запись
+исправлена) — оба режима работают: ручной (клик → точки → линия) И auto через
+`fetchRoute()` (`TrackCreator.jsx`), который зовёт OpenRouteService API с выбором
+`profile` (cycling-regular и другие). Сохранение как новый трек — `POST
+/api/tracks/create`. Протестировано вживую в сессии 2026-07-21 (созданы и
+скачаны тестовые треки во всех 5 форматов через Track Creator).
 
 ---
 
 ### 2. OpenRouteService Routing Integration
-**Файлы:** backend/app/services/ors.py (новый), frontend/src/components/RouteSelector.jsx (новый)
-
-**Текущий статус:** ORS API ключ в .env.example, но не используется
-
-**Что сделать:**
-- Интеграция для route planning между точками
-- Cache результатов (Redis)
-- UI для выбора профиля маршрута
-
-**Когда:** После MVP, если нужно
-
-**Est. Time:** 2-3 часа
+**Статус:** ✅ **УЖЕ РЕАЛИЗОВАНО** (проверено 2026-07-21, устаревшая запись
+исправлена) — `TrackCreator.jsx` вызывает ORS API напрямую с фронтенда
+(`VITE_ORS_API_KEY`) при `mode === 'auto'`, кэша в Redis нет (не требовался —
+ORS free tier 2500 req/day достаточен для личного использования). Дублирует
+запись выше.
 
 ---
 
@@ -210,7 +188,7 @@ PostGIS GIST на `geom` — часть initial schema (0001), не отдель
 - ✅ Celery + Redis (retry/backoff, T09)
 - ✅ 5 парсеров готовы (GPX, KML, TCX, FIT, GeoJSON)
 - ✅ Нормализация (6 фаз) готова
-- ✅ 162 теста пасс
+- ✅ 182 теста пасс (обновлено 2026-07-21, было 162)
 - ✅ Database индексы (T03/T07)
 - ✅ Production deployment (T11/T12/T14) — monitoring/SSL ещё нет
 - ❌ Email отправка (не интегрирована)
@@ -220,13 +198,14 @@ PostGIS GIST на `geom` — часть initial schema (0001), не отдель
 - ✅ Islands layout работает
 - ✅ Leaflet карта
 - ✅ Upload drag&drop
-- ✅ Speed + Heatmap режимы
-- ✅ Graphs (Elevation, Speed, Slope)
+- ✅ Speed + Heatmap режимы (heatmap теперь ограничена видимыми/выбранными
+  треками, не показывает всё сразу — изменено 2026-07-21, см. POLISH.md)
+- ✅ Graphs (Elevation, Speed, Slope) — hover синхронизирован с маркером на карте
 - ✅ i18n (5 языков)
 - ✅ Dark/Light theme
 - ⚠️ POI search (работает, но UI можно улучшить)
-- ⚠️ Speed Legend (работает, но позиционирование нужно проверить)
-- ❌ TrackCreator Auto режим (не готов)
+- ✅ Speed Legend (позиционирование проверено и исправлено 2026-07-21)
+- ✅ TrackCreator Auto режим (уже реализован, запись выше была устаревшей)
 - ❌ Public sharing улучшения (QR, embed, social)
 
 ### DevOps
@@ -243,17 +222,17 @@ PostGIS GIST на `geom` — часть initial schema (0001), не отдель
 ## 🎯 Рекомендуемый порядок
 
 **Для готовности к продакшену:**
-1. Full Integration Test (MVP blocker) — 1-2 часа — ❌ ещё не сделано
-2. Email интеграция (Resend) — 1 час — ❌ ещё не сделано
+1. ~~Full Integration Test (MVP blocker)~~ — ✅ сделано (2026-07-21)
+2. Email интеграция (Resend) — 1 час — ❌ ещё не сделано (последний MVP-блокер)
 3. ~~Database индексы (performance)~~ — ✅ сделано (T03/T07)
 4. ~~Production deployment setup~~ — ✅ сделано (T11/T12/T14)
 5. ~~GitHub Actions CI/CD~~ — ✅ сделано (T14)
 
-**Осталось для MVP:** пункты 1-2, ~2-3 часа
+**Осталось для MVP:** пункт 2 (email), ~1 час
 
 **После MVP (nice-to-have):**
-1. Speed Legend fix — 30 мин
-2. Reset bearing button — 15 мин
+1. ~~Speed Legend fix~~ — ✅ сделано (2026-07-21)
+2. ~~Reset bearing button~~ — кнопки не существует, не задача "починить" (см. выше)
 3. Анимации — 2-3 часа
 4. POI UI улучшение — 1-2 часа
 
@@ -263,7 +242,7 @@ PostGIS GIST на `geom` — часть initial schema (0001), не отдель
 
 **Strengths:**
 - ✅ Чистая архитектура (separated concerns)
-- ✅ Хорошее покрытие тестами (162 backend tests)
+- ✅ Хорошее покрытие тестами (182 backend tests)
 - ✅ Type hints в Python (Pydantic models)
 - ✅ Consistent naming conventions
 
