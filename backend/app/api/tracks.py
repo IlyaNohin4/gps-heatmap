@@ -1,4 +1,5 @@
 import datetime
+import math
 from typing import List, Optional
 from xml.sax.saxutils import escape as xml_escape
 
@@ -14,6 +15,7 @@ from app.core.database import get_db
 from app.core.deps import get_current_user
 from app.core.http_utils import safe_content_disposition
 from app.core.redis_client import redis_client
+from app.models.poi import POI
 from app.models.track import Track
 from app.models.user import User
 from app.services.parser_factory import _haversine
@@ -555,36 +557,67 @@ def rename_track(
     return TrackOut.from_orm_dt(track)
 
 
-def _distance_waypoints(points: List[dict], interval_km: float) -> List[dict]:
-    """Compute marker points every `interval_km` along the track, for
-    OsmAnd-style distance waypoints ("5 km", "10 km", ...).
+def _project_xy(lat: float, lon: float, ref_lat: float) -> tuple:
+    """Equirectangular projection to local metric coordinates (meters),
+    accurate enough for point-to-segment distance over track-sized areas."""
+    R = 6371000.0
+    x = math.radians(lon) * R * math.cos(math.radians(ref_lat))
+    y = math.radians(lat) * R
+    return x, y
 
-    Each marker also carries `time` (the source point's timestamp, if any)
-    and `index` (the source point's position in `points`) so TCX/FIT export
-    can reuse the exact timestamp already computed for that point.
+
+def _point_segment_distance_m(px, py, ax, ay, bx, by) -> float:
+    """Shortest distance from point P to segment AB, in the same units as the inputs."""
+    abx, aby = bx - ax, by - ay
+    ab_len2 = abx * abx + aby * aby
+    if ab_len2 == 0:
+        return math.hypot(px - ax, py - ay)
+    t = max(0.0, min(1.0, ((px - ax) * abx + (py - ay) * aby) / ab_len2))
+    cx, cy = ax + t * abx, ay + t * aby
+    return math.hypot(px - cx, py - cy)
+
+
+def _pois_near_track(points: List[dict], pois: List["POI"], radius_m: float) -> List[dict]:
+    """Find user POIs within `radius_m` meters of the track's polyline
+    (perpendicular distance to the nearest segment, not just to a vertex).
+
+    Each returned marker carries `time` (the nearest track point's
+    timestamp, if any) and `index` (that point's position in `points`) so
+    TCX/FIT export can reuse an already-computed timestamp.
     """
-    if not points or interval_km <= 0:
+    if not points or not pois or radius_m <= 0:
         return []
 
-    interval_m = interval_km * 1000
+    ref_lat = points[len(points) // 2]["lat"]
+    proj = [_project_xy(p["lat"], p["lon"], ref_lat) for p in points]
+
     markers = []
-    dist_m = 0.0
-    next_threshold = interval_m
-    prev = points[0]
-    for i, p in enumerate(points[1:], start=1):
-        dist_m += _haversine(prev["lat"], prev["lon"], p["lat"], p["lon"]) * 1000
-        while dist_m >= next_threshold:
-            km_value = next_threshold / 1000
+    for poi in pois:
+        px, py = _project_xy(poi.lat, poi.lon, ref_lat)
+
+        if len(proj) == 1:
+            min_dist = math.hypot(px - proj[0][0], py - proj[0][1])
+            nearest_index = 0
+        else:
+            min_dist = float("inf")
+            nearest_index = 0
+            for i in range(len(proj) - 1):
+                ax, ay = proj[i]
+                bx, by = proj[i + 1]
+                d = _point_segment_distance_m(px, py, ax, ay, bx, by)
+                if d < min_dist:
+                    min_dist = d
+                    nearest_index = i
+
+        if min_dist <= radius_m:
             markers.append({
-                "lat": p["lat"],
-                "lon": p["lon"],
-                "elevation": p.get("elevation"),
-                "name": f"{km_value:g} km",
-                "time": p.get("time"),
-                "index": i,
+                "lat": poi.lat,
+                "lon": poi.lon,
+                "elevation": None,
+                "name": poi.name,
+                "time": points[nearest_index].get("time"),
+                "index": nearest_index,
             })
-            next_threshold += interval_m
-        prev = p
     return markers
 
 
@@ -813,14 +846,12 @@ _DOWNLOAD_MEDIA_TYPES = {
 }
 
 
-def _track_file_response(track: Track, waypoint_interval_km: Optional[float] = None) -> Response:
+def _track_file_response(track: Track, waypoints: Optional[List[dict]] = None) -> Response:
     if not track.raw_points:
         raise HTTPException(status_code=404, detail="No file data available")
 
     fmt = track.file_format if track.file_format in ALLOWED_FORMATS else "gpx"
     name = track.name or "Track"
-
-    waypoints = _distance_waypoints(track.raw_points, waypoint_interval_km) if waypoint_interval_km else None
 
     if fmt == "gpx":
         content = _raw_points_to_gpx(track.raw_points, name, waypoints).encode("utf-8")
@@ -855,14 +886,20 @@ def download_public_track(public_token: str, db: Session = Depends(get_db)):
 @router.get("/{track_id}/download")
 def download_track(
     track_id: int,
-    waypoint_interval_km: Optional[float] = Query(None, gt=0, le=1000),
+    poi_radius_m: Optional[float] = Query(None, gt=0, le=20000),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     track = db.query(Track).filter(Track.id == track_id, Track.user_id == current_user.id).first()
     if not track:
         raise HTTPException(status_code=404, detail="Track not found")
-    return _track_file_response(track, waypoint_interval_km)
+
+    waypoints = None
+    if poi_radius_m:
+        pois = db.query(POI).filter(POI.user_id == current_user.id).all()
+        waypoints = _pois_near_track(track.raw_points, pois, poi_radius_m)
+
+    return _track_file_response(track, waypoints)
 
 
 @router.patch("/{track_id}/publish", response_model=TrackOut)

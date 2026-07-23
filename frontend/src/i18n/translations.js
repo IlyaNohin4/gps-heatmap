@@ -88,7 +88,7 @@ const translations = {
     card: {
       rename: 'Rename',
       download: 'Download',
-      download_osmand_markers: 'Add distance markers every (km) — for OsmAnd',
+      download_poi_markers: 'Include your POI within radius',
       publish: 'Publish',
       unpublish: 'Unpublish',
       details: 'Details',
@@ -298,7 +298,7 @@ const translations = {
     card: {
       rename: 'Переименовать',
       download: 'Скачать',
-      download_osmand_markers: 'Добавлять метки через (км) — для OsmAnd',
+      download_poi_markers: 'Добавить ваши POI в радиусе',
       publish: 'Опубликовать',
       unpublish: 'Снять публикацию',
       details: 'Детали',
@@ -501,7 +501,7 @@ const translations = {
     card: {
       rename: 'Перейменувати',
       download: 'Завантажити',
-      download_osmand_markers: 'Додавати мітки через (км) — для OsmAnd',
+      download_poi_markers: 'Додати ваші POI в радіусі',
       publish: 'Опублікувати',
       unpublish: 'Зняти публікацію',
       details: 'Деталі',
@@ -704,7 +704,7 @@ const translations = {
     card: {
       rename: 'Umbenennen',
       download: 'Herunterladen',
-      download_osmand_markers: 'Markierungen alle (km) hinzufügen — für OsmAnd',
+      download_poi_markers: 'Eigene POI im Umkreis einschließen',
       publish: 'Veröffentlichen',
       unpublish: 'Nicht veröffentlichen',
       details: 'Details',
@@ -907,7 +907,7 @@ const translations = {
     card: {
       rename: 'Renombrar',
       download: 'Descargar',
-      download_osmand_markers: 'Añadir marcas cada (km) — para OsmAnd',
+      download_poi_markers: 'Incluir tus POI en el radio',
       publish: 'Publicar',
       unpublish: 'Despublicar',
       details: 'Detalles',

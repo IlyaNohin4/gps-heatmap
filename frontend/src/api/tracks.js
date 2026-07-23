@@ -49,12 +49,12 @@ export async function renameTrack(id, name) {
   return data;
 }
 
-export async function downloadTrackFile(id, waypointIntervalKm = null) {
+export async function downloadTrackFile(id, poiRadiusM = null) {
   // Cache-bust: browsers may have cached an earlier response for this exact
   // URL (e.g. from before a server-side format fix), and GET requests are
   // cacheable by default absent explicit headers.
   const params = { _: Date.now() };
-  if (waypointIntervalKm) params.waypoint_interval_km = waypointIntervalKm;
+  if (poiRadiusM) params.poi_radius_m = poiRadiusM;
   const { data, headers } = await client.get(`/api/tracks/${id}/download`, {
     responseType: 'blob',
     params,

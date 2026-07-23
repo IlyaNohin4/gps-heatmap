@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState } from 'react';
 import { toast } from 'react-toastify';
 import { useTranslation } from 'react-i18next';
 import {
@@ -12,6 +12,9 @@ import TrackDeleteModal from './TrackDeleteModal.jsx';
 import TrackRenameModal from './TrackRenameModal.jsx';
 import Card from '../../ui/Card.jsx';
 import Button from '../../ui/Button.jsx';
+import Modal from '../../ui/Modal.jsx';
+
+const FT_PER_M = 3.28084;
 
 function formatDate(iso) {
   if (!iso) return '—';
@@ -42,41 +45,28 @@ function elevationLabel(m, unitSystem) {
   return `${Math.round(m)} m`;
 }
 
-function DownloadPopover({ popoverRef, waypointStep, setWaypointStep, onPlainDownload, onDownloadWithMarkers, t }) {
+function DownloadModal({
+  open, onClose, unitSystem, poiRadius, setPoiRadius, onPlainDownload, onDownloadWithMarkers, t,
+}) {
+  const unitLabel = unitSystem === 'imperial' ? 'ft' : 'm';
+
   return (
-    <div
-      ref={popoverRef}
-      onClick={(e) => e.stopPropagation()}
-      style={{
-        position: 'absolute',
-        top: '100%',
-        left: 0,
-        marginTop: 4,
-        zIndex: 20,
-        background: 'var(--surface)',
-        border: '1px solid var(--border)',
-        borderRadius: 8,
-        boxShadow: '0 4px 16px rgba(0,0,0,0.15)',
-        padding: 'var(--space-3)',
-        width: 190,
-        maxWidth: 'calc(100vw - 32px)',
-      }}
-    >
-      <Button variant="secondary" onClick={onPlainDownload} style={{ width: '100%', marginBottom: 'var(--space-2)' }}>
+    <Modal open={open} onClose={onClose} title={t('card.download')}>
+      <Button variant="secondary" onClick={onPlainDownload} style={{ width: '100%', marginBottom: 'var(--space-3)' }}>
         {t('card.download')}
       </Button>
       <div style={{ fontSize: 12, color: 'var(--text-secondary)', fontWeight: 600, marginBottom: 'var(--space-1)' }}>
-        {t('card.download_osmand_markers')}
+        {t('card.download_poi_markers')} ({unitLabel})
       </div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
+      <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
         <input
           type="number"
-          min="0.1"
-          step="0.5"
-          value={waypointStep}
-          onChange={(e) => setWaypointStep(parseFloat(e.target.value) || 0)}
+          min="1"
+          step="10"
+          value={poiRadius}
+          onChange={(e) => setPoiRadius(parseFloat(e.target.value) || 0)}
           style={{
-            width: '100%',
+            width: 80,
             padding: 'var(--space-1) var(--space-2)',
             fontSize: 13,
             border: '1px solid var(--border)',
@@ -86,11 +76,11 @@ function DownloadPopover({ popoverRef, waypointStep, setWaypointStep, onPlainDow
             boxSizing: 'border-box',
           }}
         />
-        <Button onClick={onDownloadWithMarkers} disabled={!waypointStep || waypointStep <= 0} style={{ width: '100%' }}>
+        <Button onClick={onDownloadWithMarkers} disabled={!poiRadius || poiRadius <= 0} style={{ flex: 1 }}>
           {t('card.download')}
         </Button>
       </div>
-    </div>
+    </Modal>
   );
 }
 
@@ -110,19 +100,7 @@ export default React.memo(function TrackCard({ track, isSelected, onClick }) {
   const [showRenameModal, setShowRenameModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showDownloadPopover, setShowDownloadPopover] = useState(false);
-  const [waypointStep, setWaypointStep] = useState(5);
-  const downloadPopoverRef = useRef(null);
-
-  useEffect(() => {
-    if (!showDownloadPopover) return;
-    function handleClickOutside(e) {
-      if (downloadPopoverRef.current && !downloadPopoverRef.current.contains(e.target)) {
-        setShowDownloadPopover(false);
-      }
-    }
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [showDownloadPopover]);
+  const [poiRadius, setPoiRadius] = useState(100);
 
   async function handlePublish(e) {
     e.stopPropagation();
@@ -135,9 +113,9 @@ export default React.memo(function TrackCard({ track, isSelected, onClick }) {
     }
   }
 
-  async function runDownload(waypointIntervalKm = null) {
+  async function runDownload(poiRadiusM = null) {
     try {
-      const { blob, filename } = await downloadTrackFile(track.id, waypointIntervalKm);
+      const { blob, filename } = await downloadTrackFile(track.id, poiRadiusM);
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
@@ -165,7 +143,8 @@ export default React.memo(function TrackCard({ track, isSelected, onClick }) {
   function handleDownloadWithMarkers(e) {
     e.stopPropagation();
     setShowDownloadPopover(false);
-    runDownload(waypointStep);
+    const radiusM = unitSystem === 'imperial' ? poiRadius / FT_PER_M : poiRadius;
+    runDownload(radiusM);
   }
 
   function handleOpenRenameModal(e) {
@@ -285,21 +264,9 @@ export default React.memo(function TrackCard({ track, isSelected, onClick }) {
             <Button iconOnly variant="ghost" onClick={handleOpenRenameModal} title={t('card.rename')}>
               <Pencil size={14} />
             </Button>
-            <div style={{ position: 'relative' }}>
-              <Button iconOnly variant="ghost" onClick={handleDownload} title={t('card.download')}>
-                <Download size={14} />
-              </Button>
-              {showDownloadPopover && (
-                <DownloadPopover
-                  popoverRef={downloadPopoverRef}
-                  waypointStep={waypointStep}
-                  setWaypointStep={setWaypointStep}
-                  onPlainDownload={handlePlainDownload}
-                  onDownloadWithMarkers={handleDownloadWithMarkers}
-                  t={t}
-                />
-              )}
-            </div>
+            <Button iconOnly variant="ghost" onClick={handleDownload} title={t('card.download')}>
+              <Download size={14} />
+            </Button>
             <Button iconOnly variant="ghost" onClick={handleOpenDeleteModal} title={t('card.delete')}>
               <Trash2 size={14} />
             </Button>
@@ -321,21 +288,9 @@ export default React.memo(function TrackCard({ track, isSelected, onClick }) {
               <Button iconOnly variant="ghost" onClick={handleOpenRenameModal} title={t('card.rename')}>
                 <Pencil size={14} />
               </Button>
-              <div style={{ position: 'relative' }}>
-                <Button iconOnly variant="ghost" onClick={handleDownload} title={t('card.download')}>
-                  <Download size={14} />
-                </Button>
-                {showDownloadPopover && (
-                  <DownloadPopover
-                    popoverRef={downloadPopoverRef}
-                    waypointStep={waypointStep}
-                    setWaypointStep={setWaypointStep}
-                    onPlainDownload={handlePlainDownload}
-                    onDownloadWithMarkers={handleDownloadWithMarkers}
-                    t={t}
-                  />
-                )}
-              </div>
+              <Button iconOnly variant="ghost" onClick={handleDownload} title={t('card.download')}>
+                <Download size={14} />
+              </Button>
               <Button iconOnly variant="ghost" onClick={handleOpenDeleteModal} title={t('card.delete')}>
                 <Trash2 size={14} />
               </Button>
@@ -393,6 +348,18 @@ export default React.memo(function TrackCard({ track, isSelected, onClick }) {
         </div>
       )}
       </div>
+
+      {/* Download Modal */}
+      <DownloadModal
+        open={showDownloadPopover}
+        onClose={() => setShowDownloadPopover(false)}
+        unitSystem={unitSystem}
+        poiRadius={poiRadius}
+        setPoiRadius={setPoiRadius}
+        onPlainDownload={handlePlainDownload}
+        onDownloadWithMarkers={handleDownloadWithMarkers}
+        t={t}
+      />
 
       {/* Rename Modal */}
       <TrackRenameModal
