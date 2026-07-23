@@ -88,6 +88,7 @@ const translations = {
     card: {
       rename: 'Rename',
       download: 'Download',
+      download_osmand_markers: 'Add distance markers every (km) — for OsmAnd',
       publish: 'Publish',
       unpublish: 'Unpublish',
       details: 'Details',
@@ -297,6 +298,7 @@ const translations = {
     card: {
       rename: 'Переименовать',
       download: 'Скачать',
+      download_osmand_markers: 'Добавлять метки через (км) — для OsmAnd',
       publish: 'Опубликовать',
       unpublish: 'Снять публикацию',
       details: 'Детали',
@@ -499,6 +501,7 @@ const translations = {
     card: {
       rename: 'Перейменувати',
       download: 'Завантажити',
+      download_osmand_markers: 'Додавати мітки через (км) — для OsmAnd',
       publish: 'Опублікувати',
       unpublish: 'Зняти публікацію',
       details: 'Деталі',
@@ -701,6 +704,7 @@ const translations = {
     card: {
       rename: 'Umbenennen',
       download: 'Herunterladen',
+      download_osmand_markers: 'Markierungen alle (km) hinzufügen — für OsmAnd',
       publish: 'Veröffentlichen',
       unpublish: 'Nicht veröffentlichen',
       details: 'Details',
@@ -903,6 +907,7 @@ const translations = {
     card: {
       rename: 'Renombrar',
       download: 'Descargar',
+      download_osmand_markers: 'Añadir marcas cada (km) — para OsmAnd',
       publish: 'Publicar',
       unpublish: 'Despublicar',
       details: 'Detalles',

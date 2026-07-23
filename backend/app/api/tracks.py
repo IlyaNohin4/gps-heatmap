@@ -555,10 +555,52 @@ def rename_track(
     return TrackOut.from_orm_dt(track)
 
 
-def _raw_points_to_gpx(points: List[dict], name: str) -> str:
+def _distance_waypoints(points: List[dict], interval_km: float) -> List[dict]:
+    """Compute marker points every `interval_km` along the track, for
+    OsmAnd-style distance waypoints ("5 km", "10 km", ...).
+
+    Each marker also carries `time` (the source point's timestamp, if any)
+    and `index` (the source point's position in `points`) so TCX/FIT export
+    can reuse the exact timestamp already computed for that point.
+    """
+    if not points or interval_km <= 0:
+        return []
+
+    interval_m = interval_km * 1000
+    markers = []
+    dist_m = 0.0
+    next_threshold = interval_m
+    prev = points[0]
+    for i, p in enumerate(points[1:], start=1):
+        dist_m += _haversine(prev["lat"], prev["lon"], p["lat"], p["lon"]) * 1000
+        while dist_m >= next_threshold:
+            km_value = next_threshold / 1000
+            markers.append({
+                "lat": p["lat"],
+                "lon": p["lon"],
+                "elevation": p.get("elevation"),
+                "name": f"{km_value:g} km",
+                "time": p.get("time"),
+                "index": i,
+            })
+            next_threshold += interval_m
+        prev = p
+    return markers
+
+
+def _raw_points_to_gpx(points: List[dict], name: str, waypoints: Optional[List[dict]] = None) -> str:
+    wpt_xml = ""
+    for w in (waypoints or []):
+        attrs = f'lat="{xml_escape(str(w["lat"]))}" lon="{xml_escape(str(w["lon"]))}"'
+        children = f'<name>{xml_escape(w["name"])}</name>'
+        if w.get("elevation") is not None:
+            children += f'<ele>{w["elevation"]}</ele>'
+        wpt_xml += f'<wpt {attrs}>{children}</wpt>\n'
+
     header = (
         '<?xml version="1.0" encoding="UTF-8"?>\n'
         '<gpx version="1.1" xmlns="http://www.topografix.com/GPX/1/1">\n'
+        + wpt_xml +
         f'<trk><name>{xml_escape(name)}</name><trkseg>\n'
     )
     parts = []
@@ -573,9 +615,16 @@ def _raw_points_to_gpx(points: List[dict], name: str) -> str:
     return header + "\n".join(parts) + '\n</trkseg></trk>\n</gpx>'
 
 
-def _raw_points_to_kml(points: List[dict], name: str) -> str:
+def _raw_points_to_kml(points: List[dict], name: str, waypoints: Optional[List[dict]] = None) -> str:
     coords = " ".join(
         f'{p["lon"]},{p["lat"]},{p.get("elevation") or 0}' for p in points
+    )
+    wpt_placemarks = "\n".join(
+        f'    <Placemark>\n'
+        f'      <name>{xml_escape(w["name"])}</name>\n'
+        f'      <Point><coordinates>{w["lon"]},{w["lat"]},{w.get("elevation") or 0}</coordinates></Point>\n'
+        f'    </Placemark>'
+        for w in (waypoints or [])
     )
     return f'''<?xml version="1.0" encoding="UTF-8"?>
 <kml xmlns="http://www.opengis.net/kml/2.2">
@@ -586,28 +635,37 @@ def _raw_points_to_kml(points: List[dict], name: str) -> str:
         <coordinates>{coords}</coordinates>
       </LineString>
     </Placemark>
+{wpt_placemarks}
   </Document>
 </kml>'''
 
 
-def _raw_points_to_geojson(points: List[dict], name: str) -> str:
+def _raw_points_to_geojson(points: List[dict], name: str, waypoints: Optional[List[dict]] = None) -> str:
     import json
     coordinates = [
         [p["lon"], p["lat"]] + ([p["elevation"]] if p.get("elevation") is not None else [])
         for p in points
     ]
+    features = [{
+        "type": "Feature",
+        "geometry": {"type": "LineString", "coordinates": coordinates},
+        "properties": {"name": name},
+    }]
+    for w in (waypoints or []):
+        wcoords = [w["lon"], w["lat"]] + ([w["elevation"]] if w.get("elevation") is not None else [])
+        features.append({
+            "type": "Feature",
+            "geometry": {"type": "Point", "coordinates": wcoords},
+            "properties": {"name": w["name"]},
+        })
     geojson = {
         "type": "FeatureCollection",
-        "features": [{
-            "type": "Feature",
-            "geometry": {"type": "LineString", "coordinates": coordinates},
-            "properties": {"name": name},
-        }],
+        "features": features,
     }
     return json.dumps(geojson)
 
 
-def _raw_points_to_tcx(points: List[dict], name: str) -> str:
+def _raw_points_to_tcx(points: List[dict], name: str, waypoints: Optional[List[dict]] = None) -> str:
     start_str = points[0]["time"] if points and points[0].get("time") else \
         datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     trackpoints = []
@@ -622,6 +680,28 @@ def _raw_points_to_tcx(points: List[dict], name: str) -> str:
             tp += f'<AltitudeMeters>{p["elevation"]}</AltitudeMeters>'
         tp += '</Trackpoint>'
         trackpoints.append(tp)
+
+    course_points = ""
+    if waypoints:
+        cp_xml = []
+        for w in waypoints:
+            time_str = w.get("time") or start_str
+            cp = (
+                f'<CoursePoint><Name>{xml_escape(w["name"])}</Name>'
+                f'<Time>{xml_escape(time_str)}</Time>'
+                f'<Position><LatitudeDegrees>{xml_escape(str(w["lat"]))}</LatitudeDegrees>'
+                f'<LongitudeDegrees>{xml_escape(str(w["lon"]))}</LongitudeDegrees></Position>'
+                f'<PointType>Generic</PointType></CoursePoint>'
+            )
+            cp_xml.append(cp)
+        course_points = f'''
+  <Courses>
+    <Course>
+      <Name>{xml_escape(name)}</Name>
+{chr(10).join(cp_xml)}
+    </Course>
+  </Courses>'''
+
     return f'''<?xml version="1.0" encoding="UTF-8"?>
 <TrainingCenterDatabase xmlns="http://www.garmin.com/xmlschemas/TrainingCenterDatabase/v2">
   <Activities>
@@ -632,18 +712,19 @@ def _raw_points_to_tcx(points: List[dict], name: str) -> str:
         </Track>
       </Lap>
     </Activity>
-  </Activities>
+  </Activities>{course_points}
 </TrainingCenterDatabase>'''
 
 
-def _raw_points_to_fit(points: List[dict], name: str) -> bytes:
+def _raw_points_to_fit(points: List[dict], name: str, waypoints: Optional[List[dict]] = None) -> bytes:
     from fit_tool.fit_file_builder import FitFileBuilder
     from fit_tool.profile.messages.course_message import CourseMessage
+    from fit_tool.profile.messages.course_point_message import CoursePointMessage
     from fit_tool.profile.messages.event_message import EventMessage
     from fit_tool.profile.messages.file_id_message import FileIdMessage
     from fit_tool.profile.messages.lap_message import LapMessage
     from fit_tool.profile.messages.record_message import RecordMessage
-    from fit_tool.profile.profile_type import Event, EventType, FileType, Manufacturer, Sport
+    from fit_tool.profile.profile_type import CoursePoint, Event, EventType, FileType, Manufacturer, Sport
 
     def parse_ts(p, fallback_ms):
         if p.get("time"):
@@ -677,6 +758,7 @@ def _raw_points_to_fit(points: List[dict], name: str) -> bytes:
     builder.add(start_event)
 
     records = []
+    point_timestamps = []
     distance_m = 0.0
     prev = None
     ts = start_ts
@@ -684,6 +766,7 @@ def _raw_points_to_fit(points: List[dict], name: str) -> bytes:
         if prev is not None:
             distance_m += _haversine(prev["lat"], prev["lon"], p["lat"], p["lon"]) * 1000
         ts = parse_ts(p, start_ts + i * 1000)
+        point_timestamps.append(ts)
         record = RecordMessage()
         record.position_lat = p["lat"]
         record.position_long = p["lon"]
@@ -694,6 +777,15 @@ def _raw_points_to_fit(points: List[dict], name: str) -> bytes:
         records.append(record)
         prev = p
     builder.add_all(records)
+
+    for w in (waypoints or []):
+        cp = CoursePointMessage()
+        cp.course_point_name = w["name"]
+        cp.timestamp = point_timestamps[w["index"]] if w.get("index") is not None and w["index"] < len(point_timestamps) else ts
+        cp.position_lat = w["lat"]
+        cp.position_long = w["lon"]
+        cp.type = CoursePoint.GENERIC
+        builder.add(cp)
 
     stop_event = EventMessage()
     stop_event.event = Event.TIMER
@@ -721,23 +813,25 @@ _DOWNLOAD_MEDIA_TYPES = {
 }
 
 
-def _track_file_response(track: Track) -> Response:
+def _track_file_response(track: Track, waypoint_interval_km: Optional[float] = None) -> Response:
     if not track.raw_points:
         raise HTTPException(status_code=404, detail="No file data available")
 
     fmt = track.file_format if track.file_format in ALLOWED_FORMATS else "gpx"
     name = track.name or "Track"
 
+    waypoints = _distance_waypoints(track.raw_points, waypoint_interval_km) if waypoint_interval_km else None
+
     if fmt == "gpx":
-        content = _raw_points_to_gpx(track.raw_points, name).encode("utf-8")
+        content = _raw_points_to_gpx(track.raw_points, name, waypoints).encode("utf-8")
     elif fmt == "kml":
-        content = _raw_points_to_kml(track.raw_points, name).encode("utf-8")
+        content = _raw_points_to_kml(track.raw_points, name, waypoints).encode("utf-8")
     elif fmt == "tcx":
-        content = _raw_points_to_tcx(track.raw_points, name).encode("utf-8")
+        content = _raw_points_to_tcx(track.raw_points, name, waypoints).encode("utf-8")
     elif fmt == "fit":
-        content = _raw_points_to_fit(track.raw_points, name)
+        content = _raw_points_to_fit(track.raw_points, name, waypoints)
     else:
-        content = _raw_points_to_geojson(track.raw_points, name).encode("utf-8")
+        content = _raw_points_to_geojson(track.raw_points, name, waypoints).encode("utf-8")
 
     filename = f"{name}.{fmt}"
     return Response(
@@ -761,13 +855,14 @@ def download_public_track(public_token: str, db: Session = Depends(get_db)):
 @router.get("/{track_id}/download")
 def download_track(
     track_id: int,
+    waypoint_interval_km: Optional[float] = Query(None, gt=0, le=1000),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     track = db.query(Track).filter(Track.id == track_id, Track.user_id == current_user.id).first()
     if not track:
         raise HTTPException(status_code=404, detail="Track not found")
-    return _track_file_response(track)
+    return _track_file_response(track, waypoint_interval_km)
 
 
 @router.patch("/{track_id}/publish", response_model=TrackOut)

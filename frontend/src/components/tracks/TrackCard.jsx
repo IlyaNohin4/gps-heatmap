@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { toast } from 'react-toastify';
 import { useTranslation } from 'react-i18next';
 import {
@@ -42,6 +42,58 @@ function elevationLabel(m, unitSystem) {
   return `${Math.round(m)} m`;
 }
 
+function DownloadPopover({ popoverRef, waypointStep, setWaypointStep, onPlainDownload, onDownloadWithMarkers, t }) {
+  return (
+    <div
+      ref={popoverRef}
+      onClick={(e) => e.stopPropagation()}
+      style={{
+        position: 'absolute',
+        top: '100%',
+        left: 0,
+        marginTop: 4,
+        zIndex: 20,
+        background: 'var(--surface)',
+        border: '1px solid var(--border)',
+        borderRadius: 8,
+        boxShadow: '0 4px 16px rgba(0,0,0,0.15)',
+        padding: 'var(--space-3)',
+        width: 190,
+        maxWidth: 'calc(100vw - 32px)',
+      }}
+    >
+      <Button variant="secondary" onClick={onPlainDownload} style={{ width: '100%', marginBottom: 'var(--space-2)' }}>
+        {t('card.download')}
+      </Button>
+      <div style={{ fontSize: 12, color: 'var(--text-secondary)', fontWeight: 600, marginBottom: 'var(--space-1)' }}>
+        {t('card.download_osmand_markers')}
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
+        <input
+          type="number"
+          min="0.1"
+          step="0.5"
+          value={waypointStep}
+          onChange={(e) => setWaypointStep(parseFloat(e.target.value) || 0)}
+          style={{
+            width: '100%',
+            padding: 'var(--space-1) var(--space-2)',
+            fontSize: 13,
+            border: '1px solid var(--border)',
+            borderRadius: 6,
+            background: 'var(--bg)',
+            color: 'var(--text)',
+            boxSizing: 'border-box',
+          }}
+        />
+        <Button onClick={onDownloadWithMarkers} disabled={!waypointStep || waypointStep <= 0} style={{ width: '100%' }}>
+          {t('card.download')}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 const FORMAT_COLORS = {
   gpx: '#34c759',
   kml: '#ff9500',
@@ -57,6 +109,20 @@ export default React.memo(function TrackCard({ track, isSelected, onClick }) {
   const [published, setPublished] = useState(track.is_public || false);
   const [showRenameModal, setShowRenameModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showDownloadPopover, setShowDownloadPopover] = useState(false);
+  const [waypointStep, setWaypointStep] = useState(5);
+  const downloadPopoverRef = useRef(null);
+
+  useEffect(() => {
+    if (!showDownloadPopover) return;
+    function handleClickOutside(e) {
+      if (downloadPopoverRef.current && !downloadPopoverRef.current.contains(e.target)) {
+        setShowDownloadPopover(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showDownloadPopover]);
 
   async function handlePublish(e) {
     e.stopPropagation();
@@ -69,10 +135,9 @@ export default React.memo(function TrackCard({ track, isSelected, onClick }) {
     }
   }
 
-  async function handleDownload(e) {
-    e.stopPropagation();
+  async function runDownload(waypointIntervalKm = null) {
     try {
-      const { blob, filename } = await downloadTrackFile(track.id);
+      const { blob, filename } = await downloadTrackFile(track.id, waypointIntervalKm);
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
@@ -84,6 +149,23 @@ export default React.memo(function TrackCard({ track, isSelected, onClick }) {
     } catch {
       toast.error(t('tracks.download_failed'));
     }
+  }
+
+  function handleDownload(e) {
+    e.stopPropagation();
+    setShowDownloadPopover((v) => !v);
+  }
+
+  function handlePlainDownload(e) {
+    e.stopPropagation();
+    setShowDownloadPopover(false);
+    runDownload();
+  }
+
+  function handleDownloadWithMarkers(e) {
+    e.stopPropagation();
+    setShowDownloadPopover(false);
+    runDownload(waypointStep);
   }
 
   function handleOpenRenameModal(e) {
@@ -203,9 +285,21 @@ export default React.memo(function TrackCard({ track, isSelected, onClick }) {
             <Button iconOnly variant="ghost" onClick={handleOpenRenameModal} title={t('card.rename')}>
               <Pencil size={14} />
             </Button>
-            <Button iconOnly variant="ghost" onClick={handleDownload} title={t('card.download')}>
-              <Download size={14} />
-            </Button>
+            <div style={{ position: 'relative' }}>
+              <Button iconOnly variant="ghost" onClick={handleDownload} title={t('card.download')}>
+                <Download size={14} />
+              </Button>
+              {showDownloadPopover && (
+                <DownloadPopover
+                  popoverRef={downloadPopoverRef}
+                  waypointStep={waypointStep}
+                  setWaypointStep={setWaypointStep}
+                  onPlainDownload={handlePlainDownload}
+                  onDownloadWithMarkers={handleDownloadWithMarkers}
+                  t={t}
+                />
+              )}
+            </div>
             <Button iconOnly variant="ghost" onClick={handleOpenDeleteModal} title={t('card.delete')}>
               <Trash2 size={14} />
             </Button>
@@ -227,9 +321,21 @@ export default React.memo(function TrackCard({ track, isSelected, onClick }) {
               <Button iconOnly variant="ghost" onClick={handleOpenRenameModal} title={t('card.rename')}>
                 <Pencil size={14} />
               </Button>
-              <Button iconOnly variant="ghost" onClick={handleDownload} title={t('card.download')}>
-                <Download size={14} />
-              </Button>
+              <div style={{ position: 'relative' }}>
+                <Button iconOnly variant="ghost" onClick={handleDownload} title={t('card.download')}>
+                  <Download size={14} />
+                </Button>
+                {showDownloadPopover && (
+                  <DownloadPopover
+                    popoverRef={downloadPopoverRef}
+                    waypointStep={waypointStep}
+                    setWaypointStep={setWaypointStep}
+                    onPlainDownload={handlePlainDownload}
+                    onDownloadWithMarkers={handleDownloadWithMarkers}
+                    t={t}
+                  />
+                )}
+              </div>
               <Button iconOnly variant="ghost" onClick={handleOpenDeleteModal} title={t('card.delete')}>
                 <Trash2 size={14} />
               </Button>
