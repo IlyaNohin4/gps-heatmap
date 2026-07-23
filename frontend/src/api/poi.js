@@ -1,12 +1,14 @@
 import client from './client.js';
 
-export async function createPOI(name, lat, lon, category, description = null) {
+export async function createPOI(name, lat, lon, category, description = null, icon = null, color = null) {
   const { data } = await client.post('/api/poi/create', {
     name,
     lat,
     lon,
     category,
     description,
+    icon,
+    color,
   });
   return data;
 }

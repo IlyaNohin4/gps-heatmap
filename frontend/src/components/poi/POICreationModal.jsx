@@ -7,6 +7,8 @@ import { apiErrorMessage } from '../../utils/apiError.js';
 import Modal from '../../ui/Modal.jsx';
 import Button from '../../ui/Button.jsx';
 import Input from '../../ui/Input.jsx';
+import IconPicker from './IconPicker.jsx';
+import ColorPicker from './ColorPicker.jsx';
 
 const CATEGORIES = [
   'Food', 'Medical', 'Transport', 'Accommodation', 'Tourism',
@@ -18,6 +20,8 @@ export default function POICreationModal({ lat, lon, onClose, onSuccess }) {
   const [name, setName] = useState('');
   const [category, setCategory] = useState('Food');
   const [description, setDescription] = useState('');
+  const [icon, setIcon] = useState(null);
+  const [color, setColor] = useState(null);
   const [saving, setSaving] = useState(false);
 
   async function handleCreate(e) {
@@ -30,7 +34,7 @@ export default function POICreationModal({ lat, lon, onClose, onSuccess }) {
 
     setSaving(true);
     try {
-      const poi = await createPOI(name, lat, lon, category, description || null);
+      const poi = await createPOI(name, lat, lon, category, description || null, icon, color);
       toast.success(t('poi.created_success'));
       onSuccess?.(poi);
       onClose();
@@ -94,6 +98,20 @@ export default function POICreationModal({ lat, lon, onClose, onSuccess }) {
               <option key={cat} value={cat}>{cat}</option>
             ))}
           </select>
+        </div>
+
+        <div style={{ marginBottom: 'var(--space-3)' }}>
+          <label style={{ fontSize: 12, color: 'var(--text-secondary)', fontWeight: 600, display: 'block', marginBottom: 'var(--space-1)' }}>
+            Icon
+          </label>
+          <IconPicker value={icon} onChange={setIcon} disabled={saving} />
+        </div>
+
+        <div style={{ marginBottom: 'var(--space-3)' }}>
+          <label style={{ fontSize: 12, color: 'var(--text-secondary)', fontWeight: 600, display: 'block', marginBottom: 'var(--space-1)' }}>
+            Color
+          </label>
+          <ColorPicker value={color} onChange={setColor} disabled={saving} />
         </div>
 
         <div style={{ marginBottom: 'var(--space-4)' }}>

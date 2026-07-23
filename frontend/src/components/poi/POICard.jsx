@@ -2,8 +2,10 @@ import React from 'react';
 import { Trash2, Pencil } from 'lucide-react';
 import Card from '../../ui/Card.jsx';
 import Button from '../../ui/Button.jsx';
+import { POI_ICON_EMOJI } from '../../utils/poiIcons.js';
 
 export default React.memo(function POICard({ poi, isDeleting, onZoom, onDelete, onRename }) {
+  const emoji = POI_ICON_EMOJI[poi.icon] || '📍';
   return (
     <Card
       style={{
@@ -27,7 +29,7 @@ export default React.memo(function POICard({ poi, isDeleting, onZoom, onDelete, 
             whiteSpace: 'nowrap',
           }}
         >
-          📍 {poi.name}
+          {emoji} {poi.name}
         </div>
         <div
           style={{

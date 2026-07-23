@@ -16,11 +16,21 @@ from app.core.deps import get_current_user
 from app.core.http_utils import safe_content_disposition
 from app.models.poi import POI
 from app.models.user import User
-from app.services.poi_parser import POIParser
+from app.services.poi_parser import POIParser, ICON_SLUGS, HEX_COLOR_RE
 
 router = APIRouter(prefix="/api/poi", tags=["poi"])
 
 MAX_FILE_BYTES = 5 * 1024 * 1024  # 5 MB
+
+
+def _validate_icon(icon: Optional[str]) -> None:
+    if icon is not None and icon not in ICON_SLUGS:
+        raise HTTPException(status_code=400, detail=f"Invalid icon: {icon}")
+
+
+def _validate_color(color: Optional[str]) -> None:
+    if color is not None and not HEX_COLOR_RE.match(color):
+        raise HTTPException(status_code=400, detail="color must be a hex value like #RRGGBB")
 
 
 class POIResponse(BaseModel):
@@ -30,6 +40,8 @@ class POIResponse(BaseModel):
     lon: float
     category: str
     description: Optional[str] = None
+    icon: Optional[str] = None
+    color: Optional[str] = None
     import_name: Optional[str] = None
 
     model_config = {"from_attributes": True}
@@ -66,12 +78,16 @@ class CreatePOIRequest(BaseModel):
     lon: float
     category: str = Field(..., max_length=255)
     description: Optional[str] = Field(None, max_length=2000)
+    icon: Optional[str] = Field(None, max_length=50)
+    color: Optional[str] = Field(None, max_length=20)
 
 
 class UpdatePOIRequest(BaseModel):
     name: Optional[str] = Field(None, max_length=255)
     category: Optional[str] = Field(None, max_length=255)
     description: Optional[str] = Field(None, max_length=2000)
+    icon: Optional[str] = Field(None, max_length=50)
+    color: Optional[str] = Field(None, max_length=20)
 
 
 @router.post("/create", response_model=POIResponse, status_code=status.HTTP_201_CREATED)
@@ -88,6 +104,9 @@ async def create_poi(
     if not (-180 <= request.lon <= 180):
         raise HTTPException(status_code=400, detail="Longitude must be between -180 and 180")
 
+    _validate_icon(request.icon)
+    _validate_color(request.color)
+
     # Create POI
     poi = POI(
         user_id=current_user.id,
@@ -96,6 +115,8 @@ async def create_poi(
         lon=request.lon,
         category=request.category,
         description=request.description,
+        icon=request.icon,
+        color=request.color,
     )
     db.add(poi)
     db.commit()
@@ -139,6 +160,8 @@ async def upload_poi(
             lon=poi_data['lon'],
             category=poi_data['category'],
             description=poi_data['description'],
+            icon=poi_data.get('icon'),
+            color=poi_data.get('color'),
             source=poi_data['source'],
             import_name=import_name,
         )
@@ -203,12 +226,22 @@ def update_poi(
     if not poi:
         raise HTTPException(status_code=404, detail="POI not found")
 
+    _validate_icon(request.icon)
+    _validate_color(request.color)
+
     if request.name is not None:
         poi.name = request.name
     if request.category is not None:
         poi.category = request.category
     if request.description is not None:
         poi.description = request.description
+    # icon/color are nullable-by-design (null = "auto by category"), so a
+    # client must be able to explicitly reset them to null. Distinguish
+    # "field omitted" from "field sent as null" via model_fields_set.
+    if 'icon' in request.model_fields_set:
+        poi.icon = request.icon
+    if 'color' in request.model_fields_set:
+        poi.color = request.color
 
     db.commit()
     db.refresh(poi)

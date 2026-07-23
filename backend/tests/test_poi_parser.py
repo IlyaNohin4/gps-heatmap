@@ -205,6 +205,76 @@ def test_kmz_zip_bomb_is_rejected():
     assert "size" in error.lower() or "large" in error.lower() or "bomb" in error.lower()
 
 
+def test_parse_kml_style_via_styleurl():
+    """Placemark referencing a shared <Style id> should pick up icon + color."""
+    kml = b"""<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2">
+  <Document>
+    <Style id="restaurant-style">
+      <IconStyle>
+        <color>ff0000ff</color>
+        <Icon><href>https://maps.google.com/mapfiles/kml/shapes/restaurant.png</href></Icon>
+      </IconStyle>
+    </Style>
+    <Placemark>
+      <name>Some Diner</name>
+      <styleUrl>#restaurant-style</styleUrl>
+      <Point><coordinates>10,20</coordinates></Point>
+    </Placemark>
+  </Document>
+</kml>"""
+
+    poi_list, error = POIParser.parse(kml)
+
+    assert error is None
+    assert len(poi_list) == 1
+    assert poi_list[0]['icon'] == 'food'
+    # KML color is aabbggrr; ff0000ff -> alpha ff, blue 00, green 00, red ff -> #ff0000
+    assert poi_list[0]['color'] == '#ff0000'
+
+
+def test_parse_kml_inline_style():
+    """Placemark with an inline (unreferenced) <Style> should also resolve."""
+    kml = b"""<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2">
+  <Document>
+    <Placemark>
+      <name>Parking Spot</name>
+      <Style>
+        <IconStyle>
+          <Icon><href>https://maps.google.com/mapfiles/kml/shapes/parking_lot.png</href></Icon>
+        </IconStyle>
+      </Style>
+      <Point><coordinates>10,20</coordinates></Point>
+    </Placemark>
+  </Document>
+</kml>"""
+
+    poi_list, error = POIParser.parse(kml)
+
+    assert error is None
+    assert poi_list[0]['icon'] == 'parking'
+
+
+def test_parse_kml_without_style_has_no_icon():
+    """Placemarks without any style info leave icon/color as None (fallback to category)."""
+    kml = b"""<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2">
+  <Document>
+    <Placemark>
+      <name>Plain Spot</name>
+      <Point><coordinates>10,20</coordinates></Point>
+    </Placemark>
+  </Document>
+</kml>"""
+
+    poi_list, error = POIParser.parse(kml)
+
+    assert error is None
+    assert poi_list[0]['icon'] is None
+    assert poi_list[0]['color'] is None
+
+
 def test_kmz_within_size_limit_still_parses():
     """Control case: a KMZ under the size limit is unaffected by the guard."""
     import zipfile

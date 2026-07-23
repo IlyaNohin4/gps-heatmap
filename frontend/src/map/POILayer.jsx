@@ -8,6 +8,7 @@ import 'leaflet.markercluster/dist/MarkerCluster.Default.css';
 import useMapStore from '../store/mapStore.js';
 import { fetchPOI } from '../api/poi.js';
 import { escapeHtml } from '../utils/escapeHtml.js';
+import { POI_ICON_EMOJI, DEFAULT_POI_COLOR } from '../utils/poiIcons.js';
 
 const CATEGORY_COLORS = {
   food: '#ff9500',
@@ -19,16 +20,18 @@ const CATEGORY_COLORS = {
   other: '#8e8e93',
 };
 
-function makeDivIcon(category, color) {
-  const iconEmoji = {
-    food: '🍴',
-    water: '💧',
-    repair: '🔧',
-    bike: '🚲',
-    medical: '🏥',
-    shelter: '🏔️',
-    other: '📍',
-  }[category] || '📍';
+const CATEGORY_ICON_EMOJI = {
+  food: '🍴',
+  water: '💧',
+  repair: '🔧',
+  bike: '🚲',
+  medical: '🏥',
+  shelter: '🏔️',
+  other: '📍',
+};
+
+function makeDivIcon(category, color, iconSlug) {
+  const iconEmoji = POI_ICON_EMOJI[iconSlug] || CATEGORY_ICON_EMOJI[category] || '📍';
 
   return L.divIcon({
     html: `<div style="
@@ -77,8 +80,8 @@ export default function POILayer() {
 
     const markers = visiblePOI.map((poi) => {
       const category = poi.category?.toLowerCase() || 'other';
-      const color = CATEGORY_COLORS[category] || CATEGORY_COLORS.other;
-      const icon = makeDivIcon(category, color);
+      const color = poi.color || CATEGORY_COLORS[category] || DEFAULT_POI_COLOR;
+      const icon = makeDivIcon(category, color, poi.icon);
 
       return L.marker([poi.lat, poi.lon], { icon }).bindPopup(`
           <div style="font-size: 12px; max-width: 200px;">
