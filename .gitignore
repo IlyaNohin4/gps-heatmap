@@ -147,6 +147,10 @@ activemq-data/
 # SageMath parsed files
 *.sage.py
 
+# MCP server file exchange (uploads/exports land here on the host)
+mcp_server/data/*
+!mcp_server/data/.gitkeep
+
 # Environments
 .env
 .envrc

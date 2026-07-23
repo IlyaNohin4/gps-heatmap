@@ -61,6 +61,20 @@ services:
       - /app/node_modules
     command: npm run dev -- --host 0.0.0.0
 
+  mcp_server:
+    build: ./mcp_server
+    profiles:
+      - mcp
+    env_file: mcp_server/.env
+    depends_on:
+      - backend
+    volumes:
+      - ./mcp_server:/app
+      - ./mcp_server/data:/data
+    stdin_open: true
+    tty: false
+    command: python server.py
+
   playwright:
     build:
       context: ./frontend
