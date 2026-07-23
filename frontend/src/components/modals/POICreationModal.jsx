@@ -7,8 +7,8 @@ import { apiErrorMessage } from '../../utils/apiError.js';
 import Modal from '../../ui/Modal.jsx';
 import Button from '../../ui/Button.jsx';
 import Input from '../../ui/Input.jsx';
-import IconPicker from './IconPicker.jsx';
-import ColorPicker from './ColorPicker.jsx';
+import IconPicker from '../poi/IconPicker.jsx';
+import ColorPicker from '../poi/ColorPicker.jsx';
 
 const CATEGORIES = [
   'Food', 'Medical', 'Transport', 'Accommodation', 'Tourism',
@@ -22,6 +22,7 @@ export default function POICreationModal({ lat, lon, onClose, onSuccess }) {
   const [description, setDescription] = useState('');
   const [icon, setIcon] = useState(null);
   const [color, setColor] = useState(null);
+  const [visited, setVisited] = useState(false);
   const [saving, setSaving] = useState(false);
 
   async function handleCreate(e) {
@@ -34,7 +35,7 @@ export default function POICreationModal({ lat, lon, onClose, onSuccess }) {
 
     setSaving(true);
     try {
-      const poi = await createPOI(name, lat, lon, category, description || null, icon, color);
+      const poi = await createPOI(name, lat, lon, category, description || null, icon, color, visited);
       toast.success(t('poi.created_success'));
       onSuccess?.(poi);
       onClose();
@@ -112,6 +113,18 @@ export default function POICreationModal({ lat, lon, onClose, onSuccess }) {
             Color
           </label>
           <ColorPicker value={color} onChange={setColor} disabled={saving} />
+        </div>
+
+        <div style={{ marginBottom: 'var(--space-3)' }}>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', fontSize: 13, color: 'var(--text)', cursor: 'pointer' }}>
+            <input
+              type="checkbox"
+              checked={visited}
+              onChange={(e) => setVisited(e.target.checked)}
+              disabled={saving}
+            />
+            Visited
+          </label>
         </div>
 
         <div style={{ marginBottom: 'var(--space-4)' }}>

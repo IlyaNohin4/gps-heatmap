@@ -1,6 +1,6 @@
 import client from './client.js';
 
-export async function createPOI(name, lat, lon, category, description = null, icon = null, color = null) {
+export async function createPOI(name, lat, lon, category, description = null, icon = null, color = null, visited = false) {
   const { data } = await client.post('/api/poi/create', {
     name,
     lat,
@@ -9,6 +9,7 @@ export async function createPOI(name, lat, lon, category, description = null, ic
     description,
     icon,
     color,
+    visited,
   });
   return data;
 }

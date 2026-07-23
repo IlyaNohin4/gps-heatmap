@@ -6,8 +6,8 @@ import { apiErrorMessage } from '../../utils/apiError.js';
 import Modal from '../../ui/Modal.jsx';
 import Button from '../../ui/Button.jsx';
 import Input from '../../ui/Input.jsx';
-import IconPicker from './IconPicker.jsx';
-import ColorPicker from './ColorPicker.jsx';
+import IconPicker from '../poi/IconPicker.jsx';
+import ColorPicker from '../poi/ColorPicker.jsx';
 
 const CATEGORIES = [
   'Food', 'Medical', 'Transport', 'Accommodation', 'Tourism',
@@ -20,6 +20,7 @@ export default function POIRenameModal({ poi, isOpen, onClose, onRenamed }) {
   const [categoryValue, setCategoryValue] = useState(poi?.category || '');
   const [iconValue, setIconValue] = useState(poi?.icon ?? null);
   const [colorValue, setColorValue] = useState(poi?.color ?? null);
+  const [visitedValue, setVisitedValue] = useState(poi?.visited ?? false);
   const [renaming, setRenaming] = useState(false);
 
   useEffect(() => {
@@ -28,6 +29,7 @@ export default function POIRenameModal({ poi, isOpen, onClose, onRenamed }) {
       setCategoryValue(poi.category || '');
       setIconValue(poi.icon ?? null);
       setColorValue(poi.color ?? null);
+      setVisitedValue(poi.visited ?? false);
     }
   }, [isOpen, poi]);
 
@@ -40,7 +42,8 @@ export default function POIRenameModal({ poi, isOpen, onClose, onRenamed }) {
       nameValue === poi.name &&
       categoryValue === poi.category &&
       iconValue === (poi.icon ?? null) &&
-      colorValue === (poi.color ?? null)
+      colorValue === (poi.color ?? null) &&
+      visitedValue === (poi.visited ?? false)
     ) {
       toast.info(t('validation.no_changes'));
       return;
@@ -53,10 +56,11 @@ export default function POIRenameModal({ poi, isOpen, onClose, onRenamed }) {
       if (categoryValue !== poi.category) updates.category = categoryValue;
       if (iconValue !== (poi.icon ?? null)) updates.icon = iconValue;
       if (colorValue !== (poi.color ?? null)) updates.color = colorValue;
+      if (visitedValue !== (poi.visited ?? false)) updates.visited = visitedValue;
 
       await updatePOI(poi.id, updates);
       toast.success(t('poi.updated_success'));
-      onRenamed?.({ ...poi, name: nameValue, category: categoryValue, icon: iconValue, color: colorValue });
+      onRenamed?.({ ...poi, name: nameValue, category: categoryValue, icon: iconValue, color: colorValue, visited: visitedValue });
       onClose();
     } catch (err) {
       toast.error(apiErrorMessage(err, t('poi.update_failed')));
@@ -71,7 +75,8 @@ export default function POIRenameModal({ poi, isOpen, onClose, onRenamed }) {
     nameValue === poi.name &&
     categoryValue === poi.category &&
     iconValue === (poi.icon ?? null) &&
-    colorValue === (poi.color ?? null);
+    colorValue === (poi.color ?? null) &&
+    visitedValue === (poi.visited ?? false);
 
   return (
     <Modal
@@ -152,6 +157,19 @@ export default function POIRenameModal({ poi, isOpen, onClose, onRenamed }) {
           Color
         </label>
         <ColorPicker value={colorValue} onChange={setColorValue} disabled={renaming} />
+      </div>
+
+      {/* Visited Toggle */}
+      <div style={{ marginTop: 'var(--space-3)' }}>
+        <label style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', fontSize: 13, color: 'var(--text)', cursor: 'pointer' }}>
+          <input
+            type="checkbox"
+            checked={visitedValue}
+            onChange={(e) => setVisitedValue(e.target.checked)}
+            disabled={renaming}
+          />
+          Visited
+        </label>
       </div>
     </Modal>
   );

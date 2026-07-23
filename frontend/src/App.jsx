@@ -13,14 +13,14 @@ import useAuthStore from './store/authStore.js';
 import useMapStore from './store/mapStore.js';
 
 import MapContainer from './components/MapContainer.jsx';
-import AuthModal from './components/auth/AuthModal.jsx';
+import AuthModal from './components/modals/AuthModal.jsx';
 import UploadZone from './components/upload/UploadZone.jsx';
 import TopIsland from './components/islands/TopIsland.jsx';
 import LeftIsland from './components/islands/LeftIsland.jsx';
 import RightIsland from './components/islands/RightIsland.jsx';
 import BottomIsland from './components/islands/BottomIsland.jsx';
 import { TrackCreatorPanel } from './map/TrackCreator.jsx';
-import SaveTrackModal from './components/track/SaveTrackModal.jsx';
+import SaveTrackModal from './components/modals/SaveTrackModal.jsx';
 import { sniffKmlKind, isKml } from './utils/fileSniff.js';
 import LoadingIndicator from './components/LoadingIndicator.jsx';
 

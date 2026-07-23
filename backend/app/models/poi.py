@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 
-from sqlalchemy import Column, DateTime, Float, ForeignKey, Integer, String, Text
+from sqlalchemy import Boolean, Column, DateTime, Float, ForeignKey, Integer, String, Text
 
 from app.core.database import Base
 
@@ -17,6 +17,7 @@ class POI(Base):
     description = Column(Text)
     icon = Column(String(50), nullable=True)
     color = Column(String(20), nullable=True)
+    visited = Column(Boolean, nullable=False, default=False, server_default='false')
     source = Column(String(50), default='user')
     import_name = Column(String(255))
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Trash2, Pencil } from 'lucide-react';
+import { Trash2, Pencil, CheckCircle2 } from 'lucide-react';
 import Card from '../../ui/Card.jsx';
 import Button from '../../ui/Button.jsx';
 import { POI_ICON_EMOJI } from '../../utils/poiIcons.js';
@@ -30,6 +30,13 @@ export default React.memo(function POICard({ poi, isDeleting, onZoom, onDelete, 
           }}
         >
           {emoji} {poi.name}
+          {poi.visited && (
+            <CheckCircle2
+              size={12}
+              color="var(--accent)"
+              style={{ display: 'inline', marginLeft: 4, verticalAlign: 'middle' }}
+            />
+          )}
         </div>
         <div
           style={{

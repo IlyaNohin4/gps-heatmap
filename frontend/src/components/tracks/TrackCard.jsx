@@ -8,8 +8,8 @@ import {
 import useAppStore from '../../store/appStore.js';
 import useMapStore from '../../store/mapStore.js';
 import { togglePublish, downloadTrackFile } from '../../api/tracks.js';
-import TrackDeleteModal from './TrackDeleteModal.jsx';
-import TrackRenameModal from './TrackRenameModal.jsx';
+import TrackDeleteModal from '../modals/TrackDeleteModal.jsx';
+import TrackRenameModal from '../modals/TrackRenameModal.jsx';
 import Card from '../../ui/Card.jsx';
 import Button from '../../ui/Button.jsx';
 import Modal from '../../ui/Modal.jsx';

@@ -20,7 +20,7 @@ import VisitLayer from '../map/VisitLayer.jsx';
 import POILayer from '../map/POILayer.jsx';
 import TrackCreator from '../map/TrackCreator.jsx';
 import POIContextMenu from '../components/poi/POIContextMenu.jsx';
-import POICreationModal from '../components/poi/POICreationModal.jsx';
+import POICreationModal from '../components/modals/POICreationModal.jsx';
 import CoordinatesContextMenu from '../components/map/CoordinatesContextMenu.jsx';
 
 delete L.Icon.Default.prototype._getIconUrl;

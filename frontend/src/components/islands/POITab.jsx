@@ -14,8 +14,8 @@ import Input from '../../ui/Input.jsx';
 import Chip from '../../ui/Chip.jsx';
 import SkeletonCard from '../shared/SkeletonCard.jsx';
 import '../../styles/poi.css';
-const POIRenameModal = lazy(() => import('../poi/POIRenameModal.jsx'));
-const POIDeleteModal = lazy(() => import('../poi/POIDeleteModal.jsx'));
+const POIRenameModal = lazy(() => import('../modals/POIRenameModal.jsx'));
+const POIDeleteModal = lazy(() => import('../modals/POIDeleteModal.jsx'));
 
 export default React.memo(function POITab() {
   const { t } = useTranslation();

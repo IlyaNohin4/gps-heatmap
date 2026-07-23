@@ -42,6 +42,7 @@ class POIResponse(BaseModel):
     description: Optional[str] = None
     icon: Optional[str] = None
     color: Optional[str] = None
+    visited: bool = False
     import_name: Optional[str] = None
 
     model_config = {"from_attributes": True}
@@ -80,6 +81,7 @@ class CreatePOIRequest(BaseModel):
     description: Optional[str] = Field(None, max_length=2000)
     icon: Optional[str] = Field(None, max_length=50)
     color: Optional[str] = Field(None, max_length=20)
+    visited: bool = False
 
 
 class UpdatePOIRequest(BaseModel):
@@ -88,6 +90,7 @@ class UpdatePOIRequest(BaseModel):
     description: Optional[str] = Field(None, max_length=2000)
     icon: Optional[str] = Field(None, max_length=50)
     color: Optional[str] = Field(None, max_length=20)
+    visited: Optional[bool] = None
 
 
 @router.post("/create", response_model=POIResponse, status_code=status.HTTP_201_CREATED)
@@ -117,6 +120,7 @@ async def create_poi(
         description=request.description,
         icon=request.icon,
         color=request.color,
+        visited=request.visited,
     )
     db.add(poi)
     db.commit()
@@ -242,6 +246,8 @@ def update_poi(
         poi.icon = request.icon
     if 'color' in request.model_fields_set:
         poi.color = request.color
+    if request.visited is not None:
+        poi.visited = request.visited
 
     db.commit()
     db.refresh(poi)
