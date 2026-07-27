@@ -104,6 +104,55 @@ class TestFileSizeLimit:
         assert r.status_code != 413
 
 
+# ── Upload content integrity ──────────────────────────────────────────────────
+
+class TestUploadContentIntegrity:
+    """process_track must receive bytes identical to the uploaded file — a past
+    bug prepended a duplicate copy of the first 2048 bytes (read-ahead used
+    for format sniffing wasn't discarded before the full read)."""
+
+    def _fake_user(self):
+        u = User()
+        u.id = 1
+        u.email = "integrity@test.com"
+        u.language = "en"
+        u.theme = "light"
+        u.unit_distance = "km"
+        u.unit_speed = "kmh"
+        return u
+
+    def test_process_track_receives_exact_file_bytes(self, client, auth_headers, mock_db):
+        from app.main import app
+
+        fake_user = self._fake_user()
+        mock_db.get.return_value = fake_user
+        mock_db.query.return_value.filter.return_value.first.return_value = fake_user
+        mock_db.refresh.side_effect = lambda obj: setattr(obj, "id", 1)
+
+        # >2048 bytes so a duplicated read-ahead header would be detectable
+        original = (
+            b"<?xml version='1.0'?>\n<gpx version='1.1'><trk><trkseg>"
+            + b"<trkpt lat=\"1.0\" lon=\"2.0\"></trkpt>" * 200
+            + b"</trkseg></trk></gpx>"
+        )
+        assert len(original) > 2048
+
+        with patch("app.api.tracks.process_track") as mock_task:
+            mock_task.delay.return_value.id = "task-integrity"
+            app.dependency_overrides[get_db] = lambda: (yield mock_db)
+            r = client.post(
+                "/api/tracks/upload",
+                headers=auth_headers,
+                files={"file": ("integrity.gpx", io.BytesIO(original), "application/gpx+xml")},
+            )
+            app.dependency_overrides.clear()
+
+        assert r.status_code == 202
+        sent_content = mock_task.delay.call_args[0][1]
+        assert sent_content == original
+        assert len(sent_content) == len(original)
+
+
 # ── Unsupported / spoofed formats ─────────────────────────────────────────────
 
 class TestUnsupportedFormats:

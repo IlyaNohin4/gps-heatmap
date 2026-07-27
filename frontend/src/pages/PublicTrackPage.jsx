@@ -104,9 +104,9 @@ export default function PublicTrackPage() {
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: '12px 20px' }}>
               {[
                 ['Distance',  track.distance_km     != null ? `${track.distance_km.toFixed(2)} km`              : null],
-                ['Duration',  track.duration_seconds != null ? `${Math.round(track.duration_seconds / 60)} min`  : null],
-                ['Avg speed', track.speed_avg        != null ? `${(track.speed_avg * 3.6).toFixed(1)} km/h`      : null],
-                ['Max speed', track.speed_max        != null ? `${(track.speed_max * 3.6).toFixed(1)} km/h`      : null],
+                ['Duration',  track.duration_sec     != null ? `${Math.round(track.duration_sec / 60)} min`      : null],
+                ['Avg speed', track.speed_avg        != null ? `${track.speed_avg.toFixed(1)} km/h`              : null],
+                ['Max speed', track.speed_max        != null ? `${track.speed_max.toFixed(1)} km/h`              : null],
                 ['Elev gain', track.elevation_gain   != null ? `${Math.round(track.elevation_gain)} m`           : null],
                 ['Date',      track.recorded_at      ? new Date(track.recorded_at).toLocaleDateString()           : null],
               ].filter(([, v]) => v != null).map(([label, value]) => (

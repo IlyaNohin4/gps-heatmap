@@ -39,7 +39,12 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-    command: sh -c "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 2 --proxy-headers"
+    # --forwarded-allow-ips='*': backend has no published port in prod (only
+    # nginx does), so the only peer that can ever reach uvicorn directly is
+    # the nginx container — trusting its X-Forwarded-For is safe here and
+    # required for per-IP rate limiting (get_remote_address) to see real
+    # client IPs instead of nginx's docker-network IP.
+    command: sh -c "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 2 --proxy-headers --forwarded-allow-ips='*'"
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
       interval: 10s

@@ -9,6 +9,7 @@ def safe_content_disposition(filename: str) -> str:
     escaping, so we avoid relying on it), then adds an RFC 5987 filename*
     so non-ASCII names still round-trip correctly."""
     sanitized = re.sub(r"[\r\n]", "", filename)
-    ascii_fallback = re.sub(r'[\\"]', "", sanitized) or "download"
+    ascii_fallback = sanitized.encode("ascii", "ignore").decode().strip()
+    ascii_fallback = re.sub(r'[\\"]', "", ascii_fallback) or "download"
     encoded = quote(sanitized, safe="")
     return f"attachment; filename=\"{ascii_fallback}\"; filename*=UTF-8''{encoded}"

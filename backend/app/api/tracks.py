@@ -24,6 +24,7 @@ from app.tasks.process_track import process_track
 router = APIRouter(prefix="/api/tracks", tags=["tracks"])
 
 MAX_FILE_BYTES = 20 * 1024 * 1024  # 20 MB
+UPLOAD_CHUNK_SIZE = 1024 * 1024  # 1 MB — read in chunks so the size limit aborts early
 
 # task_id -> user_id mapping for ownership checks in /api/tasks/{id}/status,
 # TTL matches how long a client might reasonably still be polling.
@@ -357,8 +358,17 @@ async def upload_track(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    header = await file.read(2048)
-    await file.seek(0)
+    content = bytearray()
+    header = b""
+    while True:
+        chunk = await file.read(UPLOAD_CHUNK_SIZE)
+        if not chunk:
+            break
+        content.extend(chunk)
+        if len(header) < 2048:
+            header = bytes(content[:2048])
+        if len(content) > MAX_FILE_BYTES:
+            raise HTTPException(status_code=413, detail="File exceeds 20 MB limit")
 
     try:
         fmt = _detect_format(header, file.filename or "")
@@ -368,9 +378,7 @@ async def upload_track(
     if fmt not in ALLOWED_FORMATS:
         raise HTTPException(status_code=400, detail="Unsupported file format")
 
-    content = header + await file.read()
-    if len(content) > MAX_FILE_BYTES:
-        raise HTTPException(status_code=413, detail="File exceeds 20 MB limit")
+    content = bytes(content)
 
     name = (file.filename or "track").rsplit(".", 1)[0]
     track = Track(user_id=current_user.id, name=name, file_format=fmt, raw_points=None)

@@ -21,6 +21,7 @@ from app.services.poi_parser import POIParser, ICON_SLUGS, HEX_COLOR_RE
 router = APIRouter(prefix="/api/poi", tags=["poi"])
 
 MAX_FILE_BYTES = 5 * 1024 * 1024  # 5 MB
+UPLOAD_CHUNK_SIZE = 1024 * 1024  # 1 MB — read in chunks so the size limit aborts early
 
 
 def _validate_icon(icon: Optional[str]) -> None:
@@ -137,11 +138,15 @@ async def upload_poi(
 ):
     """Upload KML or KMZ file with POI."""
 
-    # Read file
-    content = await file.read()
-
-    if len(content) > MAX_FILE_BYTES:
-        raise HTTPException(status_code=413, detail="File exceeds 5 MB limit")
+    content = bytearray()
+    while True:
+        chunk = await file.read(UPLOAD_CHUNK_SIZE)
+        if not chunk:
+            break
+        content.extend(chunk)
+        if len(content) > MAX_FILE_BYTES:
+            raise HTTPException(status_code=413, detail="File exceeds 5 MB limit")
+    content = bytes(content)
 
     # Parse
     poi_list, error = POIParser.parse(content)
