@@ -36,6 +36,11 @@ const PublicTrackPage = lazy(() => import('./pages/PublicTrackPage.jsx'));
 // dead-code-eliminate the dynamic import entirely from the production bundle.
 const UiDemoPage = import.meta.env.DEV ? lazy(() => import('./pages/UiDemoPage.jsx')) : null;
 
+// appStore.tracks feeds the heatmap (VisitLayer) directly, so every refetch
+// must hold every track the user has — the API's default page size (50)
+// would silently drop tracks 51+ from the heatmap and the list.
+const TRACKS_FETCH_LIMIT = 500;
+
 // Speed legend colors
 const SPEED_LEGEND = [
   { maxKmh: 10,  labelKm: '0–10 km/h',   labelMi: '0–6 mph',   color: 'rgb(155,155,155)' },
@@ -99,10 +104,7 @@ function MainPage() {
     }
     let cancelled = false;
     setTracksLoading(true);
-    // limit=500 (API max, see T01): appStore.tracks feeds the heatmap (VisitLayer) directly,
-    // so it must hold every track the user has — a paginated 50-item page would silently
-    // drop tracks 51+ from the heatmap.
-    fetchTracks({ limit: 500 })
+    fetchTracks({ limit: TRACKS_FETCH_LIMIT })
       .then((data) => {
         if (!cancelled) {
           useAppStore.getState().setTracks(data);
@@ -174,7 +176,7 @@ function MainPage() {
     for (const file of files) {
       try {
         await uploadTrack(file, null);
-        const data = await fetchTracks();
+        const data = await fetchTracks({ limit: TRACKS_FETCH_LIMIT });
         setTracks(data);
         bumpTracksListVersion();
         toast.success(i18n.t('tracks.upload_success', { name: file.name }));
@@ -221,7 +223,7 @@ function MainPage() {
   async function handleShowAll() {
     setSelectedTrack(null);
     try {
-      const data = await fetchTracks();
+      const data = await fetchTracks({ limit: TRACKS_FETCH_LIMIT });
       setTracks(data);
     } catch (err) {
       console.error(err);
@@ -348,7 +350,7 @@ function MainPage() {
               format
             );
 
-            const updatedTracks = await fetchTracks();
+            const updatedTracks = await fetchTracks({ limit: TRACKS_FETCH_LIMIT });
             setTracks(updatedTracks);
             bumpTracksListVersion();
 

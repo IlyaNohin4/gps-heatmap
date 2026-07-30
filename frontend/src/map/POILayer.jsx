@@ -51,7 +51,7 @@ function makeDivIcon(category, color, iconSlug) {
 
 export default function POILayer() {
   const map = useMap();
-  const { visibleImports, pois } = useMapStore();
+  const { hiddenImports, pois } = useMapStore();
   const groupRef = useRef(null);
 
   // Create layer group on mount
@@ -65,18 +65,20 @@ export default function POILayer() {
     return () => group.remove();
   }, [map]);
 
-  // Re-render when POI or visible imports change
+  // Re-render when POI or hidden imports change
   useEffect(() => {
     renderPOI();
-  }, [pois, visibleImports]);
+  }, [pois, hiddenImports]);
 
   function renderPOI() {
     if (!groupRef.current) return;
 
     groupRef.current.clearLayers();
 
-    // Show all POI with source='user'
-    const visiblePOI = pois.filter((poi) => poi.source === 'user' || !poi.source);
+    // POI with no import_name were created directly (not from a KML/KMZ
+    // import) and are always shown; imported POI are shown unless their
+    // import was explicitly hidden via the per-import toggle.
+    const visiblePOI = pois.filter((poi) => !poi.import_name || !hiddenImports.has(poi.import_name));
 
     const markers = visiblePOI.map((poi) => {
       const category = poi.category?.toLowerCase() || 'other';

@@ -6,6 +6,10 @@ import useAppStore from '../../store/appStore.js';
 import { uploadTrack, pollTaskStatus, fetchTracks } from '../../api/tracks.js';
 import { sniffKmlKind, isKml } from '../../utils/fileSniff.js';
 
+// appStore.tracks feeds the heatmap directly — must hold every track, not
+// just the API's default 50-item page (see App.jsx's TRACKS_FETCH_LIMIT).
+const TRACKS_FETCH_LIMIT = 500;
+
 const TRACK_FORMATS = ['.gpx', '.kml', '.tcx', '.fit', '.geojson'];
 const POI_FORMATS = ['.kml', '.kmz'];
 const ACCEPTED = [...TRACK_FORMATS, ...POI_FORMATS];
@@ -103,15 +107,20 @@ export default function UploadZone({ inputRef: externalInputRef, onTrackFiles, o
   }
 
   async function pollUntilDone(taskId, filename) {
+    const POLL_INTERVAL_MS = 2000;
+    const MAX_ATTEMPTS = 150; // ~5 minutes — a stuck/PENDING-forever task shouldn't poll silently forever
+    let attempts = 0;
+
     return new Promise((resolve) => {
       const interval = setInterval(async () => {
+        attempts++;
         try {
           const status = await pollTaskStatus(taskId);
           if (status.state === 'SUCCESS' || status.status === 'done' || status.status === 'completed') {
             clearInterval(interval);
             removeUploadingId(taskId);
             try {
-              const data = await fetchTracks({});
+              const data = await fetchTracks({ limit: TRACKS_FETCH_LIMIT });
               useAppStore.getState().setTracks(data);
             } catch {
               if (status.track) addTrack(status.track);
@@ -124,6 +133,11 @@ export default function UploadZone({ inputRef: externalInputRef, onTrackFiles, o
             removeUploadingId(taskId);
             toast.error(t('tracks.upload_failed', { name: filename }));
             resolve();
+          } else if (attempts >= MAX_ATTEMPTS) {
+            clearInterval(interval);
+            removeUploadingId(taskId);
+            toast.error(t('tracks.upload_timeout', { name: filename }));
+            resolve();
           }
         } catch {
           clearInterval(interval);
@@ -131,7 +145,7 @@ export default function UploadZone({ inputRef: externalInputRef, onTrackFiles, o
           toast.error(t('tracks.upload_failed', { name: filename }));
           resolve();
         }
-      }, 2000);
+      }, POLL_INTERVAL_MS);
     });
   }
 

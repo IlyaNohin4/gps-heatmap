@@ -15,6 +15,11 @@ from scipy.signal import savgol_filter
 
 import statistics
 
+# Shared hardened parser for formats that don't need recover=True (KML, TCX).
+# resolve_entities=False + no_network=True block XXE (external entity /
+# file:// disclosure) on untrusted uploads.
+_SAFE_XML_PARSER = etree.XMLParser(resolve_entities=False, no_network=True)
+
 # ── Haversine ─────────────────────────────────────────────────────────────────
 
 _EARTH_R = 6371.0  # km
@@ -621,7 +626,7 @@ def _parse_gpx(data: bytes) -> dict:
     osmand_ns: Optional[str] = osmand[0] if osmand else None
     speed_is_kmh: bool = osmand[1] if osmand else False
 
-    lxml_parser = etree.XMLParser(recover=True, remove_comments=True)
+    lxml_parser = etree.XMLParser(recover=True, remove_comments=True, resolve_entities=False, no_network=True)
     root = etree.fromstring(data, lxml_parser)
 
     points: list[dict] = []
@@ -688,7 +693,7 @@ def _parse_gpx(data: bytes) -> dict:
 # ── KML ───────────────────────────────────────────────────────────────────────
 
 def _parse_kml(data: bytes) -> dict:
-    root = etree.fromstring(data)
+    root = etree.fromstring(data, _SAFE_XML_PARSER)
     ns = {"kml": "http://www.opengis.net/kml/2.2"}
     points: list[dict] = []
     for coords_el in root.iter("{http://www.opengis.net/kml/2.2}coordinates"):
@@ -731,7 +736,7 @@ _TCX_NS = "http://www.garmin.com/xmlschemas/TrainingCenterDatabase/v2"
 
 
 def _parse_tcx(data: bytes) -> dict:
-    root = etree.fromstring(data)
+    root = etree.fromstring(data, _SAFE_XML_PARSER)
     points: list[dict] = []
     for tp in root.iter(f"{{{_TCX_NS}}}Trackpoint"):
         lat_el = tp.find(f"{{{_TCX_NS}}}Position/{{{_TCX_NS}}}LatitudeDegrees")

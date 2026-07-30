@@ -3,12 +3,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
-from app.api import auth, poi, tasks, tracks
+from app.api import auth, poi, routing, tasks, tracks
 from app.core.config import settings
-from app.core.database import Base, engine
 from app.core.limiter import limiter
-
-Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="GPS Heatmap API", version="2.0.0")
 
@@ -38,8 +35,7 @@ _CSP_STRICT = (
     "img-src 'self' data: https://*.tile.openstreetmap.org https://*.tile.opentopomap.org "
     "https://*.tile-cyclosm.openstreetmap.fr https://tile.waymarkedtrails.org "
     "https://server.arcgisonline.com https://*.googleapis.com https://*.gstatic.com; "
-    "connect-src 'self' https://nominatim.openstreetmap.org https://api.openrouteservice.org "
-    "https://overpass-api.de"
+    "connect-src 'self' https://nominatim.openstreetmap.org https://overpass-api.de"
 )
 
 # Swagger UI loads JS/CSS from jsdelivr and fonts from unpkg
@@ -67,6 +63,7 @@ app.include_router(auth.router)
 app.include_router(tracks.router)
 app.include_router(tasks.router)
 app.include_router(poi.router)
+app.include_router(routing.router)
 
 
 @app.get("/health")

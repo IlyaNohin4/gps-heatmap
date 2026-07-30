@@ -1,5 +1,7 @@
 """Tests for POST /api/auth/* endpoints using SQLite in-memory DB."""
+import hashlib
 import secrets
+import time
 from datetime import datetime, timedelta, timezone
 
 import pytest
@@ -43,6 +45,20 @@ class TestRegister:
         r = client.post("/api/auth/register", json={})
         assert r.status_code == 422
 
+    def test_duplicate_email_different_case_is_409(self, client):
+        base = f"case_{secrets.token_hex(4)}"
+        _reg(client, email=f"{base}@test.com")
+        r = _reg(client, email=f"{base.upper()}@TEST.COM")
+        assert r.status_code == 409
+
+    def test_email_stored_lowercase(self, client):
+        base = f"lower_{secrets.token_hex(4)}"
+        r = _reg(client, email=f"{base}@TEST.com")
+        assert r.status_code == 201
+        token = r.json()["access_token"]
+        me = client.get("/api/auth/me", headers={"Authorization": f"Bearer {token}"})
+        assert me.json()["email"] == f"{base}@test.com"
+
 
 # ---------------------------------------------------------------------------
 # Login
@@ -67,6 +83,11 @@ class TestLogin:
     def test_missing_fields_is_422(self, client):
         r = client.post("/api/auth/login", json={"email": "a@b.com"})
         assert r.status_code == 422
+
+    def test_login_case_insensitive_email(self, client, registered_user):
+        email, password, _ = registered_user
+        r = client.post("/api/auth/login", json={"email": email.upper(), "password": password})
+        assert r.status_code == 200
 
     def test_sixth_attempt_in_a_minute_is_429(self, client, registered_user):
         email, _, _ = registered_user
@@ -144,6 +165,26 @@ class TestChangePassword:
         r2 = client.post("/api/auth/login", json={"email": email, "password": "NewPass456"})
         assert r2.status_code == 200
 
+    def test_old_token_invalidated_after_change(self, client, registered_user, auth_headers):
+        # Sanity: token works before the change
+        assert client.get("/api/auth/me", headers=auth_headers).status_code == 200
+
+        # JWT "iat" has whole-second resolution; cross a second boundary so
+        # the invalidation check isn't racing the token's own issue time.
+        time.sleep(1.1)
+
+        _, old_pw, _ = registered_user
+        r = client.post(
+            "/api/auth/change-password",
+            json={"old_password": old_pw, "new_password": "NewPass456"},
+            headers=auth_headers,
+        )
+        assert r.status_code == 204
+
+        # The token issued before the change must now be rejected
+        r2 = client.get("/api/auth/me", headers=auth_headers)
+        assert r2.status_code == 401
+
     def test_wrong_old_password_is_400(self, client, auth_headers):
         r = client.post(
             "/api/auth/change-password",
@@ -188,8 +229,9 @@ class TestPasswordReset:
         from app.models.user import User
         user = db.query(User).filter(User.email == email).first()
         token = secrets.token_urlsafe(32)
+        token_hash = hashlib.sha256(token.encode()).hexdigest()
         expires = datetime.now(timezone.utc) + timedelta(hours=1)
-        db.add(PasswordReset(token=token, user_id=user.id, expires_at=expires))
+        db.add(PasswordReset(token=token_hash, user_id=user.id, expires_at=expires))
         db.commit()
 
         r = client.post(f"/api/auth/reset-password/{token}", json={"password": "ResetPass99"})
@@ -199,6 +241,47 @@ class TestPasswordReset:
         r2 = client.post("/api/auth/login", json={"email": email, "password": "ResetPass99"})
         assert r2.status_code == 200
 
+    def test_old_token_invalidated_after_reset(self, client, db, registered_user, auth_headers):
+        from app.models.password_reset import PasswordReset
+        from app.models.user import User
+
+        email, _, _ = registered_user
+        assert client.get("/api/auth/me", headers=auth_headers).status_code == 200
+
+        # JWT "iat" has whole-second resolution; cross a second boundary so
+        # the invalidation check isn't racing the token's own issue time.
+        time.sleep(1.1)
+
+        user = db.query(User).filter(User.email == email).first()
+        token = secrets.token_urlsafe(32)
+        token_hash = hashlib.sha256(token.encode()).hexdigest()
+        expires = datetime.now(timezone.utc) + timedelta(hours=1)
+        db.add(PasswordReset(token=token_hash, user_id=user.id, expires_at=expires))
+        db.commit()
+
+        r = client.post(f"/api/auth/reset-password/{token}", json={"password": "ResetPass99"})
+        assert r.status_code == 204
+
+        # The pre-reset token must now be rejected
+        r2 = client.get("/api/auth/me", headers=auth_headers)
+        assert r2.status_code == 401
+
+    def test_forgot_password_stores_hashed_token_not_raw(self, client, db, registered_user, monkeypatch):
+        from app.models.password_reset import PasswordReset
+
+        # Avoid a real outbound email send attempt during the test
+        monkeypatch.setenv("RESEND_API_KEY", "")
+
+        email, _, _ = registered_user
+        r = client.post("/api/auth/forgot-password", json={"email": email})
+        assert r.status_code == 204
+
+        reset = db.query(PasswordReset).order_by(PasswordReset.id.desc()).first()
+        assert reset is not None
+        # A raw secrets.token_urlsafe(64) is 86 chars; a sha256 hex digest is 64.
+        assert len(reset.token) == 64
+        assert all(c in "0123456789abcdef" for c in reset.token)
+
     def test_reset_token_cannot_be_reused(self, client, db, registered_user):
         from app.models.password_reset import PasswordReset
         from app.models.user import User
@@ -206,8 +289,9 @@ class TestPasswordReset:
         email, _, _ = registered_user
         user = db.query(User).filter(User.email == email).first()
         token = secrets.token_urlsafe(32)
+        token_hash = hashlib.sha256(token.encode()).hexdigest()
         expires = datetime.now(timezone.utc) + timedelta(hours=1)
-        db.add(PasswordReset(token=token, user_id=user.id, expires_at=expires))
+        db.add(PasswordReset(token=token_hash, user_id=user.id, expires_at=expires))
         db.commit()
 
         client.post(f"/api/auth/reset-password/{token}", json={"password": "FirstReset1"})
@@ -221,8 +305,9 @@ class TestPasswordReset:
         email, _, _ = registered_user
         user = db.query(User).filter(User.email == email).first()
         token = secrets.token_urlsafe(32)
+        token_hash = hashlib.sha256(token.encode()).hexdigest()
         expires = datetime.now(timezone.utc) - timedelta(hours=1)  # already expired
-        db.add(PasswordReset(token=token, user_id=user.id, expires_at=expires))
+        db.add(PasswordReset(token=token_hash, user_id=user.id, expires_at=expires))
         db.commit()
 
         r = client.post(f"/api/auth/reset-password/{token}", json={"password": "NewPass789"})

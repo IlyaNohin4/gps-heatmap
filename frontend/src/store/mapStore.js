@@ -15,9 +15,11 @@ const useMapStore = create((set, get) => ({
   visibleTrackIds: new Set(),
   // Cache of full track details keyed by track id (includes normalized_points, speed_segments)
   trackDetailCache: {},
-  // User-uploaded POI imports
+  // User-uploaded POI imports. hiddenImports is opt-out (starts empty, i.e.
+  // everything visible by default) rather than opt-in, so POI stay visible
+  // even before/without the import list ever being fetched.
   imports: [],
-  visibleImports: new Set(),
+  hiddenImports: new Set(),
 
   // Track creator state
   trackCreatorState: {
@@ -53,13 +55,13 @@ const useMapStore = create((set, get) => ({
   setImports: (imports) => set({ imports }),
   toggleImportVisibility: (importName) =>
     set((s) => {
-      const next = new Set(s.visibleImports);
+      const next = new Set(s.hiddenImports);
       if (next.has(importName)) {
         next.delete(importName);
       } else {
         next.add(importName);
       }
-      return { visibleImports: next };
+      return { hiddenImports: next };
     }),
 
   toggleTrackVisibility: (id) =>
@@ -166,7 +168,7 @@ const useMapStore = create((set, get) => ({
       visibleTrackIds: new Set(),
       trackDetailCache: {},
       imports: [],
-      visibleImports: new Set(),
+      hiddenImports: new Set(),
       trackCreatorState: {
         waypoints: [],
         redoStack: [],

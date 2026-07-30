@@ -3,6 +3,7 @@ import { useMap, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 
 import useMapStore from '../store/mapStore.js';
+import { fetchDirections } from '../api/routing.js';
 
 export const ORS_PROFILES = [
   { id: 'foot-walking',    label: 'Walking',    icon: '🚶' },
@@ -19,27 +20,11 @@ const WAYPOINT_ICON = L.divIcon({
   iconAnchor: [7, 7],
 });
 
-async function fetchRoute(waypoints, profile, orsApiKey) {
+async function fetchRoute(waypoints, profile) {
   if (waypoints.length < 2) return null;
-  if (!orsApiKey) throw new Error('OpenRouteService API key not configured');
 
   const coords = waypoints.map((p) => [p.lng, p.lat]);
-  const url = `https://api.openrouteservice.org/v2/directions/${profile}/geojson`;
-  const resp = await fetch(url, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${orsApiKey}`,
-    },
-    body: JSON.stringify({ coordinates: coords }),
-  });
-
-  if (!resp.ok) {
-    const errData = await resp.json().catch(() => ({}));
-    throw new Error(errData.message || `ORS error ${resp.status}`);
-  }
-
-  const data = await resp.json();
+  const data = await fetchDirections(coords, profile);
   const coords2 = data.features?.[0]?.geometry?.coordinates || [];
   return coords2.map(([lng, lat]) => [lat, lng]);
 }
@@ -55,7 +40,6 @@ export default function TrackCreator() {
   const layerGroupRef = useRef(null);
   const markersRef = useRef([]);
   const routeLineRef = useRef(null);
-  const orsApiKey = import.meta.env.VITE_ORS_API_KEY || '';
 
   const { waypoints, mode, profile, routing, error, routePoints } = trackCreatorState;
 
@@ -120,7 +104,7 @@ export default function TrackCreator() {
     let cancelled = false;
     setTrackCreatorState({ routing: true, error: null });
 
-    fetchRoute(waypoints, profile, orsApiKey)
+    fetchRoute(waypoints, profile)
       .then((pts) => {
         if (!cancelled) {
           setTrackCreatorState({ routePoints: pts || [], routing: false });
@@ -128,14 +112,17 @@ export default function TrackCreator() {
       })
       .catch((err) => {
         if (!cancelled) {
-          setTrackCreatorState({ error: err.message, routing: false });
+          setTrackCreatorState({
+            error: err.response?.data?.detail || err.message,
+            routing: false,
+          });
         }
       });
 
     return () => {
       cancelled = true;
     };
-  }, [waypoints, mode, profile, orsApiKey, setTrackCreatorState]);
+  }, [waypoints, mode, profile, setTrackCreatorState]);
 
   // Map click handler
   useMapEvents({

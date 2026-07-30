@@ -9,7 +9,7 @@ import { sniffKmlKind, isKml } from '../../utils/fileSniff.js';
 
 export default function POIImportPanel({ onClose }) {
   const { t } = useTranslation();
-  const { imports, setImports, visibleImports, toggleImportVisibility } = useMapStore();
+  const { imports, setImports, hiddenImports, toggleImportVisibility } = useMapStore();
   const [uploading, setUploading] = useState(false);
   const [editingName, setEditingName] = useState(null);
   const [editingValue, setEditingValue] = useState('');
@@ -177,7 +177,7 @@ export default function POIImportPanel({ onClose }) {
           </div>
 
           {imports.map((imp) => {
-            const isVisible = visibleImports.has(imp.name);
+            const isVisible = !hiddenImports.has(imp.name);
             const isEditing = editingName === imp.name;
             const isDeleting = deleting === imp.name;
 

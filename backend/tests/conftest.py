@@ -18,7 +18,7 @@ os.environ.setdefault("ORS_API_KEY", "ors_test")
 os.environ.setdefault("MAX_FILE_SIZE_MB", "20")
 
 import secrets
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 from fastapi.testclient import TestClient
@@ -26,15 +26,11 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
-# Patch Base.metadata.create_all so main.py's module-level call does not try
-# to create PostGIS tables against a real (or missing) PostgreSQL engine.
 from app.core.database import Base, get_db
 from app.core.limiter import limiter
 from app.models.password_reset import PasswordReset
 from app.models.user import User
-
-with patch.object(Base.metadata, "create_all"):
-    from app.main import app
+from app.main import app
 
 
 @pytest.fixture(autouse=True)

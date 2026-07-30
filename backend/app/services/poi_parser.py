@@ -2,7 +2,7 @@
 
 import re
 import zipfile
-import xml.etree.ElementTree as ET
+from defusedxml.ElementTree import ParseError, fromstring
 from io import BytesIO
 from typing import Dict, List, Optional, Tuple
 
@@ -104,8 +104,8 @@ class POIParser:
         Extracts Placemarks with Point geometry.
         """
         try:
-            root = ET.fromstring(kml_content)
-        except ET.ParseError as e:
+            root = fromstring(kml_content)
+        except ParseError as e:
             raise ValueError(f"Invalid KML XML: {str(e)}")
 
         # KML namespace

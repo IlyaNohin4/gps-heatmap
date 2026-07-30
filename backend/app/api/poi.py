@@ -44,6 +44,7 @@ class POIResponse(BaseModel):
     icon: Optional[str] = None
     color: Optional[str] = None
     visited: bool = False
+    source: str = "user"
     import_name: Optional[str] = None
 
     model_config = {"from_attributes": True}

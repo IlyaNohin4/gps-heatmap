@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta, timezone
 
 import bcrypt
-from jose import jwt
+from jose import JWTError, jwt
 
 from app.core.config import settings
 
@@ -26,14 +26,22 @@ def verify_password(plain: str, hashed: str) -> bool:
 
 
 def create_access_token(user_id: int) -> str:
-    expire = datetime.now(timezone.utc) + timedelta(days=settings.JWT_EXPIRES_DAYS)
+    now = datetime.now(timezone.utc)
+    expire = now + timedelta(days=settings.JWT_EXPIRES_DAYS)
     return jwt.encode(
-        {"sub": str(user_id), "exp": expire},
+        {"sub": str(user_id), "exp": expire, "iat": now},
         settings.JWT_SECRET,
         algorithm=ALGORITHM,
     )
 
 
-def decode_token(token: str) -> int:
+def decode_token(token: str) -> tuple[int, datetime]:
+    """Returns (user_id, issued_at) — issued_at lets callers reject tokens
+    minted before a password change (see get_current_user)."""
     payload = jwt.decode(token, settings.JWT_SECRET, algorithms=[ALGORITHM])
-    return int(payload["sub"])
+    try:
+        user_id = int(payload["sub"])
+        issued_at = datetime.fromtimestamp(payload["iat"], tz=timezone.utc)
+    except (KeyError, TypeError, ValueError) as exc:
+        raise JWTError("Invalid token payload") from exc
+    return user_id, issued_at

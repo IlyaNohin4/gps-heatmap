@@ -299,3 +299,23 @@ def test_kmz_within_size_limit_still_parses():
     assert error is None
     assert len(poi_list) == 1
     assert poi_list[0]["name"] == "Test POI"
+
+
+def test_xxe_entity_is_rejected_not_resolved():
+    """A DOCTYPE-declared entity must fail parsing (defusedxml blocks it),
+    never silently resolve into POI data — the billion-laughs / XXE guard."""
+    kml = b"""<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE kml [<!ENTITY xxe "PWNED">]>
+<kml xmlns="http://www.opengis.net/kml/2.2">
+  <Document>
+    <Placemark>
+      <name>&xxe;</name>
+      <Point><coordinates>30.5,50.5,0</coordinates></Point>
+    </Placemark>
+  </Document>
+</kml>"""
+
+    poi_list, error = POIParser.parse(kml)
+
+    assert poi_list == []
+    assert error is not None

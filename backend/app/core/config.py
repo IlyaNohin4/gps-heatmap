@@ -11,6 +11,8 @@ class Settings(BaseSettings):
     ORS_API_KEY: str = ""
     MAX_FILE_SIZE_MB: int = 20
     NOMINATIM_USER_AGENT: str = "gps-heatmap/1.0 (change-me@example.com)"
+    # Base URL used to build links in outgoing emails (e.g. password reset).
+    FRONTEND_URL: str = "http://localhost:5173"
     # Dev-only gate: in production frontend+API are same-origin behind nginx (see deploy/nginx.conf),
     # so CORS never triggers there. This exists for local dev (Vite on :5173 vs API on :8000).
     CORS_ORIGINS: str = "http://localhost:5173"

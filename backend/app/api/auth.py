@@ -1,3 +1,4 @@
+import hashlib
 import logging
 import re
 import secrets
@@ -7,6 +8,7 @@ from typing import Literal, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, EmailStr, field_validator
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
@@ -26,6 +28,11 @@ class RegisterRequest(BaseModel):
     email: EmailStr
     password: str
 
+    @field_validator("email")
+    @classmethod
+    def normalize_email(cls, v: str) -> str:
+        return v.strip().lower()
+
     @field_validator("password")
     @classmethod
     def strong_password(cls, v: str) -> str:
@@ -38,9 +45,19 @@ class LoginRequest(BaseModel):
     email: EmailStr
     password: str
 
+    @field_validator("email")
+    @classmethod
+    def normalize_email(cls, v: str) -> str:
+        return v.strip().lower()
+
 
 class ForgotPasswordRequest(BaseModel):
     email: EmailStr
+
+    @field_validator("email")
+    @classmethod
+    def normalize_email(cls, v: str) -> str:
+        return v.strip().lower()
 
 
 class ResetPasswordRequest(BaseModel):
@@ -66,7 +83,13 @@ def register(request: Request, body: RegisterRequest, db: Session = Depends(get_
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Email already registered")
     user = User(email=body.email, password_hash=hash_password(body.password))
     db.add(user)
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError:
+        # Two concurrent registrations for the same email both passed the
+        # check above; the unique constraint on User.email is the real guard.
+        db.rollback()
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Email already registered")
     db.refresh(user)
     return TokenResponse(access_token=create_access_token(user.id))
 
@@ -88,8 +111,9 @@ def forgot_password(request: Request, body: ForgotPasswordRequest, db: Session =
         return  # Don't reveal whether email exists
 
     token = secrets.token_urlsafe(64)
+    token_hash = hashlib.sha256(token.encode()).hexdigest()
     expires = datetime.now(timezone.utc) + timedelta(hours=1)
-    db.add(PasswordReset(token=token, user_id=user.id, expires_at=expires))
+    db.add(PasswordReset(token=token_hash, user_id=user.id, expires_at=expires))
     db.commit()
 
     try:
@@ -100,7 +124,7 @@ def forgot_password(request: Request, body: ForgotPasswordRequest, db: Session =
             "from": "noreply@gpsheatmap.app",
             "to": user.email,
             "subject": "Reset your password",
-            "html": f"<p>Click to reset: <a href='https://gpsheatmap.app/reset-password/{token}'>Reset password</a></p>",
+            "html": f"<p>Click to reset: <a href='{settings.FRONTEND_URL}/reset-password/{token}'>Reset password</a></p>",
         })
     except Exception:
         # User-facing behavior stays silent (don't reveal email delivery status),
@@ -112,9 +136,10 @@ def forgot_password(request: Request, body: ForgotPasswordRequest, db: Session =
 @limiter.limit("3/minute")
 def reset_password(request: Request, token: str, body: ResetPasswordRequest, db: Session = Depends(get_db)):
     now = datetime.now(timezone.utc)
+    token_hash = hashlib.sha256(token.encode()).hexdigest()
     reset = (
         db.query(PasswordReset)
-        .filter(PasswordReset.token == token, PasswordReset.used == False, PasswordReset.expires_at > now)
+        .filter(PasswordReset.token == token_hash, PasswordReset.used == False, PasswordReset.expires_at > now)
         .first()
     )
     if not reset:
@@ -125,6 +150,7 @@ def reset_password(request: Request, token: str, body: ResetPasswordRequest, db:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
 
     user.password_hash = hash_password(body.password)
+    user.password_changed_at = now
     reset.used = True
     db.commit()
 
@@ -217,6 +243,7 @@ def change_password(
     if not verify_password(body.old_password, current_user.password_hash):
         raise HTTPException(status_code=400, detail="Current password is incorrect")
     current_user.password_hash = hash_password(body.new_password)
+    current_user.password_changed_at = datetime.now(timezone.utc)
     db.commit()
 
 

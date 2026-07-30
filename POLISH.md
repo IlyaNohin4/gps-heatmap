@@ -408,6 +408,32 @@
 
 ## ⭐⭐ ВАЖНЫЕ
 
+- [ ] `react-router-dom` 6.30.4 — moderate CVE (open redirect via backslash in
+  `<Link>`/`useNavigate`, GHSA-wrjc-x8rr-h8h6; deserialization issue in SSR
+  hydration, GHSA-337j-9hxr-rhxg), найдено при аудите зависимостей (MEDIUM #10,
+  2026-07-30). Полный фикс требует мажорного апгрейда до v7 (breaking API
+  changes — не входит в текущий scope без отдельного согласования). Для
+  личного инструмента без SSR и без непроверенных redirect-ссылок риск низкий
+  — оставлено как известный долг, не смёрджено.
+
+- [ ] `POIImportPanel.jsx` нигде не подключён к приложению (мёртвый компонент)
+  - Обнаружено 2026-07-27 при фиксе аудита Fable (пункт про декоративные тумблеры
+    видимости импортов). Компонент содержит полноценный UI управления импортами
+    (rename/delete/export/toggle-visibility per-import), но не импортируется ни
+    из `POITab.jsx`, ни откуда-либо ещё — `grep` по всему `frontend/src` не находит
+    ни одного места, где он рендерится. `getImports()`/`renameImport()`/
+    `deleteImport()`/`exportImport()` (все уже есть в `api/poi.js` и backend)
+    сейчас недостижимы через UI вообще
+  - Кнопка "Import" в `POITab.jsx` делает только сырую загрузку файла
+    (`<input type=file>`), без какого-либо последующего управления импортами
+  - Store (`mapStore.js`) при этом фикс: `visibleImports` → `hiddenImports`
+    (opt-out вместо opt-in, дефолт — пустой Set = всё видно), чтобы отсутствие
+    подключённой панели не приводило к тому, что все импортированные POI
+    навсегда скрыты (именно так было бы с прежней opt-in семантикой)
+  - Нужно решить: либо подключить `POIImportPanel` в UI (кнопка "Manage imports"
+    рядом с "Import" в `POITab.jsx`), либо удалить его как мёртвый код вместе с
+    unused API-функциями, если управление импортами не нужно как фича
+
 - [ ] Отправка email — Resend API интеграция
   - Resend API настроен в .env.example (RESEND_API_KEY)
   - Нужна реальная интеграция для:

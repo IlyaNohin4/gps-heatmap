@@ -390,3 +390,71 @@ class TestParsePublicAPI:
     def test_unknown_format_raises(self):
         with pytest.raises(ValueError):
             parse(b"data", "xyz")
+
+
+# ── XXE hardening ────────────────────────────────────────────────────────────
+#
+# lxml resolves internal DTD entities by default (resolve_entities=True), the
+# same setting that also enables external entity (XXE) disclosure. If an
+# internal entity substitution succeeds against our parser config, that
+# proves resolve_entities isn't actually off — the same misconfiguration
+# that would let file:// external entities through. Testing via an internal
+# entity keeps this fully offline/deterministic instead of depending on
+# network access or the filesystem layout inside the test container.
+
+_XXE_ENTITY_GPX = b"""<?xml version="1.0"?>
+<!DOCTYPE gpx [<!ENTITY xxe "PWNED">]>
+<gpx version="1.1"><trk><name>&xxe;</name><trkseg>
+<trkpt lat="1.0" lon="2.0"><time>2024-01-01T10:00:00Z</time></trkpt>
+<trkpt lat="1.1" lon="2.1"><time>2024-01-01T10:05:00Z</time></trkpt>
+</trkseg></trk></gpx>"""
+
+_XXE_ENTITY_KML = b"""<?xml version="1.0"?>
+<!DOCTYPE kml [<!ENTITY xxe "PWNED">]>
+<kml xmlns="http://www.opengis.net/kml/2.2"><Document>
+<Placemark><name>&xxe;</name><LineString>
+<coordinates>2.0,1.0,0 2.1,1.1,0</coordinates>
+</LineString></Placemark>
+</Document></kml>"""
+
+_XXE_ENTITY_TCX = b"""<?xml version="1.0"?>
+<!DOCTYPE TrainingCenterDatabase [<!ENTITY xxe "PWNED">]>
+<TrainingCenterDatabase xmlns="http://www.garmin.com/xmlschemas/TrainingCenterDatabase/v2">
+<Activities><Activity Sport="Other"><Id>&xxe;</Id><Lap StartTime="2024-01-01T10:00:00Z"><Track>
+<Trackpoint><Position><LatitudeDegrees>1.0</LatitudeDegrees><LongitudeDegrees>2.0</LongitudeDegrees></Position><Time>2024-01-01T10:00:00Z</Time></Trackpoint>
+<Trackpoint><Position><LatitudeDegrees>1.1</LatitudeDegrees><LongitudeDegrees>2.1</LongitudeDegrees></Position><Time>2024-01-01T10:05:00Z</Time></Trackpoint>
+</Track></Lap></Activity></Activities></TrainingCenterDatabase>"""
+
+
+class TestXXEHardening:
+    """With resolve_entities=False, lxml leaves an entity reference as an
+    unresolved Entity node in the tree instead of substituting its declared
+    value — so .text on the containing element is None, never "PWNED"."""
+
+    def test_gpx_parser_does_not_resolve_entities(self):
+        from lxml import etree
+
+        lxml_parser = etree.XMLParser(recover=True, remove_comments=True, resolve_entities=False, no_network=True)
+        root = etree.fromstring(_XXE_ENTITY_GPX, lxml_parser)
+        name_el = root.find(".//{*}name")
+        assert name_el is not None
+        assert name_el.text != "PWNED"
+
+    def test_kml_parser_does_not_resolve_entities(self):
+        from lxml import etree
+        from app.services.parser_factory import _SAFE_XML_PARSER
+
+        root = etree.fromstring(_XXE_ENTITY_KML, _SAFE_XML_PARSER)
+        name_el = root.find(".//{http://www.opengis.net/kml/2.2}name")
+        assert name_el is not None
+        assert name_el.text != "PWNED"
+
+    def test_tcx_parser_does_not_resolve_entities(self):
+        from lxml import etree
+        from app.services.parser_factory import _SAFE_XML_PARSER
+
+        root = etree.fromstring(_XXE_ENTITY_TCX, _SAFE_XML_PARSER)
+        ns = "{http://www.garmin.com/xmlschemas/TrainingCenterDatabase/v2}"
+        id_el = root.find(f".//{ns}Id")
+        assert id_el is not None
+        assert id_el.text != "PWNED"
