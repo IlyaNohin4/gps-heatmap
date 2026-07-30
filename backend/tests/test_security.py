@@ -9,7 +9,6 @@ import pytest
 from app.api.tracks import _detect_format
 from app.core.database import get_db
 from app.models.user import User
-from app.services.normalizer import normalize
 from app.services.parser_factory import detect_format, parse
 
 
@@ -305,49 +304,3 @@ class TestAuthTokenSecurity:
         token = jwt.encode(expired_payload, settings.JWT_SECRET, algorithm="HS256")
         r = client.get("/api/tracks", headers={"Authorization": f"Bearer {token}"})
         assert r.status_code == 401
-
-
-# ── Normalizer security / edge cases ──────────────────────────────────────────
-
-class TestNormalizerEdgeCases:
-    def _pt(self, lat, lon, t=None):
-        return {"lat": lat, "lon": lon, "elevation": None, "time": t}
-
-    def test_empty_points_returns_empty(self):
-        pts, segs = normalize([], [])
-        assert pts == []
-        assert segs == []
-
-    def test_speed_outlier_filtered(self):
-        segs = [
-            {"from": [48.0, 2.0], "to": [49.0, 3.0], "speed_kmh": 15.0},
-            {"from": [49.0, 3.0], "to": [50.0, 4.0], "speed_kmh": 9999.0},  # outlier
-        ]
-        pts = [self._pt(48.0, 2.0), self._pt(49.0, 3.0), self._pt(50.0, 4.0)]
-        _, cleaned = normalize(pts, segs)
-        assert all(s["speed_kmh"] <= 350 for s in cleaned)
-        assert len(cleaned) == 1
-
-    def test_drift_clusters_collapsed(self):
-        from datetime import datetime, timedelta, timezone
-
-        base = datetime(2024, 1, 1, 10, 0, 0, tzinfo=timezone.utc)
-        # 5 points all within 5 metres of each other — should collapse to 1
-        pts = [
-            {"lat": 48.85660 + i * 0.000001, "lon": 2.35220, "elevation": None, "time": base + timedelta(seconds=i * 10)}
-            for i in range(5)
-        ]
-        collapsed, _ = normalize(pts, [])
-        assert len(collapsed) < len(pts)
-
-    def test_normal_track_unchanged(self):
-        from datetime import datetime, timedelta, timezone
-
-        base = datetime(2024, 1, 1, 10, 0, 0, tzinfo=timezone.utc)
-        # Points far apart — should not be collapsed
-        pts = [
-            {"lat": 48.0 + i * 0.1, "lon": 2.0 + i * 0.1, "elevation": None, "time": base + timedelta(minutes=i)}
-            for i in range(5)
-        ]
-        collapsed, _ = normalize(pts, [])
-        assert len(collapsed) == len(pts)

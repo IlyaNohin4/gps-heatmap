@@ -1,6 +1,5 @@
 import hashlib
 import logging
-import re
 import secrets
 from datetime import datetime, timedelta, timezone
 
@@ -20,8 +19,6 @@ from app.models.user import User
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 logger = logging.getLogger(__name__)
-
-EMAIL_RE = re.compile(r"^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$")
 
 
 class RegisterRequest(BaseModel):

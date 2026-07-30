@@ -2,7 +2,6 @@
 
 from typing import List, Optional
 from pathlib import Path
-import io
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
 from fastapi.responses import StreamingResponse
@@ -72,7 +71,7 @@ class ImportInfo(BaseModel):
 
 
 class RenameImportRequest(BaseModel):
-    new_name: str
+    new_name: str = Field(..., max_length=255)
 
 
 class CreatePOIRequest(BaseModel):
@@ -138,6 +137,9 @@ async def upload_poi(
     current_user: User = Depends(get_current_user),
 ):
     """Upload KML or KMZ file with POI."""
+
+    if not file.filename:
+        raise HTTPException(status_code=400, detail="Missing filename")
 
     content = bytearray()
     while True:

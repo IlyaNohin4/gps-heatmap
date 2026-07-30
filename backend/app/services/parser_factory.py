@@ -13,8 +13,6 @@ from typing import Any, Optional
 from lxml import etree
 from scipy.signal import savgol_filter
 
-import statistics
-
 # Shared hardened parser for formats that don't need recover=True (KML, TCX).
 # resolve_entities=False + no_network=True block XXE (external entity /
 # file:// disclosure) on untrusted uploads.
@@ -89,7 +87,7 @@ def _collapse_drift(points: list[dict], distance_threshold: float = 3.0, time_th
             # Replace cluster with centroid
             avg_lat = sum(p['lat'] for p in cluster) / len(cluster)
             avg_lon = sum(p['lon'] for p in cluster) / len(cluster)
-            avg_ele = sum(p.get('elevation') or 0 for p in cluster) / len(cluster) if cluster[0].get('elevation') else None
+            avg_ele = sum(p.get('elevation') or 0 for p in cluster) / len(cluster) if cluster[0].get('elevation') is not None else None
 
             result.append({
                 'lat': avg_lat,
@@ -275,30 +273,37 @@ def _simplify_trajectory(points: list[dict], tolerance_m: float = 15.0) -> list[
     if len(points) < 3:
         return points
 
-    def rdp_recursive(pts: list[dict], eps: float) -> list[dict]:
-        """Recursive Douglas-Peucker."""
-        if len(pts) < 3:
-            return pts
+    # Iterative Douglas-Peucker (explicit stack of index ranges instead of
+    # recursion) — a near-collinear track with thousands of points can drive
+    # the recursive version past Python's default recursion limit.
+    n = len(points)
+    keep = [False] * n
+    keep[0] = True
+    keep[-1] = True
+
+    stack = [(0, n - 1)]
+    while stack:
+        start_idx, end_idx = stack.pop()
+        if end_idx - start_idx < 2:
+            continue
+
+        start = (points[start_idx]["lat"], points[start_idx]["lon"])
+        end = (points[end_idx]["lat"], points[end_idx]["lon"])
 
         dmax = 0.0
-        index = 0
-        start = (pts[0]["lat"], pts[0]["lon"])
-        end = (pts[-1]["lat"], pts[-1]["lon"])
-
-        for i in range(1, len(pts) - 1):
-            d = _point_to_line_distance((pts[i]["lat"], pts[i]["lon"]), start, end)
+        index = start_idx
+        for i in range(start_idx + 1, end_idx):
+            d = _point_to_line_distance((points[i]["lat"], points[i]["lon"]), start, end)
             if d > dmax:
                 index = i
                 dmax = d
 
-        if dmax > eps:
-            rec1 = rdp_recursive(pts[: index + 1], eps)
-            rec2 = rdp_recursive(pts[index:], eps)
-            return rec1[:-1] + rec2
-        else:
-            return [pts[0], pts[-1]]
+        if dmax > tolerance_m:
+            keep[index] = True
+            stack.append((start_idx, index))
+            stack.append((index, end_idx))
 
-    return rdp_recursive(points, tolerance_m)
+    return [p for p, k in zip(points, keep) if k]
 
 
 def _normalize_points(points: list[dict]) -> list[dict]:

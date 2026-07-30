@@ -7,6 +7,7 @@ Results are cached in Redis for 30 days using the rounded coordinate as the key.
 """
 
 import logging
+import time
 from typing import Optional
 
 import httpx
@@ -36,42 +37,6 @@ def _redis_client() -> Optional[redis.Redis]:
         return None
 
 
-async def _reverse_geocode(lat: float, lon: float, r: Optional[redis.Redis]) -> Optional[str]:
-    key = _cache_key(lat, lon)
-    if r:
-        cached = r.get(key)
-        if cached:
-            return cached
-
-    try:
-        async with httpx.AsyncClient(timeout=10) as client:
-            resp = await client.get(
-                _NOMINATIM_URL,
-                params={"lat": lat, "lon": lon, "format": "json", "zoom": 10},
-                headers=_HEADERS,
-            )
-            resp.raise_for_status()
-            data = resp.json()
-    except Exception as exc:
-        logger.warning("Nominatim reverse geocode failed for (%.4f, %.4f): %s", lat, lon, exc)
-        return None
-
-    addr = data.get("address", {})
-    parts = [
-        addr.get("city") or addr.get("town") or addr.get("village") or addr.get("county"),
-        addr.get("state") or addr.get("region"),
-        addr.get("country"),
-    ]
-    label = ", ".join(p for p in parts if p) or data.get("display_name", "")
-    if not label:
-        return None
-
-    if r:
-        r.setex(key, _CACHE_TTL, label)
-
-    return label
-
-
 def _reverse_geocode_sync(lat: float, lon: float, r: Optional[redis.Redis]) -> Optional[str]:
     """Synchronous version for use inside Celery tasks."""
     key = _cache_key(lat, lon)
@@ -92,6 +57,11 @@ def _reverse_geocode_sync(lat: float, lon: float, r: Optional[redis.Redis]) -> O
     except Exception as exc:
         logger.warning("Nominatim reverse geocode failed for (%.4f, %.4f): %s", lat, lon, exc)
         return None
+    finally:
+        # Nominatim's usage policy caps anonymous usage at 1 req/sec; get_regions
+        # fires up to 3 of these back-to-back inside the global track-processing
+        # lock, so only a real network call (not a cache hit) needs to pace itself.
+        time.sleep(1)
 
     addr = data.get("address", {})
     parts = [

@@ -11,6 +11,7 @@ from sqlalchemy import cast, func
 from sqlalchemy.dialects.postgresql import ARRAY as PG_ARRAY
 from sqlalchemy.orm import Session
 
+from app.core.config import settings
 from app.core.database import get_db
 from app.core.deps import get_current_user
 from app.core.http_utils import safe_content_disposition
@@ -23,7 +24,7 @@ from app.tasks.process_track import process_track
 
 router = APIRouter(prefix="/api/tracks", tags=["tracks"])
 
-MAX_FILE_BYTES = 20 * 1024 * 1024  # 20 MB
+MAX_FILE_BYTES = settings.MAX_FILE_SIZE_MB * 1024 * 1024
 UPLOAD_CHUNK_SIZE = 1024 * 1024  # 1 MB — read in chunks so the size limit aborts early
 
 # task_id -> user_id mapping for ownership checks in /api/tasks/{id}/status,

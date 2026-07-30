@@ -1,6 +1,5 @@
 """Celery task: parse → normalize → geocode → persist a GPS track."""
 
-import traceback
 from datetime import datetime, timezone
 
 import redis

@@ -332,18 +332,26 @@ export default React.memo(function TrackCard({ track, isSelected, onClick }) {
                 <div style={{ fontSize: 'var(--text-sm)' }}>{elevationLabel(track.elevation_loss, unitSystem)}</div>
               </div>
             )}
-            {track.regions?.length > 0 && (
-              <div style={{ gridColumn: '1/-1' }}>
-                <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: 600, marginBottom: 'var(--space-1)', display: 'flex', alignItems: 'center', gap: 'var(--space-1)' }}>
-                  <MapPin size={10} /> {t('card.regions')}
+            {(() => {
+              // "__error: ..." is a backend-internal marker (process_track.py
+              // reuses the regions column to record a processing failure,
+              // since Track has no dedicated status/error field) — never a
+              // real region, must not be shown to the user as one.
+              const validRegions = track.regions?.filter((r) => !r.startsWith('__error:')) ?? [];
+              if (!validRegions.length) return null;
+              return (
+                <div style={{ gridColumn: '1/-1' }}>
+                  <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: 600, marginBottom: 'var(--space-1)', display: 'flex', alignItems: 'center', gap: 'var(--space-1)' }}>
+                    <MapPin size={10} /> {t('card.regions')}
+                  </div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-1)' }}>
+                    {validRegions.map((r, i) => (
+                      <span key={i} className="track-tag">{r}</span>
+                    ))}
+                  </div>
                 </div>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-1)' }}>
-                  {track.regions.map((r, i) => (
-                    <span key={i} className="track-tag">{r}</span>
-                  ))}
-                </div>
-              </div>
-            )}
+              );
+            })()}
           </div>
         </div>
       )}
