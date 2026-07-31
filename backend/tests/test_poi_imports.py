@@ -27,10 +27,14 @@ class TestCreateImport:
         assert r.json() == {"name": "Hiking", "count": 0}
 
     def test_empty_list_appears_in_get_imports(self, client, auth_headers):
+        # Every account starts with a "My Points" list (see api/auth.py register()).
         client.post("/api/poi/imports", json={"name": "Hiking"}, headers=auth_headers)
         r = client.get("/api/poi/imports", headers=auth_headers)
         assert r.status_code == 200
-        assert r.json() == [{"name": "Hiking", "count": 0}]
+        assert r.json() == [
+            {"name": "Hiking", "count": 0},
+            {"name": "My Points", "count": 0},
+        ]
 
     def test_duplicate_name_is_409(self, client, auth_headers):
         client.post("/api/poi/imports", json={"name": "Hiking"}, headers=auth_headers)
@@ -53,7 +57,10 @@ class TestCreatePOIIntoImport:
         assert r.json()["import_name"] == "Hiking"
 
         imports = client.get("/api/poi/imports", headers=auth_headers).json()
-        assert imports == [{"name": "Hiking", "count": 1}]
+        assert imports == [
+            {"name": "Hiking", "count": 1},
+            {"name": "My Points", "count": 0},
+        ]
 
     def test_create_poi_into_existing_empty_list(self, client, auth_headers):
         client.post("/api/poi/imports", json={"name": "Hiking"}, headers=auth_headers)
@@ -63,7 +70,10 @@ class TestCreatePOIIntoImport:
             headers=auth_headers,
         )
         imports = client.get("/api/poi/imports", headers=auth_headers).json()
-        assert imports == [{"name": "Hiking", "count": 1}]
+        assert imports == [
+            {"name": "Hiking", "count": 1},
+            {"name": "My Points", "count": 0},
+        ]
 
     def test_create_poi_without_import_name_is_422(self, client, auth_headers):
         r = client.post(
@@ -95,7 +105,10 @@ class TestRenameImport:
         assert r.status_code == 200
 
         imports = client.get("/api/poi/imports", headers=auth_headers).json()
-        assert imports == [{"name": "Mountains", "count": 1}]
+        assert imports == [
+            {"name": "Mountains", "count": 1},
+            {"name": "My Points", "count": 0},
+        ]
 
     def test_rename_missing_list_is_404(self, client, auth_headers):
         r = client.patch("/api/poi/imports/Ghost", json={"new_name": "New"}, headers=auth_headers)
@@ -118,7 +131,9 @@ class TestDeleteImport:
         r = client.delete("/api/poi/imports/Hiking", headers=auth_headers)
         assert r.status_code == 204
 
-        assert client.get("/api/poi/imports", headers=auth_headers).json() == []
+        assert client.get("/api/poi/imports", headers=auth_headers).json() == [
+            {"name": "My Points", "count": 0}
+        ]
         assert client.get("/api/poi", headers=auth_headers).json()["items"] == []
 
     def test_delete_missing_list_is_404(self, client, auth_headers):

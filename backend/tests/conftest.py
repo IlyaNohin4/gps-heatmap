@@ -22,13 +22,15 @@ from unittest.mock import MagicMock
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, event
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
 from app.core.database import Base, get_db
 from app.core.limiter import limiter
 from app.models.password_reset import PasswordReset
+from app.models.poi import POI
+from app.models.poi_import import POIImport
 from app.models.user import User
 from app.main import app
 
@@ -53,8 +55,24 @@ _engine = create_engine(
     poolclass=StaticPool,
 )
 
-# Create only User + PasswordReset tables — both are plain SQL, no PostGIS.
-Base.metadata.create_all(bind=_engine, tables=[User.__table__, PasswordReset.__table__])
+
+# SQLite ignores FK constraints (including ON DELETE CASCADE) unless this is
+# set per-connection — without it, deleting a user in tests leaves orphaned
+# poi_imports/poi rows behind, unlike real Postgres. Matches prod behavior.
+@event.listens_for(_engine, "connect")
+def _enable_sqlite_fk(dbapi_connection, connection_record):
+    cursor = dbapi_connection.cursor()
+    cursor.execute("PRAGMA foreign_keys=ON")
+    cursor.close()
+
+# Create only User + PasswordReset + POI + POIImport tables — all plain SQL,
+# no PostGIS. register() creates a default POIImport row, and GET
+# /api/poi/imports joins against POI for counts, so both need to exist even
+# for tests that only care about auth.
+Base.metadata.create_all(
+    bind=_engine,
+    tables=[User.__table__, PasswordReset.__table__, POI.__table__, POIImport.__table__],
+)
 
 _TestingSession = sessionmaker(autocommit=False, autoflush=False, bind=_engine)
 

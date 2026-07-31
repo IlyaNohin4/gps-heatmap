@@ -15,6 +15,7 @@ from app.core.deps import get_current_user
 from app.core.limiter import limiter
 from app.core.security import create_access_token, hash_password, verify_password
 from app.models.password_reset import PasswordReset
+from app.models.poi_import import POIImport
 from app.models.user import User
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
@@ -88,6 +89,12 @@ def register(request: Request, body: RegisterRequest, db: Session = Depends(get_
         db.rollback()
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Email already registered")
     db.refresh(user)
+
+    # Every account starts with one POI list so Create-POI never has to force
+    # the user through "+ New list..." on their very first point.
+    db.add(POIImport(user_id=user.id, name="My Points"))
+    db.commit()
+
     return TokenResponse(access_token=create_access_token(user.id))
 
 

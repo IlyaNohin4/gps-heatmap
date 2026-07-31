@@ -44,7 +44,11 @@ export default function POICreationModal({ lat, lon, onClose, onSuccess }) {
           if (lastUsedImportName && data.some((imp) => imp.name === lastUsedImportName)) {
             return lastUsedImportName;
           }
-          return data.length > 0 ? data[0].name : NEW_LIST_VALUE;
+          if (data.length === 0) {
+            setNewListName((name) => name || 'My Points');
+            return NEW_LIST_VALUE;
+          }
+          return data[0].name;
         });
       })
       .catch((err) => console.error('Failed to load imports:', err))

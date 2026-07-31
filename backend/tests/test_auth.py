@@ -27,6 +27,12 @@ class TestRegister:
         assert "access_token" in data
         assert data["token_type"] == "bearer"
 
+    def test_creates_default_my_points_list(self, client):
+        token = _reg(client).json()["access_token"]
+        r = client.get("/api/poi/imports", headers={"Authorization": f"Bearer {token}"})
+        assert r.status_code == 200
+        assert r.json() == [{"name": "My Points", "count": 0}]
+
     def test_duplicate_email_is_409(self, client):
         email = f"dup_{secrets.token_hex(4)}@test.com"
         _reg(client, email=email)
