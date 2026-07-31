@@ -66,6 +66,29 @@ is_public (bool), public_token (string)
 id, user_id, token, expires_at, used
 ```
 
+### POI
+```
+id, user_id, name, lat, lon, category
+description, icon, color, visited (bool)
+source ('user' | uploaded-parser source)
+import_name (string, FK-by-value into POIImport.name — not a real FK column)
+created_at
+```
+
+### POIImport
+```
+id, user_id, name, created_at
+UNIQUE (user_id, name)
+```
+Список импортов POI — независимая сущность (2026-07-31), а не просто
+группировка `POI.import_name`. Это позволяет создать пустой список заранее
+(например, из `POICreationModal` при ручном добавлении точки — "+ New list…")
+и управлять им (rename/delete/export), даже пока в нём 0 точек. `POI.import_name`
+остаётся строкой, не настоящим FK — переименование/удаление списка каскадно
+обновляет/удаляет все `POI` с этим `import_name` вручную в эндпоинте, не через
+БД-констрейнт. Создание POI/загрузка KML с новым `import_name` автовивифицирует
+соответствующую строку `POIImport` (`_get_or_create_import` в `api/poi.py`).
+
 **Миграции (Alembic, `backend/alembic/versions/`):**
 - 0001 — initial schema
 - 0002 — elevation_gain, elevation_loss
@@ -74,6 +97,10 @@ id, user_id, token, expires_at, used
 - 0006 — import_name на poi
 - 0007 — индексы под фильтры/сортировку (tracks + poi, T03)
 - 0008 — moving_time_sec на tracks (T25)
+- 0009 — icon/color на poi
+- 0010 — visited на poi
+- 0011 — password_changed_at на users (JWT-инвалидация при смене пароля)
+- 0012 — таблица poi_imports + бэкфилл существующих `POI.import_name`
 
 (0004 в номерации нет — не создавалась/не сохранилась в истории, разрыв не
 критичен для Alembic, цепочка `down_revision` идёт 0001→0002→0003→0005→...)
@@ -176,15 +203,24 @@ GET    /api/poi                        — список POI юзера (паги
        получить все POI одним вызовом — фронтенд-обёртка fetchPOI(category)
        сохраняет старую сигнатуру и возвращает массив.
 
-POST   /api/poi/create                 — создать одну точку
-POST   /api/poi/upload                 — импорт KML/KMZ (max 5MB)
+POST   /api/poi/create                 — создать одну точку. body принимает опциональный
+       import_name — точка сразу попадает в список (существующий или новый,
+       автовивифицируется через _get_or_create_import, см. § POIImport)
+POST   /api/poi/upload                 — импорт KML/KMZ (max 5MB), import_name берётся
+       из имени файла, список тоже автовивифицируется
 GET    /api/poi/categories             — категории с count
 PATCH  /api/poi/{id}
 DELETE /api/poi/{id}
-GET    /api/poi/imports                — список импортов с count
-PATCH  /api/poi/imports/{import_name}  — переименование
-DELETE /api/poi/imports/{import_name}
-GET    /api/poi/imports/{import_name}/export — экспорт KML
+POST   /api/poi/imports                — создать пустой список (2026-07-31). body: {name}.
+       409 при дубликате имени для этого юзера. Существует независимо от того,
+       есть ли в нём точки — см. § POIImport в Database Models
+GET    /api/poi/imports                — список импортов с count (включая пустые)
+PATCH  /api/poi/imports/{import_name}  — переименование (404 если списка нет, 409 при
+       коллизии имени), каскадно обновляет POI.import_name у всех точек списка
+DELETE /api/poi/imports/{import_name}  — удаляет список И все POI в нём (тот же
+       эффект, что был раньше у "delete import", просто теперь через POIImport)
+GET    /api/poi/imports/{import_name}/export — экспорт KML (пустой список → пустой,
+       но валидный KML, а не 404 — 404 только если самого списка не существует)
 ```
 
 ### Tasks
@@ -254,6 +290,14 @@ POST   /api/routing/directions         — прокси к OpenRouteService дл
   POITab остаётся всегда смонтированным, переключение табов — только
   `display:none/flex` (см. POLISH.md — восстановлено после регрессии в T06),
   поэтому пагинированное состояние списка переживает переключение табов.
+  **Imports panel (2026-07-31):** управление списками (rename/delete/export/
+  toggle-visibility per import + "+ New list") встроено прямо в `POITab.jsx`
+  (не отдельный компонент — был `POIImportPanel.jsx`, удалён), раскрывается
+  над нижним рядом кнопок (`activePanel === 'left:poi-imports'`, тот же
+  паттерн single-open-panel, что у Filter), кнопка-триггер — иконка слева от
+  Import, того же размера, что Import/Create. `POICreationModal.jsx` при
+  создании точки вручную даёт выбрать список (или создать новый на лету);
+  выбор запоминается в `mapStore.lastUsedImportName` между созданиями.
 
 ### RightIsland
 - Zoom, Compass, Nominatim поиск, Geolocation
