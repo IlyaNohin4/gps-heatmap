@@ -185,6 +185,9 @@ export default function MapContainer() {
     setCreatingPOI(null);
     // Refresh POI list in Zustand store
     useMapStore.getState().addPOI(poi);
+    // POITab's own paginated list is separate state — without this it stays
+    // stale (new point invisible in the sidebar) until a page reload.
+    useAppStore.getState().bumpPOIListVersion();
   };
 
   return (

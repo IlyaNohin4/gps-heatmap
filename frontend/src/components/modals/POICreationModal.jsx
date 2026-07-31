@@ -20,7 +20,7 @@ const NEW_LIST_VALUE = '__new__';
 
 export default function POICreationModal({ lat, lon, onClose, onSuccess }) {
   const { t } = useTranslation();
-  const { imports, setImports, lastUsedImportName, setLastUsedImportName } = useMapStore();
+  const { imports, setImports } = useMapStore();
   const [name, setName] = useState('');
   const [category, setCategory] = useState('Food');
   const [description, setDescription] = useState('');
@@ -39,21 +39,21 @@ export default function POICreationModal({ lat, lon, onClose, onSuccess }) {
     getImports()
       .then((data) => {
         setImports(data);
+        // No list is pre-selected — the user must actively pick one (or
+        // "+ New list...") each time, except when there's nothing to pick
+        // from at all, where the new-list field is the only option anyway.
         setImportChoice((current) => {
           if (current) return current;
-          if (lastUsedImportName && data.some((imp) => imp.name === lastUsedImportName)) {
-            return lastUsedImportName;
-          }
           if (data.length === 0) {
             setNewListName((name) => name || 'My Points');
             return NEW_LIST_VALUE;
           }
-          return data[0].name;
+          return '';
         });
       })
       .catch((err) => console.error('Failed to load imports:', err))
       .finally(() => setImportsLoaded(true));
-  }, [setImports, lastUsedImportName]);
+  }, [setImports]);
 
   async function handleCreate(e) {
     e.preventDefault();
@@ -67,7 +67,7 @@ export default function POICreationModal({ lat, lon, onClose, onSuccess }) {
       return;
     }
     if (!importChoice) {
-      toast.error(t('validation.name_required'));
+      toast.error('Please select a list');
       return;
     }
 
@@ -78,7 +78,6 @@ export default function POICreationModal({ lat, lon, onClose, onSuccess }) {
         await createImport(targetImport);
       }
       const poi = await createPOI(name, lat, lon, category, description || null, icon, color, visited, targetImport);
-      setLastUsedImportName(targetImport);
       toast.success(t('poi.created_success'));
       onSuccess?.(poi);
       onClose();
@@ -163,7 +162,9 @@ export default function POICreationModal({ lat, lon, onClose, onSuccess }) {
             }}
             disabled={saving || !importsLoaded}
           >
-            {!importChoice && <option value="">Loading…</option>}
+            {!importChoice && (
+              <option value="" disabled>{importsLoaded ? 'Select a list…' : 'Loading…'}</option>
+            )}
             {imports.map((imp) => (
               <option key={imp.name} value={imp.name}>{imp.name} ({imp.count})</option>
             ))}

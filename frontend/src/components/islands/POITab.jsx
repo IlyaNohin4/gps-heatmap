@@ -21,7 +21,7 @@ export default React.memo(function POITab() {
   const { t } = useTranslation();
   const { pois, setPOIs, setPoiCreationMode, poiCreationMode, mapInstance, showPOI, togglePOI, imports, setImports, hiddenImports, toggleImportVisibility } = useMapStore();
   const { isAuthenticated } = useAuthStore();
-  const { activePanel, setActivePanel } = useAppStore();
+  const { activePanel, setActivePanel, poiListVersion, bumpPOIListVersion } = useAppStore();
   const filterOpen = activePanel === 'left:poi-filter';
   const importsOpen = activePanel === 'left:poi-imports';
   const [loading, setLoading] = useState(false);
@@ -72,6 +72,11 @@ export default React.memo(function POITab() {
       toast.success(t('poi.deleted'));
       const data = await getImports();
       setImports(data);
+      // Deleting a list deletes its POI server-side too — refresh both the
+      // map markers (mapStore.pois) and this tab's paginated list, or the
+      // deleted points stay visible until a page reload.
+      await loadPOIs();
+      bumpPOIListVersion();
     } catch (err) {
       toast.error(t('poi.delete_failed'));
       console.error('Delete import error:', err);
@@ -152,6 +157,8 @@ export default React.memo(function POITab() {
       await uploadPOI(file);
       toast.success(t('poi.imported_success'));
       await loadPOIs();
+      getImports().then(setImports).catch((err) => console.error('Failed to load imports:', err));
+      bumpPOIListVersion();
     } catch (err) {
       toast.error(apiErrorMessage(err, t('poi.import_failed')));
       console.error(err);
@@ -234,7 +241,7 @@ export default React.memo(function POITab() {
       }
     }, 300); // debounce для search
     return () => { cancelled = true; clearTimeout(timer); };
-  }, [buildListParams, retryCount, isAuthenticated]);
+  }, [buildListParams, retryCount, poiListVersion, isAuthenticated]);
 
   const handleListRetry = useCallback(() => {
     setListError(null);
@@ -254,7 +261,8 @@ export default React.memo(function POITab() {
     }
   }, [buildListParams, listItems.length]);
 
-  const sentinelRef = useInfiniteScroll(loadMorePOIList, listHasMore);
+  const listContainerRef = useRef(null);
+  const sentinelRef = useInfiniteScroll(loadMorePOIList, listHasMore, listContainerRef);
 
   return (
     <div className="poi-tab">
@@ -310,7 +318,7 @@ export default React.memo(function POITab() {
       )}
 
       {/* POI List */}
-      <div style={{ flex: 1, overflowY: 'auto', padding: 'var(--space-2) var(--space-3) var(--space-1)', minHeight: 0, display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
+      <div ref={listContainerRef} style={{ flex: 1, overflowY: 'auto', padding: 'var(--space-2) var(--space-3) var(--space-1)', minHeight: 0, display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
         {listError ? (
           <div style={{ textAlign: 'center', padding: 'var(--space-5) 0', color: 'var(--text-secondary)', fontSize: 'var(--text-sm)' }}>
             <div style={{ marginBottom: 'var(--space-2)' }}>{t('errors.poi_load_failed')}</div>
@@ -484,7 +492,7 @@ export default React.memo(function POITab() {
           variant="secondary"
           active={importsOpen}
           onClick={() => setActivePanel(importsOpen ? null : 'left:poi-imports')}
-          style={{ flex: 1, border: 'none' }}
+          style={{ flex: 1, minWidth: 0, border: 'none' }}
           title="Manage imports"
         >
           <FolderCog size={14} />
@@ -493,7 +501,7 @@ export default React.memo(function POITab() {
           variant="secondary"
           onClick={() => fileInputRef.current?.click()}
           disabled={uploading}
-          style={{ flex: 1, border: 'none' }}
+          style={{ flex: 1, minWidth: 0, border: 'none' }}
           title="Import KML/KMZ file"
         >
           {uploading ? <Loader size={14} style={{ animation: 'spin 1s linear infinite' }} /> : <Upload size={14} />}
@@ -510,7 +518,7 @@ export default React.memo(function POITab() {
         <Button
           variant={poiCreationMode ? 'primary' : 'secondary'}
           onClick={handleToggleCreation}
-          style={{ flex: 1, border: 'none' }}
+          style={{ flex: 1, minWidth: 0, border: 'none' }}
           title="Create POI"
         >
           <Plus size={14} /> Create

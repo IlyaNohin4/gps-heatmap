@@ -8,6 +8,10 @@ class Settings(BaseSettings):
     JWT_SECRET: str = "change_me"
     JWT_EXPIRES_DAYS: int = 30
     RESEND_API_KEY: str = ""
+    # Must be on a domain verified in the Resend dashboard (resend.com/domains),
+    # or use Resend's sandbox sender "onboarding@resend.dev" (only delivers to
+    # the Resend account's own email while unverified) for local testing.
+    RESEND_FROM_EMAIL: str = "onboarding@resend.dev"
     ORS_API_KEY: str = ""
     MAX_FILE_SIZE_MB: int = 20
     NOMINATIM_USER_AGENT: str = "gps-heatmap/1.0 (change-me@example.com)"

@@ -12,18 +12,18 @@ export default function POIContextMenu({ lat, lon, x, y, onCreateClick, onCancel
         background: 'var(--surface)',
         border: '1px solid var(--border)',
         borderRadius: 8,
-        padding: '8px 0',
+        padding: '4px 0',
         boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
       }}
       onClick={(e) => e.stopPropagation()}
     >
       <div style={{
-        padding: '8px 12px',
+        padding: '6px 12px',
         fontSize: 12,
         color: 'var(--text-secondary)',
         borderBottom: '1px solid var(--border)',
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 4 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 2 }}>
           <MapPin size={12} /> Lat: {lat.toFixed(4)}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
@@ -35,7 +35,7 @@ export default function POIContextMenu({ lat, lon, x, y, onCreateClick, onCancel
         onClick={onCreateClick}
         style={{
           width: '100%',
-          padding: '8px 12px',
+          padding: '6px 12px',
           background: 'none',
           border: 'none',
           cursor: 'pointer',
@@ -58,7 +58,7 @@ export default function POIContextMenu({ lat, lon, x, y, onCreateClick, onCancel
         onClick={onCancel}
         style={{
           width: '100%',
-          padding: '8px 12px',
+          padding: '6px 12px',
           background: 'none',
           border: 'none',
           cursor: 'pointer',

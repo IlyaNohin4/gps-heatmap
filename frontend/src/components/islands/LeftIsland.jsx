@@ -117,7 +117,8 @@ function LeftIslandContent({ onUploadClick, loading, allTracksVisible, onToggleV
     }
   }, [buildParams, items.length]);
 
-  const sentinelRef = useInfiniteScroll(loadMoreTracks, hasMore);
+  const listContainerRef = useRef(null);
+  const sentinelRef = useInfiniteScroll(loadMoreTracks, hasMore, listContainerRef);
 
   return (
     <>
@@ -226,7 +227,7 @@ function LeftIslandContent({ onUploadClick, loading, allTracksVisible, onToggleV
         )}
 
         {/* Track list */}
-        <div style={{ flex: 1, overflowY: 'auto', padding: 'var(--space-2) var(--space-3) var(--space-1)', minHeight: 0, display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
+        <div ref={listContainerRef} style={{ flex: 1, overflowY: 'auto', padding: 'var(--space-2) var(--space-3) var(--space-1)', minHeight: 0, display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
           {error ? (
             <div style={{ textAlign: 'center', padding: 'var(--space-5) 0', color: 'var(--text-secondary)', fontSize: 'var(--text-sm)' }}>
               <div style={{ marginBottom: 'var(--space-2)' }}>{t('errors.tracks_load_failed')}</div>

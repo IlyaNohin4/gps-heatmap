@@ -53,7 +53,7 @@ button {
   color: inherit;
 }
 
-input, select, textarea {
+input:not([type="checkbox"]):not([type="radio"]), select, textarea {
   font-family: inherit;
   color: var(--text);
   background: var(--surface);
@@ -65,7 +65,7 @@ input, select, textarea {
   width: 100%;
 }
 
-input:focus, select:focus, textarea:focus {
+input:not([type="checkbox"]):not([type="radio"]):focus, select:focus, textarea:focus {
   border-color: var(--accent);
 }
 

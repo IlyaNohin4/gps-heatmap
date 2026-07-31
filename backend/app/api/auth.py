@@ -125,7 +125,7 @@ def forgot_password(request: Request, body: ForgotPasswordRequest, db: Session =
         from app.core.config import settings
         resend.api_key = settings.RESEND_API_KEY
         resend.Emails.send({
-            "from": "noreply@gpsheatmap.app",
+            "from": settings.RESEND_FROM_EMAIL,
             "to": user.email,
             "subject": "Reset your password",
             "html": f"<p>Click to reset: <a href='{settings.FRONTEND_URL}/reset-password/{token}'>Reset password</a></p>",
