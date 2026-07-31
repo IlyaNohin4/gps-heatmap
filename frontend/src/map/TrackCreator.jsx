@@ -316,7 +316,12 @@ export function TrackCreatorPanel({
           }}
           style={{
             fontSize: 12,
-            padding: '5px 10px',
+            width: 28,
+            height: 28,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: 0,
             borderRadius: 8,
             border: '1px solid var(--border)',
             background: 'var(--bg)',

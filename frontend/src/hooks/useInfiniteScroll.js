@@ -14,6 +14,16 @@ import { useEffect, useRef } from 'react';
 export default function useInfiniteScroll(loadMore, hasMore, rootRef) {
   const sentinelRef = useRef(null);
   const loadingGuard = useRef(false);
+  // Callers pass a useCallback keyed on items.length, so its identity
+  // changes on every appended page. Reading it through a ref (instead of
+  // putting it in the effect's deps) keeps the observer instance stable —
+  // otherwise each loadMore identity change tears down and recreates the
+  // IntersectionObserver, which re-checks intersection immediately on
+  // creation. If layout hasn't repainted yet at that instant, it reports
+  // "still intersecting" and fires again — cascading into 2-3 extra pages
+  // loading back-to-back before the real geometry ever gets checked.
+  const loadMoreRef = useRef(loadMore);
+  loadMoreRef.current = loadMore;
 
   useEffect(() => {
     const node = sentinelRef.current;
@@ -24,7 +34,7 @@ export default function useInfiniteScroll(loadMore, hasMore, rootRef) {
         if (!entries[0].isIntersecting) return;
         if (loadingGuard.current) return;
         loadingGuard.current = true;
-        Promise.resolve(loadMore()).finally(() => {
+        Promise.resolve(loadMoreRef.current()).finally(() => {
           loadingGuard.current = false;
         });
       },
@@ -32,7 +42,7 @@ export default function useInfiniteScroll(loadMore, hasMore, rootRef) {
     );
     observer.observe(node);
     return () => observer.disconnect();
-  }, [loadMore, hasMore, rootRef]);
+  }, [hasMore, rootRef]);
 
   return sentinelRef;
 }
