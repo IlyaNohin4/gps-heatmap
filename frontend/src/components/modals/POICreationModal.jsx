@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Loader } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { useTranslation } from 'react-i18next';
-import { createPOI } from '../../api/poi.js';
+import { createPOI, createImport, getImports } from '../../api/poi.js';
 import { apiErrorMessage } from '../../utils/apiError.js';
+import useMapStore from '../../store/mapStore.js';
 import Modal from '../../ui/Modal.jsx';
 import Button from '../../ui/Button.jsx';
 import Input from '../../ui/Input.jsx';
@@ -15,8 +16,11 @@ const CATEGORIES = [
   'Amenities', 'Bicycle', 'Public Transport', 'Other'
 ];
 
+const NEW_LIST_VALUE = '__new__';
+
 export default function POICreationModal({ lat, lon, onClose, onSuccess }) {
   const { t } = useTranslation();
+  const { imports, setImports, lastUsedImportName, setLastUsedImportName } = useMapStore();
   const [name, setName] = useState('');
   const [category, setCategory] = useState('Food');
   const [description, setDescription] = useState('');
@@ -24,6 +28,13 @@ export default function POICreationModal({ lat, lon, onClose, onSuccess }) {
   const [color, setColor] = useState(null);
   const [visited, setVisited] = useState(false);
   const [saving, setSaving] = useState(false);
+  // '' = no list, NEW_LIST_VALUE = show the "new list name" field, otherwise an existing import name.
+  const [importChoice, setImportChoice] = useState(lastUsedImportName || '');
+  const [newListName, setNewListName] = useState('');
+
+  useEffect(() => {
+    getImports().then(setImports).catch((err) => console.error('Failed to load imports:', err));
+  }, [setImports]);
 
   async function handleCreate(e) {
     e.preventDefault();
@@ -32,10 +43,19 @@ export default function POICreationModal({ lat, lon, onClose, onSuccess }) {
       toast.error(t('validation.name_required'));
       return;
     }
+    if (importChoice === NEW_LIST_VALUE && !newListName.trim()) {
+      toast.error(t('validation.name_required'));
+      return;
+    }
 
     setSaving(true);
     try {
-      const poi = await createPOI(name, lat, lon, category, description || null, icon, color, visited);
+      let targetImport = importChoice === NEW_LIST_VALUE ? newListName.trim() : (importChoice || null);
+      if (importChoice === NEW_LIST_VALUE) {
+        await createImport(targetImport);
+      }
+      const poi = await createPOI(name, lat, lon, category, description || null, icon, color, visited, targetImport);
+      setLastUsedImportName(targetImport);
       toast.success(t('poi.created_success'));
       onSuccess?.(poi);
       onClose();
@@ -99,6 +119,44 @@ export default function POICreationModal({ lat, lon, onClose, onSuccess }) {
               <option key={cat} value={cat}>{cat}</option>
             ))}
           </select>
+        </div>
+
+        <div style={{ marginBottom: 'var(--space-3)' }}>
+          <label style={{ fontSize: 12, color: 'var(--text-secondary)', fontWeight: 600, display: 'block', marginBottom: 'var(--space-1)' }}>
+            List
+          </label>
+          <select
+            value={importChoice}
+            onChange={(e) => setImportChoice(e.target.value)}
+            style={{
+              width: '100%',
+              padding: 'var(--space-2) var(--space-3)',
+              fontSize: 13,
+              border: '1px solid var(--border)',
+              borderRadius: 8,
+              background: 'var(--surface)',
+              color: 'var(--text)',
+              boxSizing: 'border-box',
+            }}
+            disabled={saving}
+          >
+            <option value="">No list</option>
+            {imports.map((imp) => (
+              <option key={imp.name} value={imp.name}>{imp.name} ({imp.count})</option>
+            ))}
+            <option value={NEW_LIST_VALUE}>+ New list…</option>
+          </select>
+          {importChoice === NEW_LIST_VALUE && (
+            <Input
+              type="text"
+              value={newListName}
+              onChange={(e) => setNewListName(e.target.value)}
+              placeholder="New list name"
+              disabled={saving}
+              autoFocus
+              style={{ marginTop: 'var(--space-2)' }}
+            />
+          )}
         </div>
 
         <div style={{ marginBottom: 'var(--space-3)' }}>

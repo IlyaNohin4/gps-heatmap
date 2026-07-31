@@ -14,6 +14,7 @@ from app.core.database import get_db
 from app.core.deps import get_current_user
 from app.core.http_utils import safe_content_disposition
 from app.models.poi import POI
+from app.models.poi_import import POIImport
 from app.models.user import User
 from app.services.poi_parser import POIParser, ICON_SLUGS, HEX_COLOR_RE
 
@@ -31,6 +32,15 @@ def _validate_icon(icon: Optional[str]) -> None:
 def _validate_color(color: Optional[str]) -> None:
     if color is not None and not HEX_COLOR_RE.match(color):
         raise HTTPException(status_code=400, detail="color must be a hex value like #RRGGBB")
+
+
+def _get_or_create_import(db: Session, user_id: int, name: str) -> POIImport:
+    imp = db.query(POIImport).filter(POIImport.user_id == user_id, POIImport.name == name).first()
+    if imp is None:
+        imp = POIImport(user_id=user_id, name=name)
+        db.add(imp)
+        db.flush()
+    return imp
 
 
 class POIResponse(BaseModel):
@@ -74,6 +84,10 @@ class RenameImportRequest(BaseModel):
     new_name: str = Field(..., max_length=255)
 
 
+class CreateImportRequest(BaseModel):
+    name: str = Field(..., max_length=255)
+
+
 class CreatePOIRequest(BaseModel):
     name: str = Field(..., max_length=255)
     lat: float
@@ -83,6 +97,7 @@ class CreatePOIRequest(BaseModel):
     icon: Optional[str] = Field(None, max_length=50)
     color: Optional[str] = Field(None, max_length=20)
     visited: bool = False
+    import_name: Optional[str] = Field(None, max_length=255)
 
 
 class UpdatePOIRequest(BaseModel):
@@ -111,6 +126,9 @@ async def create_poi(
     _validate_icon(request.icon)
     _validate_color(request.color)
 
+    if request.import_name:
+        _get_or_create_import(db, current_user.id, request.import_name)
+
     # Create POI
     poi = POI(
         user_id=current_user.id,
@@ -122,6 +140,7 @@ async def create_poi(
         icon=request.icon,
         color=request.color,
         visited=request.visited,
+        import_name=request.import_name,
     )
     db.add(poi)
     db.commit()
@@ -162,6 +181,7 @@ async def upload_poi(
 
     # Extract import name from filename (remove extension)
     import_name = Path(file.filename).stem
+    _get_or_create_import(db, current_user.id, import_name)
 
     # Save to DB
     for poi_data in poi_list:
@@ -277,17 +297,41 @@ def delete_poi(
     db.commit()
 
 
+@router.post("/imports", response_model=ImportInfo, status_code=status.HTTP_201_CREATED)
+def create_import(
+    request: CreateImportRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Create an empty list to assign POI to (e.g. before placing points via Create mode)."""
+    exists = db.query(POIImport).filter(
+        POIImport.user_id == current_user.id, POIImport.name == request.name
+    ).first()
+    if exists:
+        raise HTTPException(status_code=409, detail="A list with this name already exists")
+
+    imp = POIImport(user_id=current_user.id, name=request.name)
+    db.add(imp)
+    db.commit()
+
+    return ImportInfo(name=imp.name, count=0)
+
+
 @router.get("/imports", response_model=List[ImportInfo])
 def get_imports(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Get list of imports with POI counts."""
-    imports = db.query(POI.import_name, func.count(POI.id)).filter(
-        POI.user_id == current_user.id
-    ).group_by(POI.import_name).all()
+    """Get list of imports (including empty ones) with POI counts."""
+    counts = dict(
+        db.query(POI.import_name, func.count(POI.id))
+        .filter(POI.user_id == current_user.id, POI.import_name.isnot(None))
+        .group_by(POI.import_name)
+        .all()
+    )
+    imports = db.query(POIImport).filter(POIImport.user_id == current_user.id).order_by(POIImport.name.asc()).all()
 
-    return [ImportInfo(name=imp[0], count=imp[1]) for imp in imports if imp[0]]
+    return [ImportInfo(name=imp.name, count=counts.get(imp.name, 0)) for imp in imports]
 
 
 @router.patch("/imports/{import_name}", status_code=status.HTTP_200_OK)
@@ -298,13 +342,23 @@ def rename_import(
     current_user: User = Depends(get_current_user),
 ):
     """Rename an import."""
-    count = db.query(POI).filter(
-        POI.user_id == current_user.id,
-        POI.import_name == import_name
-    ).update({POI.import_name: request.new_name})
-
-    if count == 0:
+    imp = db.query(POIImport).filter(
+        POIImport.user_id == current_user.id, POIImport.name == import_name
+    ).first()
+    if imp is None:
         raise HTTPException(status_code=404, detail="Import not found")
+
+    if request.new_name != import_name:
+        taken = db.query(POIImport).filter(
+            POIImport.user_id == current_user.id, POIImport.name == request.new_name
+        ).first()
+        if taken:
+            raise HTTPException(status_code=409, detail="A list with this name already exists")
+
+    imp.name = request.new_name
+    db.query(POI).filter(
+        POI.user_id == current_user.id, POI.import_name == import_name
+    ).update({POI.import_name: request.new_name})
 
     db.commit()
 
@@ -317,14 +371,17 @@ def delete_import(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Delete import and all its POI."""
-    count = db.query(POI).filter(
-        POI.user_id == current_user.id,
-        POI.import_name == import_name
-    ).delete()
-
-    if count == 0:
+    """Delete an import list and all POI assigned to it."""
+    imp = db.query(POIImport).filter(
+        POIImport.user_id == current_user.id, POIImport.name == import_name
+    ).first()
+    if imp is None:
         raise HTTPException(status_code=404, detail="Import not found")
+
+    db.query(POI).filter(
+        POI.user_id == current_user.id, POI.import_name == import_name
+    ).delete()
+    db.delete(imp)
 
     db.commit()
 
@@ -336,13 +393,16 @@ def export_import(
     current_user: User = Depends(get_current_user),
 ):
     """Export import as KML file."""
+    imp = db.query(POIImport).filter(
+        POIImport.user_id == current_user.id, POIImport.name == import_name
+    ).first()
+    if imp is None:
+        raise HTTPException(status_code=404, detail="Import not found")
+
     pois = db.query(POI).filter(
         POI.user_id == current_user.id,
         POI.import_name == import_name
     ).all()
-
-    if not pois:
-        raise HTTPException(status_code=404, detail="Import not found")
 
     # Generate KML
     kml = ET.Element("kml", xmlns="http://www.opengis.net/kml/2.2")

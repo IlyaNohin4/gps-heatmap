@@ -1,6 +1,6 @@
 import client from './client.js';
 
-export async function createPOI(name, lat, lon, category, description = null, icon = null, color = null, visited = false) {
+export async function createPOI(name, lat, lon, category, description = null, icon = null, color = null, visited = false, importName = null) {
   const { data } = await client.post('/api/poi/create', {
     name,
     lat,
@@ -10,6 +10,7 @@ export async function createPOI(name, lat, lon, category, description = null, ic
     icon,
     color,
     visited,
+    import_name: importName,
   });
   return data;
 }
@@ -50,6 +51,11 @@ export async function deletePOI(id) {
 
 export async function getImports() {
   const { data } = await client.get('/api/poi/imports');
+  return data;
+}
+
+export async function createImport(name) {
+  const { data } = await client.post('/api/poi/imports', { name });
   return data;
 }
 

@@ -1,11 +1,11 @@
 import React, { useState, useRef, useEffect, useCallback, Suspense, lazy } from 'react';
-import { Plus, Upload, X as XIcon, Loader, Search, Filter, Eye, EyeOff } from 'lucide-react';
+import { Plus, Upload, X as XIcon, Loader, Search, Filter, Eye, EyeOff, FolderCog, Edit2, Download, Trash2 } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { useTranslation } from 'react-i18next';
 import useAppStore from '../../store/appStore.js';
 import useAuthStore from '../../store/authStore.js';
 import useMapStore from '../../store/mapStore.js';
-import { fetchPOI, fetchPOIPage, fetchPOICategories, deletePOI, uploadPOI } from '../../api/poi.js';
+import { fetchPOI, fetchPOIPage, fetchPOICategories, deletePOI, uploadPOI, getImports, createImport, renameImport, deleteImport, exportImport } from '../../api/poi.js';
 import { apiErrorMessage } from '../../utils/apiError.js';
 import POICard from '../poi/POICard.jsx';
 import useInfiniteScroll from '../../hooks/useInfiniteScroll.js';
@@ -19,10 +19,11 @@ const POIDeleteModal = lazy(() => import('../modals/POIDeleteModal.jsx'));
 
 export default React.memo(function POITab() {
   const { t } = useTranslation();
-  const { pois, setPOIs, setPoiCreationMode, poiCreationMode, mapInstance, showPOI, togglePOI } = useMapStore();
+  const { pois, setPOIs, setPoiCreationMode, poiCreationMode, mapInstance, showPOI, togglePOI, imports, setImports, hiddenImports, toggleImportVisibility } = useMapStore();
   const { isAuthenticated } = useAuthStore();
   const { activePanel, setActivePanel } = useAppStore();
   const filterOpen = activePanel === 'left:poi-filter';
+  const importsOpen = activePanel === 'left:poi-imports';
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [search, setSearch] = useState('');
@@ -31,8 +32,84 @@ export default React.memo(function POITab() {
   const [showRenameModal, setShowRenameModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [selectedPOI, setSelectedPOI] = useState(null);
+  const [editingImportName, setEditingImportName] = useState(null);
+  const [editingImportValue, setEditingImportValue] = useState('');
+  const [deletingImportName, setDeletingImportName] = useState(null);
+  const [creatingImport, setCreatingImport] = useState(false);
+  const [newImportName, setNewImportName] = useState('');
+  const [savingNewImport, setSavingNewImport] = useState(false);
   const fileInputRef = useRef(null);
   const requestVersion = useRef(0);
+
+  // Imports panel — lazy-loaded on first open, not on every POITab mount.
+  useEffect(() => {
+    if (!importsOpen) return;
+    getImports().then(setImports).catch((err) => console.error('Failed to load imports:', err));
+  }, [importsOpen, setImports]);
+
+  async function handleRenameImport(oldName) {
+    if (!editingImportValue.trim()) {
+      setEditingImportName(null);
+      return;
+    }
+    try {
+      await renameImport(oldName, editingImportValue);
+      toast.success(t('poi.renamed'));
+      const data = await getImports();
+      setImports(data);
+    } catch (err) {
+      toast.error(t('poi.rename_failed'));
+      console.error('Rename import error:', err);
+    } finally {
+      setEditingImportName(null);
+    }
+  }
+
+  async function handleDeleteImport(name) {
+    setDeletingImportName(name);
+    try {
+      await deleteImport(name);
+      toast.success(t('poi.deleted'));
+      const data = await getImports();
+      setImports(data);
+    } catch (err) {
+      toast.error(t('poi.delete_failed'));
+      console.error('Delete import error:', err);
+    } finally {
+      setDeletingImportName(null);
+    }
+  }
+
+  async function handleCreateImport() {
+    if (!newImportName.trim()) {
+      setCreatingImport(false);
+      return;
+    }
+    setSavingNewImport(true);
+    try {
+      await createImport(newImportName.trim());
+      toast.success(t('poi.imported'));
+      const data = await getImports();
+      setImports(data);
+      setNewImportName('');
+      setCreatingImport(false);
+    } catch (err) {
+      toast.error(apiErrorMessage(err, t('poi.import_failed')));
+      console.error('Create import error:', err);
+    } finally {
+      setSavingNewImport(false);
+    }
+  }
+
+  async function handleExportImport(name) {
+    try {
+      await exportImport(name);
+      toast.success(t('poi.exported'));
+    } catch (err) {
+      toast.error(t('poi.export_failed'));
+      console.error('Export import error:', err);
+    }
+  }
 
   useEffect(() => {
     if (!isAuthenticated) { setCategories([]); return; }
@@ -269,8 +346,149 @@ export default React.memo(function POITab() {
         )}
       </div>
 
+      {/* Imports panel — rename/delete/export/toggle-visibility per import.
+          Sits right above the bottom action row, next to the Import/Manage
+          buttons that trigger it — not up near the search bar, so the panel
+          opens where the eye looks instead of jumping across the tab. */}
+      {importsOpen && (
+        <div style={{ padding: 'var(--space-3)', borderTop: '1px solid var(--border)', animation: 'fadeIn 0.3s ease-out', flexShrink: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 'var(--space-2)' }}>
+            <div style={{ fontSize: 'var(--text-xs)', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase' }}>
+              Imports {imports.length > 0 && `(${imports.length})`}
+            </div>
+            {!creatingImport && (
+              <button
+                onClick={() => setCreatingImport(true)}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--accent)', fontSize: 'var(--text-xs)', fontWeight: 600, padding: 0 }}
+              >
+                + New list
+              </button>
+            )}
+          </div>
+          {creatingImport && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-1)', marginBottom: 'var(--space-2)' }}>
+              <input
+                autoFocus
+                type="text"
+                value={newImportName}
+                onChange={(e) => setNewImportName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') handleCreateImport();
+                  if (e.key === 'Escape') { setCreatingImport(false); setNewImportName(''); }
+                }}
+                placeholder="List name"
+                disabled={savingNewImport}
+                style={{ flex: 1, border: '1px solid var(--accent)', padding: '4px 6px', borderRadius: 4, fontSize: 'var(--text-sm)', background: 'var(--bg)', color: 'var(--text)' }}
+              />
+              <button
+                onClick={handleCreateImport}
+                disabled={savingNewImport}
+                style={{ background: 'none', border: 'none', cursor: savingNewImport ? 'not-allowed' : 'pointer', color: 'var(--accent)', display: 'flex', padding: 0 }}
+                title="Save"
+              >
+                {savingNewImport ? <Loader size={14} style={{ animation: 'spin 1s linear infinite' }} /> : <Plus size={14} />}
+              </button>
+              <button
+                onClick={() => { setCreatingImport(false); setNewImportName(''); }}
+                disabled={savingNewImport}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)', display: 'flex', padding: 0 }}
+                title="Cancel"
+              >
+                <XIcon size={14} />
+              </button>
+            </div>
+          )}
+          {imports.length === 0 ? (
+            <div style={{ fontSize: 'var(--text-sm)', color: 'var(--text-secondary)', padding: 'var(--space-2) 0' }}>
+              {t('poi.no_data')}
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-1)' }}>
+              {imports.map((imp) => {
+                const isVisible = !hiddenImports.has(imp.name);
+                const isEditing = editingImportName === imp.name;
+                const isDeleting = deletingImportName === imp.name;
+                return (
+                  <div
+                    key={imp.name}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 'var(--space-1)',
+                      padding: '6px 8px', borderRadius: 6,
+                      background: 'var(--bg)', border: '1px solid var(--border)',
+                      fontSize: 'var(--text-sm)',
+                    }}
+                  >
+                    <button
+                      onClick={() => toggleImportVisibility(imp.name)}
+                      title={isVisible ? 'Hide' : 'Show'}
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', color: isVisible ? 'var(--accent)' : 'var(--text-secondary)', display: 'flex', padding: 0 }}
+                    >
+                      {isVisible ? <Eye size={14} /> : <EyeOff size={14} />}
+                    </button>
+                    {isEditing ? (
+                      <input
+                        autoFocus
+                        type="text"
+                        value={editingImportValue}
+                        onChange={(e) => setEditingImportValue(e.target.value)}
+                        onBlur={() => handleRenameImport(imp.name)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') handleRenameImport(imp.name);
+                          if (e.key === 'Escape') setEditingImportName(null);
+                        }}
+                        style={{ flex: 1, border: '1px solid var(--accent)', padding: '4px 6px', borderRadius: 4, fontSize: 'var(--text-sm)', background: 'var(--bg)', color: 'var(--text)' }}
+                      />
+                    ) : (
+                      <span style={{ flex: 1, cursor: 'pointer', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={imp.name}>
+                        {imp.name}
+                      </span>
+                    )}
+                    <span style={{ fontSize: 'var(--text-xs)', color: 'var(--text-secondary)', padding: '2px 4px', background: 'rgba(0,0,0,0.1)', borderRadius: 3 }}>
+                      {imp.count}
+                    </span>
+                    <button
+                      onClick={() => { setEditingImportName(imp.name); setEditingImportValue(imp.name); }}
+                      disabled={isEditing || isDeleting}
+                      title="Rename"
+                      style={{ background: 'none', border: 'none', cursor: isEditing || isDeleting ? 'not-allowed' : 'pointer', color: 'var(--text-secondary)', display: 'flex', padding: 0, opacity: isEditing || isDeleting ? 0.5 : 1 }}
+                    >
+                      <Edit2 size={13} />
+                    </button>
+                    <button
+                      onClick={() => handleExportImport(imp.name)}
+                      disabled={isEditing || isDeleting}
+                      title="Export"
+                      style={{ background: 'none', border: 'none', cursor: isEditing || isDeleting ? 'not-allowed' : 'pointer', color: 'var(--text-secondary)', display: 'flex', padding: 0, opacity: isEditing || isDeleting ? 0.5 : 1 }}
+                    >
+                      <Download size={13} />
+                    </button>
+                    <button
+                      onClick={() => handleDeleteImport(imp.name)}
+                      disabled={isEditing || isDeleting}
+                      title="Delete"
+                      style={{ background: 'none', border: 'none', cursor: isEditing || isDeleting ? 'not-allowed' : 'pointer', color: isDeleting ? 'var(--accent)' : 'var(--text-secondary)', display: 'flex', padding: 0, opacity: isEditing ? 0.5 : 1 }}
+                    >
+                      {isDeleting ? <Loader size={13} style={{ animation: 'spin 1s linear infinite' }} /> : <Trash2 size={13} />}
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Bottom actions */}
       <div style={{ padding: 'var(--space-2) var(--space-3) var(--space-3)', borderTop: '1px solid var(--border)', display: 'flex', gap: 'var(--space-2)', flexShrink: 0 }}>
+        <Button
+          variant="secondary"
+          active={importsOpen}
+          onClick={() => setActivePanel(importsOpen ? null : 'left:poi-imports')}
+          style={{ flex: 1, border: 'none' }}
+          title="Manage imports"
+        >
+          <FolderCog size={14} />
+        </Button>
         <Button
           variant="secondary"
           onClick={() => fileInputRef.current?.click()}

@@ -20,6 +20,9 @@ const useMapStore = create((set, get) => ({
   // even before/without the import list ever being fetched.
   imports: [],
   hiddenImports: new Set(),
+  // Remembered across consecutive "Create POI" clicks so the list picker
+  // defaults to the last choice instead of resetting to "None" every time.
+  lastUsedImportName: null,
 
   // Track creator state
   trackCreatorState: {
@@ -53,6 +56,7 @@ const useMapStore = create((set, get) => ({
 
   // User-uploaded POI imports
   setImports: (imports) => set({ imports }),
+  setLastUsedImportName: (name) => set({ lastUsedImportName: name }),
   toggleImportVisibility: (importName) =>
     set((s) => {
       const next = new Set(s.hiddenImports);
@@ -169,6 +173,7 @@ const useMapStore = create((set, get) => ({
       trackDetailCache: {},
       imports: [],
       hiddenImports: new Set(),
+      lastUsedImportName: null,
       trackCreatorState: {
         waypoints: [],
         redoStack: [],
