@@ -1,5 +1,70 @@
 # Polish / known issues
 
+- [x] **RESOLVED** — Fable 5 security/logic audit, 4 раунда фиксов (2026-07-30,
+  3 коммита: CRITICAL/HIGH, MEDIUM `5f86243`, LOW+Docker hardening `ee56112`)
+  - Независимый второй аудит (не путать с записью T15/2026-07-15 ниже в
+    § Security review — это отдельный, более поздний и подробный проход).
+    Каждый пункт сначала перепроверен вручную по коду/CVE (OSV.dev) перед
+    фиксом — почти все подтвердились, кроме заявленного CRITICAL "XXE во всех
+    парсерах" (уже блокировалось по умолчанию lxml/stdlib) и "дублирующего"
+    вызова `_build_segments` (на деле два разных набора точек для разных
+    целей, см. T26 elevation trade-off).
+  - **CRITICAL/HIGH (5/5):** дублирование первых 2048 байт при upload
+    (`tracks.py`, chunked read); кириллица → 500 при скачивании
+    (`http_utils.py`, ASCII fallback теперь реально ASCII); публичная
+    страница показывала неверные duration/speed (`PublicTrackPage.jsx`);
+    upload грузил файл в память + устаревшие `fastapi`/`python-jose`/
+    `python-multipart` (CVE-2024-47874, CVE-2024-33663/33664, CVE-2024-53981
+    и ещё 6 непомянутых в аудите CVE на multipart) — апгрейд всех трёх;
+    rate limiting ломался за nginx в проде (добавлен `--forwarded-allow-ips`).
+  - **MEDIUM (10/10):** `create_all` убран в пользу чистого Alembic; email
+    нормализуется + race-safe unique constraint при регистрации; password-reset
+    токены теперь хэшируются (были plaintext), `FRONTEND_URL` вместо
+    хардкода домена, JWT инвалидируются при смене/сбросе пароля (новое поле
+    `password_changed_at` + миграция 0011); XXE hardening на всякий случай
+    всё равно добавлен (lxml `resolve_entities=False`/`no_network=True`,
+    `defusedxml` для POI); список треков переставал грузиться после 50 в трёх
+    местах (`App.jsx`, `UploadZone.jsx`); тумблеры видимости POI-импортов
+    были декоративными (заодно найдено: вся панель `POIImportPanel.jsx`
+    вообще не подключена к UI — см. отдельную запись ниже); polling загрузки
+    зависал бесконечно без таймаута; прод-nginx отдавал HTML без security
+    заголовков и открыто проксировал `/docs`; `ORS_API_KEY` фронтенда
+    (`VITE_ORS_API_KEY`) был в открытом JS-бандле — заменён на backend-прокси
+    `POST /api/routing/directions`.
+  - **LOW (по существу — часть подтвердилась, часть нет):** `elevation: 0.0`
+    ложно считался отсутствующей высотой (`_collapse_drift`, falsy-баг);
+    guard на `filename=None` в POI upload; `max_length` на
+    `RenameImportRequest.new_name`; мёртвая async `_reverse_geocode` со
+    сломанной ссылкой на `_HEADERS` удалена; `MAX_FILE_BYTES` теперь читает
+    `settings.MAX_FILE_SIZE_MB`; внутренний маркер `__error: ...` (process_track
+    пишет ошибку в `regions`, т.к. у Track нет отдельного статус-поля)
+    больше не рендерится как регион на фронте; мёртвый `normalizer.py` (не
+    задействованная альтернативная реализация drift-collapse/outlier —
+    боевой пайплайн использует свою логику в `parser_factory.py`) удалён
+    вместе с 4 тестами; неиспользуемые импорты (`statistics`, `io`,
+    `traceback`, `re`/`EMAIL_RE`) убраны; RDP-упрощение траектории
+    переписано с рекурсии на итеративный стек (риск `RecursionError` на
+    треках с тысячами почти-коллинеарных точек); Nominatim теперь получает
+    паузу 1 req/sec между реальными (не кэш-хит) запросами. **Не тронуто
+    сознательно:** `parser_factory.detect_format` — при проверке оказался не
+    мёртвым (5 тестов magic-byte spoofing), трогать не стал; "дублирующий"
+    `_build_segments` — см. выше, не баг.
+  - **Docker hardening:** `backend/Dockerfile` — multi-stage (gcc/libgdal-dev,
+    оказавшиеся не нужны вообще ни одному рантайм-пакету, теперь только в
+    builder-слое), контейнер работает от непривилегированного `appuser`
+    вместо root; `--chown` на site-packages, чтобы `pip install -r
+    requirements-test.txt` в dev по-прежнему работал без root. Проверено
+    вживую: `whoami`/`id` подтвердили non-root, `which gcc` — отсутствует,
+    полный upload → Celery processing → успех end-to-end от `appuser`.
+  - **Не в этом раунде:** `react-router-dom` moderate CVE (требует major-
+    апгрейда до v7, см. отдельную запись ниже); JWT в `localStorage`
+    (архитектурный выбор, не баг — обоснование см. в истории сессии); Redis
+    без пароля в dev-compose; `POIImportPanel.jsx` остаётся не подключённым
+    (см. отдельную запись ниже, решение за пользователем).
+  - 218 backend-тестов, фронтенд-билд — оба зелёные на каждом из 4 раундов;
+    несколько пунктов дополнительно проверены вживую (реальный Postgres,
+    реальный прод-образ nginx, браузер).
+
 - [x] **RESOLVED** — Security hardening + manual QA bugfix sprint (2026-07-21,
   4 коммита: `823bce3`, `662b545`, `8f0e210`, `18e9118`)
   - **Security (backend):**
@@ -109,22 +174,22 @@
     в `/upload`/`/create`, `/api/tasks/{id}/status` теперь сверяет владельца — чужой
     `task_id` отдаёт 404. Тесты: `backend/tests/test_tasks.py` (owner-check case
     добавлен).
-  - **Подтверждено, не критично, не в этой волне:** Redis без пароля +
+  - **Подтверждено, не критично, не в этой волне** (backend `USER`,
+    `MAX_FILE_BYTES` hardcode и JWT-инвалидация при смене пароля позже
+    **RESOLVED** в аудите Fable 5/2026-07-30 выше)**:** Redis без пароля +
     порт 6379 наружу в dev `docker-compose.yml` (в проде порта нет, T11);
-    backend-контейнеры без `USER` (root); нет `soft_time_limit`/`time_limit`
-    у Celery-таски `process_track`; нет лимита на количество точек в файле
-    (`MAX_POINTS`); JWT не отзывается при смене пароля (`decode_token`
-    проверяет только подпись+`exp`); `MAX_FILE_BYTES` в `tracks.py`
-    захардкожен вместо чтения `settings.MAX_FILE_SIZE_MB`.
-  - **Подтверждено, но не проблема:** `regions.py` — `_reverse_geocode`
-    (async) реально использует несуществующее имя `_HEADERS`, но эта
-    функция мёртвый код, нигде не вызывается; рабочий путь
-    (`_reverse_geocode_sync`, вызывается из `get_regions`/`process_track.py`)
-    использует правильный `_headers()`. Регионы у треков считаются нормально.
-  - **Мелкие LOW, не тронуты:** неиспользуемые импорты (`traceback` в
-    `process_track.py`, `io` в `poi.py`), мёртвый `EMAIL_RE` в `auth.py`,
-    CORS `allow_methods/headers=["*"]` (в коде уже есть комментарий, что в
-    проде за nginx не срабатывает — dev-only).
+    нет `soft_time_limit`/`time_limit` у Celery-таски `process_track`; нет
+    лимита на количество точек в файле (`MAX_POINTS`).
+  - **Подтверждено, но не проблема на момент 2026-07-15** — **позже удалено
+    как мёртвый код** (аудит Fable 5/2026-07-30 выше): `regions.py` —
+    async `_reverse_geocode` использовала несуществующее имя `_HEADERS`;
+    функция была мёртвым кодом, нигде не вызывалась; рабочий путь
+    (`_reverse_geocode_sync`) использовал правильный `_headers()`.
+  - **Мелкие LOW — позже RESOLVED** (аудит Fable 5/2026-07-30 выше):
+    неиспользуемые импорты (`traceback` в `process_track.py`, `io` в
+    `poi.py`, мёртвый `EMAIL_RE` в `auth.py`) убраны. **Не тронуто:** CORS
+    `allow_methods/headers=["*"]` (в коде уже есть комментарий, что в проде
+    за nginx не срабатывает — dev-only).
 
 - [x] **RESOLVED** — CLAUDE.md тестовое число (T28, 2026-07-15): поправлено на 170
   (162 из T13 + 8 новых из `test_track_export_formats.py`) в том же коммите, что и T28.

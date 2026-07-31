@@ -144,6 +144,11 @@ POST   /api/tracks/create              — создать трек из точе
        файл нужного формата на лету (`_points_to_*` в tracks.py). Точки содержат
        только lat/lon (без elevation/time) — TCX/FIT получают синтетическое
        время экспорта вместо реального (см. POLISH.md, T28).
+POST   /api/tracks/export              — no-persist генерация файла из точек (тот же
+       контракт body, что и /create), для кнопки Download в SaveTrackModal —
+       не пишет в БД, переиспользует те же `_points_to_*`/валидацию, что и
+       /create, единственный источник правды для TCX/FIT-генерации (T28,
+       см. POLISH.md — раньше фронтенд генерировал файл самостоятельно)
 GET    /api/tracks/geometries          — bulk: [{id, normalized_points}] для всех треков
        юзера, одним запросом (T04). Должен быть объявлен ВЫШЕ /{id}, иначе
        FastAPI матчит "geometries" как track_id. raw_points/speed_segments не
@@ -189,6 +194,15 @@ GET    /api/tasks/{task_id}/status     — polling upload статуса
        Owner-check: task_id → user_id маппинг в Redis (TTL 24ч, ставится при
        создании задачи в /upload и /create) — чужой task_id отдаёт 404, не
        только "нужен валидный JWT" (см. POLISH.md, IDOR fix 2026-07-21)
+```
+
+### Routing
+```
+POST   /api/routing/directions         — прокси к OpenRouteService для Track
+       Creator (auto-режим). body: {profile, coordinates: [[lng,lat],...]}.
+       [rate limit: 30/minute]. `ORS_API_KEY` читается только на бэкенде —
+       раньше `VITE_ORS_API_KEY` был зашит в публичный фронтенд-бандл
+       (security fix, см. POLISH.md, MEDIUM #11 2026-07-30)
 ```
 
 **Authorization:** JWT токен (30 дней), `HTTPBearer(auto_error=False)` в deps.py

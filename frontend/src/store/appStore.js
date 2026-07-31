@@ -46,7 +46,8 @@ const useAppStore = create(
     }),
     {
       name: 'gps_app',
-      // Only persist selectedTrackId — theme/units/language come from server via getMe()
+      // Persist nothing — theme/units/language come from server via getMe(),
+      // selectedTrackId and everything else here is session-only state.
       partialize: () => ({}),
     }
   )
