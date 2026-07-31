@@ -22,6 +22,13 @@
   cursor: not-allowed;
 }
 
+/* Icon is a flex item of the button; without this it shrinks along with
+   the button itself (e.g. minWidth:0 on equal-width button rows) instead
+   of keeping its native size — squashed down to a couple px wide. */
+.ui-btn > svg {
+  flex-shrink: 0;
+}
+
 .ui-btn--sm {
   height: var(--control-h-sm);
   padding: 0 var(--space-3);
