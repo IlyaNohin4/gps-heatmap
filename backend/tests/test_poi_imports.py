@@ -65,15 +65,21 @@ class TestCreatePOIIntoImport:
         imports = client.get("/api/poi/imports", headers=auth_headers).json()
         assert imports == [{"name": "Hiking", "count": 1}]
 
-    def test_create_poi_without_import_name_stays_unassigned(self, client, auth_headers):
+    def test_create_poi_without_import_name_is_422(self, client, auth_headers):
         r = client.post(
             "/api/poi/create",
             json={"name": "Lonely", "lat": 48.8, "lon": 2.3, "category": "general"},
             headers=auth_headers,
         )
-        assert r.status_code == 201
-        assert r.json()["import_name"] is None
-        assert client.get("/api/poi/imports", headers=auth_headers).json() == []
+        assert r.status_code == 422
+
+    def test_create_poi_with_empty_import_name_is_422(self, client, auth_headers):
+        r = client.post(
+            "/api/poi/create",
+            json={"name": "Lonely", "lat": 48.8, "lon": 2.3, "category": "general", "import_name": ""},
+            headers=auth_headers,
+        )
+        assert r.status_code == 422
 
 
 class TestRenameImport:

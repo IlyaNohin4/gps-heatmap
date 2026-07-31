@@ -28,13 +28,28 @@ export default function POICreationModal({ lat, lon, onClose, onSuccess }) {
   const [color, setColor] = useState(null);
   const [visited, setVisited] = useState(false);
   const [saving, setSaving] = useState(false);
-  // '' = no list, NEW_LIST_VALUE = show the "new list name" field, otherwise an existing import name.
-  const [importChoice, setImportChoice] = useState(lastUsedImportName || '');
+  // '' = not decided yet (still loading imports); NEW_LIST_VALUE = show the
+  // "new list name" field; otherwise an existing import name. A POI always
+  // belongs to a list — there is no "no list" option.
+  const [importChoice, setImportChoice] = useState('');
   const [newListName, setNewListName] = useState('');
+  const [importsLoaded, setImportsLoaded] = useState(false);
 
   useEffect(() => {
-    getImports().then(setImports).catch((err) => console.error('Failed to load imports:', err));
-  }, [setImports]);
+    getImports()
+      .then((data) => {
+        setImports(data);
+        setImportChoice((current) => {
+          if (current) return current;
+          if (lastUsedImportName && data.some((imp) => imp.name === lastUsedImportName)) {
+            return lastUsedImportName;
+          }
+          return data.length > 0 ? data[0].name : NEW_LIST_VALUE;
+        });
+      })
+      .catch((err) => console.error('Failed to load imports:', err))
+      .finally(() => setImportsLoaded(true));
+  }, [setImports, lastUsedImportName]);
 
   async function handleCreate(e) {
     e.preventDefault();
@@ -47,10 +62,14 @@ export default function POICreationModal({ lat, lon, onClose, onSuccess }) {
       toast.error(t('validation.name_required'));
       return;
     }
+    if (!importChoice) {
+      toast.error(t('validation.name_required'));
+      return;
+    }
 
     setSaving(true);
     try {
-      let targetImport = importChoice === NEW_LIST_VALUE ? newListName.trim() : (importChoice || null);
+      let targetImport = importChoice === NEW_LIST_VALUE ? newListName.trim() : importChoice;
       if (importChoice === NEW_LIST_VALUE) {
         await createImport(targetImport);
       }
@@ -138,9 +157,9 @@ export default function POICreationModal({ lat, lon, onClose, onSuccess }) {
               color: 'var(--text)',
               boxSizing: 'border-box',
             }}
-            disabled={saving}
+            disabled={saving || !importsLoaded}
           >
-            <option value="">No list</option>
+            {!importChoice && <option value="">Loading…</option>}
             {imports.map((imp) => (
               <option key={imp.name} value={imp.name}>{imp.name} ({imp.count})</option>
             ))}
@@ -214,7 +233,7 @@ export default function POICreationModal({ lat, lon, onClose, onSuccess }) {
           <Button type="button" variant="secondary" onClick={onClose} disabled={saving} style={{ flex: 1 }}>
             Cancel
           </Button>
-          <Button type="submit" disabled={saving} style={{ flex: 1 }}>
+          <Button type="submit" disabled={saving || !importsLoaded} style={{ flex: 1 }}>
             {saving && <Loader size={14} style={{ animation: 'spin 1s linear infinite' }} />}
             {saving ? 'Creating...' : 'Create'}
           </Button>

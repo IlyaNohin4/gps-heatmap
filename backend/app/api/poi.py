@@ -97,7 +97,7 @@ class CreatePOIRequest(BaseModel):
     icon: Optional[str] = Field(None, max_length=50)
     color: Optional[str] = Field(None, max_length=20)
     visited: bool = False
-    import_name: Optional[str] = Field(None, max_length=255)
+    import_name: str = Field(..., min_length=1, max_length=255)
 
 
 class UpdatePOIRequest(BaseModel):
