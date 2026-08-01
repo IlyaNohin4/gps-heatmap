@@ -19,12 +19,10 @@ import TopIsland from './components/islands/TopIsland.jsx';
 import LeftIsland from './components/islands/LeftIsland.jsx';
 import RightIsland from './components/islands/RightIsland.jsx';
 import BottomIsland from './components/islands/BottomIsland.jsx';
-import { TrackCreatorPanel } from './map/TrackCreator.jsx';
-import SaveTrackModal from './components/modals/SaveTrackModal.jsx';
 import { sniffKmlKind, isKml } from './utils/fileSniff.js';
 import LoadingIndicator from './components/LoadingIndicator.jsx';
 
-import { fetchTracks, createTrackFromPoints, uploadTrack } from './api/tracks.js';
+import { fetchTracks, uploadTrack } from './api/tracks.js';
 import { uploadPOI, fetchPOI } from './api/poi.js';
 import { getMe } from './api/auth.js';
 import { Search, RotateCcw } from 'lucide-react';
@@ -56,17 +54,12 @@ function MainPage() {
   const { isAuthenticated, setUser } = useAuthStore();
   const { theme, setTracks, setTheme, setUnitSystem, setLanguage, selectedTrackId, setSelectedTrackId, setSelectedTrack, unitSystem, tracks, bumpTracksListVersion } = useAppStore();
   const {
-    mapInstance, showSpeed, showTrackCreator, toggleTrackCreator,
-    trackCreatorState, setTrackCreatorState, undoWaypoint, redoWaypoint, clearTrackCreatorState,
+    mapInstance, showSpeed,
     visibleTrackIds, toggleTrackVisibility
   } = useMapStore();
   const { t, i18n } = useTranslation();
   const [tracksLoading, setTracksLoading] = useState(false);
   const [topIslandBottom, setTopIslandBottom] = useState(64);
-  const [creatorMode, setCreatorMode] = useState('manual');
-  const [creatorProfile, setCreatorProfile] = useState('cycling-regular');
-  const [showSaveModal, setShowSaveModal] = useState(false);
-  const [savingTrack, setSavingTrack] = useState(false);
   const [allTracksVisible, setAllTracksVisible] = useState(false);
   const uploadInputRef = useRef(null);
   const topIslandRef = useRef(null);
@@ -306,68 +299,6 @@ function MainPage() {
           ))}
         </div>
       )}
-
-      {/* Track creator panel - rendered outside map */}
-      {showTrackCreator && (
-        <TrackCreatorPanel
-          mode={creatorMode}
-          setMode={(m) => {
-            setCreatorMode(m);
-            setTrackCreatorState({ mode: m });
-          }}
-          profile={creatorProfile}
-          setProfile={(p) => {
-            setCreatorProfile(p);
-            setTrackCreatorState({ profile: p });
-          }}
-          onUndo={undoWaypoint}
-          onRedo={redoWaypoint}
-          onClear={clearTrackCreatorState}
-          onSave={() => setShowSaveModal(true)}
-          onCancel={() => {
-            clearTrackCreatorState();
-            toggleTrackCreator();
-          }}
-        />
-      )}
-
-      {/* Save track modal - rendered outside map */}
-      <SaveTrackModal
-        isOpen={showSaveModal}
-        trackName="New Track"
-        points={
-          creatorMode === 'auto'
-            ? trackCreatorState.routePoints
-            : trackCreatorState.waypoints
-        }
-        onClose={() => setShowSaveModal(false)}
-        onSaveToDb={async (trackName, format, points) => {
-          setSavingTrack(true);
-          try {
-            await createTrackFromPoints(
-              trackName,
-              creatorMode === 'auto' ? trackCreatorState.routePoints : trackCreatorState.waypoints,
-              format
-            );
-
-            const updatedTracks = await fetchTracks({ limit: TRACKS_FETCH_LIMIT });
-            setTracks(updatedTracks);
-            bumpTracksListVersion();
-
-            clearTrackCreatorState();
-            toggleTrackCreator();
-            setShowSaveModal(false);
-
-            toast.success(t('tracks.saved_success', { name: trackName }));
-          } catch (err) {
-            toast.error(t('tracks.save_failed'));
-            console.error(err);
-          } finally {
-            setSavingTrack(false);
-          }
-        }}
-        saving={savingTrack}
-      />
 
       <AuthModal />
       <UploadZone inputRef={uploadInputRef} onTrackFiles={handleTrackFilesFromOverlay} onPOIFiles={handlePOIFilesFromOverlay} />

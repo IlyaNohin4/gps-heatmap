@@ -153,23 +153,14 @@ export function TrackCreatorPanel({
     <div
       onClick={(e) => e.stopPropagation()}
       style={{
-        position: 'fixed',
-        bottom: 80,
-        left: '50%',
-        transform: 'translateX(-50%)',
-        zIndex: 1200,
-        background: 'var(--glass)',
-        backdropFilter: 'blur(20px)',
-        WebkitBackdropFilter: 'blur(20px)',
+        background: 'var(--bg)',
         border: '1px solid var(--border)',
         borderRadius: 'var(--radius)',
-        boxShadow: 'var(--shadow)',
-        padding: '12px 16px',
+        padding: 10,
         display: 'flex',
         alignItems: 'center',
-        gap: 10,
+        gap: 8,
         flexWrap: 'wrap',
-        minWidth: 360,
       }}
     >
       {/* Mode buttons */}

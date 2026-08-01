@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef, useTransition } from 'react';
-import { Search, Filter, Plus, X, ChevronLeft, ChevronRight, MapPin, Route, Eye, EyeOff } from 'lucide-react';
+import { Search, Filter, Plus, X, ChevronLeft, ChevronRight, MapPin, Route, Eye, EyeOff, PenLine } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { toast } from 'react-toastify';
 import Slider from 'rc-slider';
 import 'rc-slider/assets/index.css';
 import TrackCard from '../tracks/TrackCard.jsx';
@@ -8,13 +9,19 @@ import POITab from './POITab.jsx';
 import useAppStore from '../../store/appStore.js';
 import useAuthStore from '../../store/authStore.js';
 import useMapStore from '../../store/mapStore.js';
-import { getTrack, fetchTracksPage } from '../../api/tracks.js';
+import { getTrack, fetchTracksPage, fetchTracks, createTrackFromPoints } from '../../api/tracks.js';
+import { TrackCreatorPanel } from '../../map/TrackCreator.jsx';
+import SaveTrackModal from '../modals/SaveTrackModal.jsx';
 import useInfiniteScroll from '../../hooks/useInfiniteScroll.js';
 import Input from '../../ui/Input.jsx';
 import Chip from '../../ui/Chip.jsx';
 import Button from '../../ui/Button.jsx';
 import Panel from '../../ui/Panel.jsx';
 import SkeletonCard from '../shared/SkeletonCard.jsx';
+
+// Mirrors App.jsx's TRACKS_FETCH_LIMIT — appStore.tracks feeds the heatmap
+// directly, so any refetch after creating a track must hold every track.
+const TRACKS_FETCH_LIMIT = 500;
 
 const FORMAT_OPTIONS = [
   { value: 'all',     label: 'All' },
@@ -27,9 +34,14 @@ const FORMAT_OPTIONS = [
 
 function LeftIslandContent({ onUploadClick, loading, allTracksVisible, onToggleVisibility }) {
   const { t } = useTranslation();
-  const { selectedTrackId, setSelectedTrack, isUploadingIds, activePanel, setActivePanel, tracksListVersion } = useAppStore();
-  const { showTrackCreator, toggleTrackCreator, mapInstance } = useMapStore();
+  const { selectedTrackId, setSelectedTrack, isUploadingIds, activePanel, setActivePanel, tracksListVersion, setTracks, bumpTracksListVersion } = useAppStore();
+  const {
+    showTrackCreator, toggleTrackCreator, mapInstance,
+    trackCreatorState, setTrackCreatorState, undoWaypoint, redoWaypoint, clearTrackCreatorState,
+  } = useMapStore();
   const { isAuthenticated } = useAuthStore();
+  const [showSaveModal, setShowSaveModal] = useState(false);
+  const [savingTrack, setSavingTrack] = useState(false);
   const [isPending, startTransition] = useTransition();
   const [open, setOpen] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -300,16 +312,83 @@ function LeftIslandContent({ onUploadClick, loading, allTracksVisible, onToggleV
         </div>
 
         {/* Bottom actions - Tracks tab only */}
-        <div style={{ padding: 'var(--space-2) var(--space-3) var(--space-3)', borderTop: '1px solid var(--border)', flexShrink: 0 }}>
-          <Button
-            variant="secondary"
-            style={{ width: '100%' }}
-            onClick={onUploadClick}
-          >
-            <Plus size={14} /> {t('tracks.add_track')}
-          </Button>
+        <div style={{ padding: 'var(--space-2) var(--space-3) var(--space-3)', borderTop: '1px solid var(--border)', flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
+          <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
+            <Button
+              variant="secondary"
+              style={{ flex: 1, minWidth: 0 }}
+              onClick={onUploadClick}
+            >
+              <Plus size={14} /> {t('tracks.add_track')}
+            </Button>
+            <Button
+              variant="secondary"
+              active={showTrackCreator}
+              style={{ flex: 1, minWidth: 0 }}
+              onClick={() => {
+                if (!showTrackCreator) setSelectedTrack(null);
+                toggleTrackCreator();
+              }}
+            >
+              <PenLine size={14} /> {t('tracks.draw_track')}
+            </Button>
+          </div>
+
+          {showTrackCreator && (
+            <TrackCreatorPanel
+              mode={trackCreatorState.mode}
+              setMode={(m) => setTrackCreatorState({ mode: m })}
+              profile={trackCreatorState.profile}
+              setProfile={(p) => setTrackCreatorState({ profile: p })}
+              onUndo={undoWaypoint}
+              onRedo={redoWaypoint}
+              onClear={clearTrackCreatorState}
+              onSave={() => setShowSaveModal(true)}
+              onCancel={() => {
+                clearTrackCreatorState();
+                toggleTrackCreator();
+              }}
+            />
+          )}
         </div>
         </div>
+
+        <SaveTrackModal
+          isOpen={showSaveModal}
+          trackName="New Track"
+          points={
+            trackCreatorState.mode === 'auto'
+              ? trackCreatorState.routePoints
+              : trackCreatorState.waypoints
+          }
+          onClose={() => setShowSaveModal(false)}
+          onSaveToDb={async (trackName, format, points) => {
+            setSavingTrack(true);
+            try {
+              await createTrackFromPoints(
+                trackName,
+                trackCreatorState.mode === 'auto' ? trackCreatorState.routePoints : trackCreatorState.waypoints,
+                format
+              );
+
+              const updatedTracks = await fetchTracks({ limit: TRACKS_FETCH_LIMIT });
+              setTracks(updatedTracks);
+              bumpTracksListVersion();
+
+              clearTrackCreatorState();
+              toggleTrackCreator();
+              setShowSaveModal(false);
+
+              toast.success(t('tracks.saved_success', { name: trackName }));
+            } catch (err) {
+              toast.error(t('tracks.save_failed'));
+              console.error(err);
+            } finally {
+              setSavingTrack(false);
+            }
+          }}
+          saving={savingTrack}
+        />
 
         {/* POI Tab — always mounted, toggled via display (see POLISH.md) */}
         <div style={{ display: currentTab === 'poi' ? 'flex' : 'none', flexDirection: 'column', flex: 1, minHeight: 0 }}>

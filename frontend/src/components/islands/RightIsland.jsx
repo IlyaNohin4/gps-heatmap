@@ -1,7 +1,7 @@
 import React, { useRef } from 'react';
 import {
   Plus, Minus, Search, Navigation, Layers, Info, X,
-  Flame, Gauge, PenLine, ChevronRight,
+  Flame, Gauge, ChevronRight,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import i18n from '../../i18n/index.js';
@@ -29,9 +29,8 @@ export default function RightIsland() {
     mapInstance, activeLayer, setActiveLayer,
     showHeatmap, toggleHeatmap,
     showSpeed, toggleSpeed,
-    showTrackCreator, toggleTrackCreator,
   } = useMapStore();
-  const { unitSystem, activePanel, setActivePanel, setSelectedTrackId } = useAppStore();
+  const { unitSystem, activePanel, setActivePanel } = useAppStore();
 
   const cityOpen   = activePanel === 'right:city';
   const layersOpen = activePanel === 'right:layers';
@@ -114,19 +113,6 @@ export default function RightIsland() {
         </Button>
         <Button variant="ghost" iconOnly active={showHeatmap} onClick={toggleHeatmap} title={t('map.visit_heatmap')}>
           <Flame size={16} />
-        </Button>
-        {divider}
-        <Button
-          variant="ghost"
-          iconOnly
-          active={showTrackCreator}
-          onClick={() => {
-            toggleTrackCreator();
-            if (!showTrackCreator) setSelectedTrackId(null);
-          }}
-          title={t('map.create_track')}
-        >
-          <PenLine size={16} />
         </Button>
         {divider}
         <Button variant="ghost" iconOnly active={attrOpen} onClick={() => togglePanel('right:attr')} title={t('map.attribution')}>
