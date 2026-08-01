@@ -2,10 +2,10 @@ import React from 'react';
 import { Trash2, Pencil, CheckCircle2 } from 'lucide-react';
 import Card from '../../ui/Card.jsx';
 import Button from '../../ui/Button.jsx';
-import { POI_ICON_EMOJI } from '../../utils/poiIcons.js';
+import { POI_ICON_COMPONENT, DEFAULT_POI_ICON } from '../../utils/poiIcons.js';
 
 export default React.memo(function POICard({ poi, isDeleting, onZoom, onDelete, onRename }) {
-  const emoji = POI_ICON_EMOJI[poi.icon] || '📍';
+  const Icon = POI_ICON_COMPONENT[poi.icon] || DEFAULT_POI_ICON;
   return (
     <Card
       style={{
@@ -27,9 +27,14 @@ export default React.memo(function POICard({ poi, isDeleting, onZoom, onDelete, 
             overflow: 'hidden',
             textOverflow: 'ellipsis',
             whiteSpace: 'nowrap',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 'var(--space-1)',
+            minWidth: 0,
           }}
         >
-          {emoji} {poi.name}
+          <Icon size={14} color={poi.color || 'var(--text-secondary)'} style={{ flexShrink: 0 }} />
+          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>{poi.name}</span>
           {poi.visited && (
             <CheckCircle2
               size={12}

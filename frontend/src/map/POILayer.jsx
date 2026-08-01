@@ -1,5 +1,6 @@
 import { useEffect, useRef, useMemo } from 'react';
 import { useMap } from 'react-leaflet';
+import { renderToStaticMarkup } from 'react-dom/server';
 import L from 'leaflet';
 import 'leaflet.markercluster';
 import 'leaflet.markercluster/dist/MarkerCluster.css';
@@ -8,7 +9,7 @@ import 'leaflet.markercluster/dist/MarkerCluster.Default.css';
 import useMapStore from '../store/mapStore.js';
 import { fetchPOI } from '../api/poi.js';
 import { escapeHtml } from '../utils/escapeHtml.js';
-import { POI_ICON_EMOJI, DEFAULT_POI_COLOR } from '../utils/poiIcons.js';
+import { POI_ICON_COMPONENT, DEFAULT_POI_ICON, DEFAULT_POI_COLOR } from '../utils/poiIcons.js';
 
 const CATEGORY_COLORS = {
   food: '#ff9500',
@@ -20,18 +21,32 @@ const CATEGORY_COLORS = {
   other: '#8e8e93',
 };
 
-const CATEGORY_ICON_EMOJI = {
-  food: '🍴',
-  water: '💧',
-  repair: '🔧',
-  bike: '🚲',
-  medical: '🏥',
-  shelter: '🏔️',
-  other: '📍',
+const CATEGORY_ICON_COMPONENT = {
+  food: POI_ICON_COMPONENT.food,
+  water: POI_ICON_COMPONENT.water,
+  repair: POI_ICON_COMPONENT.repair,
+  bike: POI_ICON_COMPONENT.bike,
+  medical: POI_ICON_COMPONENT.medical,
+  shelter: POI_ICON_COMPONENT.shelter,
+  other: DEFAULT_POI_ICON,
 };
 
+// Cache serialized icon markup per (slug|category) — the SVG itself never
+// changes, only the marker's background color, so there's no need to
+// re-render the same icon to a string on every POI/marker.
+const iconMarkupCache = new Map();
+
+function iconMarkupFor(category, iconSlug) {
+  const key = iconSlug || category || 'other';
+  if (!iconMarkupCache.has(key)) {
+    const Icon = POI_ICON_COMPONENT[iconSlug] || CATEGORY_ICON_COMPONENT[category] || DEFAULT_POI_ICON;
+    iconMarkupCache.set(key, renderToStaticMarkup(<Icon size={16} color="#fff" strokeWidth={2.5} />));
+  }
+  return iconMarkupCache.get(key);
+}
+
 function makeDivIcon(category, color, iconSlug) {
-  const iconEmoji = POI_ICON_EMOJI[iconSlug] || CATEGORY_ICON_EMOJI[category] || '📍';
+  const svgMarkup = iconMarkupFor(category, iconSlug);
 
   return L.divIcon({
     html: `<div style="
@@ -40,8 +55,7 @@ function makeDivIcon(category, color, iconSlug) {
       border:3px solid #fff;
       box-shadow:0 2px 8px rgba(0,0,0,0.4);
       display:flex;align-items:center;justify-content:center;
-      font-size:16px;line-height:1;
-    ">${iconEmoji}</div>`,
+    ">${svgMarkup}</div>`,
     className: '',
     iconSize: [32, 32],
     iconAnchor: [16, 16],

@@ -24,7 +24,7 @@ export default function IconPicker({ value, onChange, disabled }) {
       >
         —
       </button>
-      {POI_ICONS.map(({ slug, emoji, label }) => (
+      {POI_ICONS.map(({ slug, Icon, label }) => (
         <button
           type="button"
           key={slug}
@@ -38,13 +38,13 @@ export default function IconPicker({ value, onChange, disabled }) {
             border: value === slug ? '2px solid var(--accent)' : '1px solid var(--border)',
             background: 'var(--surface)',
             cursor: disabled ? 'default' : 'pointer',
-            fontSize: 16,
+            color: 'var(--text)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
           }}
         >
-          {emoji}
+          <Icon size={16} />
         </button>
       ))}
     </div>
