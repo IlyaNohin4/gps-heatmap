@@ -81,6 +81,26 @@ def test_parse_kml_with_elevation():
     assert poi_list[0]['lat'] == 48.540
     assert poi_list[0]['lon'] == 34.807
     assert poi_list[0]['category'] == 'shelter'
+    assert poi_list[0]['kml_altitude'] == 1234.5
+
+
+def test_parse_kml_without_elevation_has_no_altitude():
+    kml = b"""<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2">
+  <Document>
+    <Placemark>
+      <name>No Altitude</name>
+      <Point>
+        <coordinates>34.807,48.540</coordinates>
+      </Point>
+    </Placemark>
+  </Document>
+</kml>"""
+
+    poi_list, error = POIParser.parse(kml)
+
+    assert error is None
+    assert poi_list[0]['kml_altitude'] is None
 
 
 def test_parse_kml_invalid_coords():
@@ -231,6 +251,9 @@ def test_parse_kml_style_via_styleurl():
     assert poi_list[0]['icon'] == 'food'
     # KML color is aabbggrr; ff0000ff -> alpha ff, blue 00, green 00, red ff -> #ff0000
     assert poi_list[0]['color'] == '#ff0000'
+    # Raw href/color are kept unconverted for export round-trip fidelity.
+    assert poi_list[0]['kml_icon_href'] == 'https://maps.google.com/mapfiles/kml/shapes/restaurant.png'
+    assert poi_list[0]['kml_style_color'] == 'ff0000ff'
 
 
 def test_parse_kml_inline_style():

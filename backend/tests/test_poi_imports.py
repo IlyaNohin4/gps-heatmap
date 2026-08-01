@@ -156,3 +156,88 @@ class TestExportImport:
         r = client.get("/api/poi/imports/Empty/export", headers=auth_headers)
         assert r.status_code == 200
         assert b"<kml" in r.content
+
+    def test_export_restores_style_altitude_and_cdata(self, client, auth_headers, db):
+        user = _current_user(db)
+        db.add(POIImport(user_id=user.id, name="Styled"))
+        poi = POI(
+            user_id=user.id,
+            name='Café "Central"',
+            lat=48.5,
+            lon=34.8,
+            category="food",
+            description="Great <b>coffee</b>",
+            source="uploaded",
+            import_name="Styled",
+            kml_icon_href="https://maps.google.com/mapfiles/kml/shapes/restaurant.png",
+            kml_style_color="ff0000ff",
+            kml_altitude=1234.5,
+        )
+        db.add(poi)
+        db.commit()
+
+        r = client.get("/api/poi/imports/Styled/export", headers=auth_headers)
+        assert r.status_code == 200
+        body = r.content.decode("utf-8")
+
+        # Name/description round-trip via CDATA, so quotes/HTML-looking text
+        # inside them don't need escaping.
+        assert '<![CDATA[Café "Central"]]>' in body
+        assert "<![CDATA[Great <b>coffee</b>]]>" in body
+        # Original altitude is preserved instead of being dropped to 0.
+        assert "34.8,48.5,1234.5" in body
+        # Style block restored from the raw href/color captured on import.
+        assert "<Style" in body
+        assert "ff0000ff" in body
+        assert "restaurant.png" in body
+        assert "<styleUrl>#style0</styleUrl>" in body
+
+    def test_export_poi_without_captured_style_has_no_style_block(self, client, auth_headers, db):
+        user = _current_user(db)
+        db.add(POIImport(user_id=user.id, name="Plain"))
+        poi = POI(
+            user_id=user.id,
+            name="Plain Point",
+            lat=1.0,
+            lon=2.0,
+            category="other",
+            source="user",
+            import_name="Plain",
+        )
+        db.add(poi)
+        db.commit()
+
+        r = client.get("/api/poi/imports/Plain/export", headers=auth_headers)
+        assert r.status_code == 200
+        body = r.content.decode("utf-8")
+        assert "<Style" not in body
+        assert "<styleUrl>" not in body
+        # No captured altitude falls back to 0, matching prior export behavior.
+        assert "2.0,1.0,0" in body
+
+    def test_export_own_poi_with_icon_uses_google_icon_and_converted_color(self, client, auth_headers, db):
+        """A POI created/edited in-app (no kml_icon_href) still gets a real
+        Google-shaped icon on export, tinted with its own `color`."""
+        user = _current_user(db)
+        db.add(POIImport(user_id=user.id, name="OwnIcons"))
+        poi = POI(
+            user_id=user.id,
+            name="My Cafe",
+            lat=3.0,
+            lon=4.0,
+            category="food",
+            source="user",
+            import_name="OwnIcons",
+            icon="food",
+            color="#ff0000",
+        )
+        db.add(poi)
+        db.commit()
+
+        r = client.get("/api/poi/imports/OwnIcons/export", headers=auth_headers)
+        assert r.status_code == 200
+        body = r.content.decode("utf-8")
+        assert "dining.png" in body
+        # Our #ff0000 -> KML aabbggrr, full opacity -> ff0000ff
+        assert "ff0000ff" in body
+        assert "<styleUrl>#style0</styleUrl>" in body

@@ -14,7 +14,41 @@ ICON_SLUGS = {
     "transport", "other",
 }
 
+# Maps each of our icon slugs to a real Google-hosted KML shape icon, used
+# only when exporting a POI that has no captured `kml_icon_href` of its own
+# (i.e. created/edited in-app rather than imported) — so exported files show
+# a genuine Google icon of a matching shape instead of no icon at all.
+# Verified reachable (200) at time of writing; re-check if export starts
+# producing broken icon links.
+ICON_SLUG_TO_GOOGLE_HREF = {
+    "food": "https://maps.google.com/mapfiles/kml/shapes/dining.png",
+    "water": "https://maps.google.com/mapfiles/kml/shapes/water.png",
+    "camp": "https://maps.google.com/mapfiles/kml/shapes/campground.png",
+    "medical": "https://maps.google.com/mapfiles/kml/shapes/hospitals.png",
+    "bike": "https://maps.google.com/mapfiles/kml/shapes/cycling.png",
+    "shelter": "https://maps.google.com/mapfiles/kml/shapes/parks.png",
+    "viewpoint": "https://maps.google.com/mapfiles/kml/shapes/mountains.png",
+    "parking": "https://maps.google.com/mapfiles/kml/shapes/parking_lot.png",
+    "fuel": "https://maps.google.com/mapfiles/kml/shapes/gas_stations.png",
+    "danger": "https://maps.google.com/mapfiles/kml/shapes/caution.png",
+    "photo": "https://maps.google.com/mapfiles/kml/shapes/camera.png",
+    "repair": "https://maps.google.com/mapfiles/kml/shapes/mechanic.png",
+    "toilet": "https://maps.google.com/mapfiles/kml/shapes/toilets.png",
+    "lodging": "https://maps.google.com/mapfiles/kml/shapes/lodging.png",
+    "transport": "https://maps.google.com/mapfiles/kml/shapes/bus.png",
+    "other": "https://maps.google.com/mapfiles/kml/shapes/placemark_circle.png",
+}
+
 HEX_COLOR_RE = re.compile(r"^#[0-9a-fA-F]{6}$")
+
+
+def hex_to_kml_color(hex_color: Optional[str]) -> Optional[str]:
+    """Our #rrggbb -> KML's aabbggrr hex, full opacity. Inverse of _kml_color_to_hex."""
+    if not hex_color or not HEX_COLOR_RE.match(hex_color):
+        return None
+    text = hex_color.lstrip('#')
+    rr, gg, bb = text[0:2], text[2:4], text[4:6]
+    return f"ff{bb}{gg}{rr}".lower()
 
 
 class POIParser:
@@ -137,6 +171,13 @@ class POIParser:
                 except (ValueError, IndexError):
                     continue
 
+                altitude = None
+                if len(coords) >= 3:
+                    try:
+                        altitude = float(coords[2])
+                    except ValueError:
+                        altitude = None
+
                 # Validate coordinates
                 if not (-90 <= lat <= 90 and -180 <= lon <= 180):
                     continue
@@ -153,6 +194,10 @@ class POIParser:
 
                 # Auto-detect icon/color from the placemark's KML style, if any
                 icon, color = POIParser._resolve_style(placemark, styles, ns)
+                # Raw href/color (unmapped, unconverted) kept alongside the
+                # normalized icon/color so export can reconstruct the
+                # original <Style> instead of approximating it.
+                raw_href, raw_color = POIParser._resolve_raw_style(placemark, styles, ns)
 
                 poi_list.append({
                     'name': name,
@@ -163,6 +208,9 @@ class POIParser:
                     'source': 'uploaded',
                     'icon': icon,
                     'color': color,
+                    'kml_icon_href': raw_href,
+                    'kml_style_color': raw_color,
+                    'kml_altitude': altitude,
                 })
             except Exception:
                 continue  # Skip invalid placemarks
@@ -189,6 +237,7 @@ class POIParser:
         return {
             'href': href or None,
             'color': POIParser._kml_color_to_hex(color_raw),
+            'raw_color': color_raw or None,
         }
 
     @staticmethod
@@ -207,6 +256,19 @@ class POIParser:
         if color is not None and not HEX_COLOR_RE.match(color):
             color = None
         return icon, color
+
+    @staticmethod
+    def _resolve_raw_style(placemark, styles, ns) -> Tuple[Optional[str], Optional[str]]:
+        """Resolve a placemark's *unconverted* href/color for export round-trip fidelity."""
+        inline_style = placemark.find('kml:Style', ns)
+        if inline_style is not None:
+            info = POIParser._extract_icon_style(inline_style, ns)
+        else:
+            style_url_elem = placemark.find('kml:styleUrl', ns)
+            style_url = (style_url_elem.text or '').strip() if style_url_elem is not None else ''
+            info = styles.get(style_url.lstrip('#'), {'href': None, 'raw_color': None})
+
+        return info.get('href'), info.get('raw_color')
 
     @staticmethod
     def _href_to_icon(href: Optional[str]) -> Optional[str]:

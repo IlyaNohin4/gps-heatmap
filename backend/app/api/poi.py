@@ -1,14 +1,15 @@
 """API endpoints for user-uploaded POI."""
 
-from typing import List, Optional
+from typing import Dict, List, Optional, Tuple
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
+import re
 from sqlalchemy import func
 from sqlalchemy.orm import Session
-import xml.etree.ElementTree as ET
+from xml.dom.minidom import Document
 
 from app.core.database import get_db
 from app.core.deps import get_current_user
@@ -16,7 +17,7 @@ from app.core.http_utils import safe_content_disposition
 from app.models.poi import POI
 from app.models.poi_import import POIImport
 from app.models.user import User
-from app.services.poi_parser import POIParser, ICON_SLUGS, HEX_COLOR_RE
+from app.services.poi_parser import POIParser, ICON_SLUGS, HEX_COLOR_RE, ICON_SLUG_TO_GOOGLE_HREF, hex_to_kml_color
 
 router = APIRouter(prefix="/api/poi", tags=["poi"])
 
@@ -196,6 +197,9 @@ async def upload_poi(
             color=poi_data.get('color'),
             source=poi_data['source'],
             import_name=import_name,
+            kml_icon_href=poi_data.get('kml_icon_href'),
+            kml_style_color=poi_data.get('kml_style_color'),
+            kml_altitude=poi_data.get('kml_altitude'),
         )
         db.add(poi)
 
@@ -404,23 +408,108 @@ def export_import(
         POI.import_name == import_name
     ).all()
 
-    # Generate KML
-    kml = ET.Element("kml", xmlns="http://www.opengis.net/kml/2.2")
-    document = ET.SubElement(kml, "Document")
-    ET.SubElement(document, "name").text = import_name
-
-    for poi in pois:
-        placemark = ET.SubElement(document, "Placemark")
-        ET.SubElement(placemark, "name").text = poi.name
-        ET.SubElement(placemark, "description").text = poi.description or ""
-
-        point = ET.SubElement(placemark, "Point")
-        ET.SubElement(point, "coordinates").text = f"{poi.lon},{poi.lat}"
-
-    kml_str = ET.tostring(kml, encoding="unicode")
+    kml_str = _build_kml(import_name, pois)
 
     return StreamingResponse(
         iter([kml_str]),
         media_type="application/vnd.google-earth.kml+xml",
         headers={"Content-Disposition": safe_content_disposition(f"{import_name}.kml")}
     )
+
+
+_RAW_KML_COLOR_RE = re.compile(r'^[0-9a-fA-F]{8}$')
+
+
+def _build_kml(import_name: str, pois: List[POI]) -> str:
+    """Build a KML document, restoring each POI's original <Style> (icon href +
+    color) and altitude when captured on import, so round-tripping a file we
+    parsed produces the same look as the source instead of a bare-bones export.
+    """
+    doc = Document()
+    kml = doc.createElement("kml")
+    kml.setAttribute("xmlns", "http://www.opengis.net/kml/2.2")
+    doc.appendChild(kml)
+
+    document = doc.createElement("Document")
+    kml.appendChild(document)
+    name_el = doc.createElement("name")
+    name_el.appendChild(doc.createCDATASection(import_name))
+    document.appendChild(name_el)
+
+    # One <Style> per unique (href, color) pair, referenced by styleUrl —
+    # mirrors what Google My Maps produces, minus the normal/highlight
+    # <StyleMap> pair (cosmetic in the editor UI, irrelevant to rendering).
+    style_ids: Dict[Tuple[Optional[str], Optional[str]], str] = {}
+
+    # Styles are collected while walking placemarks but appended to the
+    # Document *before* any Placemark — matching where Google My Maps puts
+    # them (order is technically irrelevant to KML renderers, but this keeps
+    # a re-exported file structurally close to the original).
+    style_elements = []
+
+    def _style_id_for(poi: POI) -> Optional[str]:
+        if poi.kml_icon_href:
+            # Came from a KML import — reproduce the exact original style.
+            href = poi.kml_icon_href
+            color = poi.kml_style_color if poi.kml_style_color and _RAW_KML_COLOR_RE.match(poi.kml_style_color) else None
+        elif poi.icon and poi.icon in ICON_SLUG_TO_GOOGLE_HREF:
+            # Created/edited in-app — no original KML style to restore, so
+            # substitute a real Google icon of a matching shape/color instead
+            # of exporting a plain unstyled Placemark.
+            href = ICON_SLUG_TO_GOOGLE_HREF[poi.icon]
+            color = hex_to_kml_color(poi.color)
+        else:
+            return None
+
+        key = (href, color)
+        if key not in style_ids:
+            style_id = f"style{len(style_ids)}"
+            style_ids[key] = style_id
+            style = doc.createElement("Style")
+            style.setAttribute("id", style_id)
+            icon_style = doc.createElement("IconStyle")
+            if color:
+                color_el = doc.createElement("color")
+                color_el.appendChild(doc.createTextNode(color))
+                icon_style.appendChild(color_el)
+            icon = doc.createElement("Icon")
+            href_el = doc.createElement("href")
+            href_el.appendChild(doc.createTextNode(href))
+            icon.appendChild(href_el)
+            icon_style.appendChild(icon)
+            style.appendChild(icon_style)
+            style_elements.append(style)
+        return style_ids[key]
+
+    placemark_elements = []
+    for poi in pois:
+        placemark = doc.createElement("Placemark")
+        placemark_elements.append(placemark)
+
+        name = doc.createElement("name")
+        name.appendChild(doc.createCDATASection(poi.name))
+        placemark.appendChild(name)
+
+        description = doc.createElement("description")
+        description.appendChild(doc.createCDATASection(poi.description or ""))
+        placemark.appendChild(description)
+
+        style_id = _style_id_for(poi)
+        if style_id:
+            style_url = doc.createElement("styleUrl")
+            style_url.appendChild(doc.createTextNode(f"#{style_id}"))
+            placemark.appendChild(style_url)
+
+        point = doc.createElement("Point")
+        placemark.appendChild(point)
+        coordinates = doc.createElement("coordinates")
+        altitude = poi.kml_altitude if poi.kml_altitude is not None else 0
+        coordinates.appendChild(doc.createTextNode(f"{poi.lon},{poi.lat},{altitude}"))
+        point.appendChild(coordinates)
+
+    for style in style_elements:
+        document.appendChild(style)
+    for placemark in placemark_elements:
+        document.appendChild(placemark)
+
+    return doc.toprettyxml(indent="  ")
