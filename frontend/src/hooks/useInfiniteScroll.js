@@ -7,10 +7,11 @@ import { useEffect, useRef } from 'react';
 //
 // `rootRef` MUST point at the actual scrollable container (the div with
 // overflow-y: auto), not left undefined — with no root, IntersectionObserver
-// falls back to the browser viewport, and a short first page (e.g. 50 items
-// that don't fill the container) leaves the sentinel already inside the
-// viewport, firing loadMore immediately on mount before the user scrolls at
-// all (page 1 + page 2 both load before anything renders).
+// falls back to the browser viewport.
+//
+// By design the first page always stays at exactly the requested page size,
+// even if it doesn't fill the container (leaving empty space below it) — see
+// the `skippedInitial` guard below.
 export default function useInfiniteScroll(loadMore, hasMore, rootRef) {
   const sentinelRef = useRef(null);
   const loadingGuard = useRef(false);
@@ -29,8 +30,32 @@ export default function useInfiniteScroll(loadMore, hasMore, rootRef) {
     const node = sentinelRef.current;
     if (!node || !hasMore) return undefined;
 
+    // `cancelled` guards against React 18 StrictMode's dev-only double
+    // effect invocation (mount → cleanup → mount): IntersectionObserver
+    // delivers its initial "is this already intersecting" notification
+    // asynchronously, so it's possible for that notification to still be
+    // in flight when the transient first mount's cleanup runs. disconnect()
+    // alone isn't a reliable-enough guarantee against every browser's
+    // delivery timing, so we also check this flag inside the callback.
+    let cancelled = false;
+
+    // IntersectionObserver always delivers one synchronous-ish "initial
+    // state" report the instant observe() is called, regardless of whether
+    // the user has scrolled. On a tall viewport a short first page can
+    // already leave the sentinel inside the container (+ rootMargin), so
+    // without this guard that initial report auto-loads a second page
+    // before the user ever scrolls (50 → 100 with zero interaction).
+    // Skipping it means loadMore only ever fires in response to a real
+    // intersection change — i.e. an actual scroll.
+    let skippedInitial = false;
+
     const observer = new IntersectionObserver(
       (entries) => {
+        if (cancelled) return;
+        if (!skippedInitial) {
+          skippedInitial = true;
+          return;
+        }
         if (!entries[0].isIntersecting) return;
         if (loadingGuard.current) return;
         loadingGuard.current = true;
@@ -41,7 +66,10 @@ export default function useInfiniteScroll(loadMore, hasMore, rootRef) {
       { root: rootRef?.current ?? null, rootMargin: '100px' }
     );
     observer.observe(node);
-    return () => observer.disconnect();
+    return () => {
+      cancelled = true;
+      observer.disconnect();
+    };
   }, [hasMore, rootRef]);
 
   return sentinelRef;
