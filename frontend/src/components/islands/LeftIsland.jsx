@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef, useTransition } from 'react';
-import { Search, Filter, Plus, X, ChevronLeft, ChevronRight, MapPin, Route, Eye, EyeOff, PenLine } from 'lucide-react';
+import { Search, Filter, Plus, X, ChevronLeft, ChevronRight, MapPin, Route, Eye, EyeOff, Upload } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'react-toastify';
 import Slider from 'rc-slider';
@@ -319,7 +319,7 @@ function LeftIslandContent({ onUploadClick, loading, allTracksVisible, onToggleV
               style={{ flex: 1, minWidth: 0 }}
               onClick={onUploadClick}
             >
-              <Plus size={14} /> {t('tracks.add_track')}
+              <Upload size={14} /> {t('tracks.import_track')}
             </Button>
             <Button
               variant="secondary"
@@ -330,7 +330,7 @@ function LeftIslandContent({ onUploadClick, loading, allTracksVisible, onToggleV
                 toggleTrackCreator();
               }}
             >
-              <PenLine size={14} /> {t('tracks.draw_track')}
+              <Plus size={14} /> {t('tracks.create_track')}
             </Button>
           </div>
 
