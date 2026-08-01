@@ -15,6 +15,7 @@ from app.core.database import get_db
 from app.core.deps import get_current_user
 from app.core.http_utils import safe_content_disposition
 from app.models.poi import POI
+from app.models.poi_category import POICategory
 from app.models.poi_import import POIImport
 from app.models.user import User
 from app.services.poi_parser import POIParser, ICON_SLUGS, HEX_COLOR_RE, ICON_SLUG_TO_GOOGLE_HREF, hex_to_kml_color
@@ -83,6 +84,14 @@ class ImportInfo(BaseModel):
 
 class RenameImportRequest(BaseModel):
     new_name: str = Field(..., max_length=255)
+
+
+class RenameCategoryRequest(BaseModel):
+    new_name: str = Field(..., min_length=1, max_length=100)
+
+
+class CreateCategoryRequest(BaseModel):
+    name: str = Field(..., min_length=1, max_length=100)
 
 
 class CreateImportRequest(BaseModel):
@@ -244,10 +253,104 @@ def get_categories(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Get unique POI categories for current user with counts."""
-    categories = db.query(POI.category, func.count(POI.id)).filter(POI.user_id == current_user.id).group_by(POI.category).all()
+    """Get the user's categories with POI counts — includes categories
+    registered via POST /categories that have zero POI yet."""
+    counts = dict(
+        db.query(POI.category, func.count(POI.id))
+        .filter(POI.user_id == current_user.id)
+        .group_by(POI.category)
+        .all()
+    )
+    registered = db.query(POICategory.name).filter(POICategory.user_id == current_user.id).all()
+    names = set(counts.keys()) | {r[0] for r in registered}
 
-    return [CategoryStats(name=c[0], count=c[1]) for c in categories]
+    return [CategoryStats(name=name, count=counts.get(name, 0)) for name in sorted(names)]
+
+
+@router.post("/categories", response_model=CategoryStats, status_code=status.HTTP_201_CREATED)
+def create_category(
+    request: CreateCategoryRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Register a category ahead of time, before any POI uses it."""
+    exists = db.query(POICategory).filter(
+        POICategory.user_id == current_user.id, POICategory.name == request.name
+    ).first()
+    has_poi = db.query(POI).filter(
+        POI.user_id == current_user.id, POI.category == request.name
+    ).first()
+    if exists or has_poi:
+        raise HTTPException(status_code=409, detail="A category with this name already exists")
+
+    db.add(POICategory(user_id=current_user.id, name=request.name))
+    db.commit()
+
+    return CategoryStats(name=request.name, count=0)
+
+
+@router.patch("/categories/{category_name}", status_code=status.HTTP_200_OK)
+def rename_category(
+    category_name: str,
+    request: RenameCategoryRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Rename a category across all of the user's POI (and its registry entry, if any) at once.
+
+    If `new_name` is already a registered/used category, this merges
+    `category_name` into it (e.g. consolidating "food" into "Food") instead
+    of rejecting the rename — the source registry row is dropped either way.
+    """
+    updated_poi = db.query(POI).filter(
+        POI.user_id == current_user.id, POI.category == category_name
+    ).update({POI.category: request.new_name})
+
+    source_registry = db.query(POICategory).filter(
+        POICategory.user_id == current_user.id, POICategory.name == category_name
+    ).first()
+    if source_registry:
+        target_exists = db.query(POICategory).filter(
+            POICategory.user_id == current_user.id, POICategory.name == request.new_name
+        ).first()
+        if target_exists:
+            # Merging into an already-registered category — drop the source
+            # row rather than renaming it in place, which would collide with
+            # the (user_id, name) unique constraint on the target row.
+            db.delete(source_registry)
+        else:
+            source_registry.name = request.new_name
+
+    if not updated_poi and not source_registry:
+        raise HTTPException(status_code=404, detail="Category not found")
+
+    db.commit()
+    return {"status": "ok"}
+
+
+@router.delete("/categories/{category_name}", status_code=status.HTTP_200_OK)
+def delete_category(
+    category_name: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Reset a category to 'other' across all of the user's POI and remove its
+    registry entry — does not delete the POI themselves."""
+    if category_name == "other":
+        raise HTTPException(status_code=400, detail="Cannot delete the 'other' category")
+
+    updated_poi = db.query(POI).filter(
+        POI.user_id == current_user.id, POI.category == category_name
+    ).update({POI.category: "other"})
+    deleted_registry = db.query(POICategory).filter(
+        POICategory.user_id == current_user.id, POICategory.name == category_name
+    ).delete()
+
+    if not updated_poi and not deleted_registry:
+        raise HTTPException(status_code=404, detail="Category not found")
+
+    db.commit()
+    return {"status": "ok"}
 
 
 @router.patch("/{poi_id}", response_model=POIResponse)

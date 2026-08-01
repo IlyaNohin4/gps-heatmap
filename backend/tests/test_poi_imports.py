@@ -3,15 +3,17 @@ import pytest
 
 from app.core.database import Base
 from app.models.poi import POI
+from app.models.poi_category import POICategory
 from app.models.poi_import import POIImport
 
 
 @pytest.fixture(autouse=True)
 def _create_tables(db):
-    Base.metadata.create_all(bind=db.get_bind(), tables=[POI.__table__, POIImport.__table__])
+    Base.metadata.create_all(bind=db.get_bind(), tables=[POI.__table__, POIImport.__table__, POICategory.__table__])
     yield
     db.query(POI).delete()
     db.query(POIImport).delete()
+    db.query(POICategory).delete()
     db.commit()
 
 
@@ -241,3 +243,102 @@ class TestExportImport:
         # Our #ff0000 -> KML aabbggrr, full opacity -> ff0000ff
         assert "ff0000ff" in body
         assert "<styleUrl>#style0</styleUrl>" in body
+
+
+class TestManageCategories:
+    def test_rename_category_updates_all_matching_poi(self, client, auth_headers, db):
+        user = _current_user(db)
+        db.add_all([
+            POI(user_id=user.id, name="A", lat=1.0, lon=1.0, category="food", import_name="X"),
+            POI(user_id=user.id, name="B", lat=2.0, lon=2.0, category="food", import_name="X"),
+            POI(user_id=user.id, name="C", lat=3.0, lon=3.0, category="water", import_name="X"),
+        ])
+        db.commit()
+
+        r = client.patch("/api/poi/categories/food", json={"new_name": "dining"}, headers=auth_headers)
+        assert r.status_code == 200
+
+        cats = {c["name"]: c["count"] for c in client.get("/api/poi/categories", headers=auth_headers).json()}
+        assert cats.get("dining") == 2
+        assert "food" not in cats
+        assert cats.get("water") == 1
+
+    def test_rename_missing_category_is_404(self, client, auth_headers):
+        r = client.patch("/api/poi/categories/ghost", json={"new_name": "whatever"}, headers=auth_headers)
+        assert r.status_code == 404
+
+    def test_delete_category_resets_to_other(self, client, auth_headers, db):
+        user = _current_user(db)
+        db.add(POI(user_id=user.id, name="A", lat=1.0, lon=1.0, category="junk", import_name="X"))
+        db.commit()
+
+        r = client.delete("/api/poi/categories/junk", headers=auth_headers)
+        assert r.status_code == 200
+
+        cats = {c["name"]: c["count"] for c in client.get("/api/poi/categories", headers=auth_headers).json()}
+        assert "junk" not in cats
+        assert cats.get("other") == 1
+
+    def test_delete_missing_category_is_404(self, client, auth_headers):
+        r = client.delete("/api/poi/categories/ghost", headers=auth_headers)
+        assert r.status_code == 404
+
+    def test_cannot_delete_other_category(self, client, auth_headers, db):
+        user = _current_user(db)
+        db.add(POI(user_id=user.id, name="A", lat=1.0, lon=1.0, category="other", import_name="X"))
+        db.commit()
+
+        r = client.delete("/api/poi/categories/other", headers=auth_headers)
+        assert r.status_code == 400
+
+    def test_create_empty_category(self, client, auth_headers):
+        r = client.post("/api/poi/categories", json={"name": "hiking"}, headers=auth_headers)
+        assert r.status_code == 201
+        assert r.json() == {"name": "hiking", "count": 0}
+
+        cats = {c["name"]: c["count"] for c in client.get("/api/poi/categories", headers=auth_headers).json()}
+        assert cats.get("hiking") == 0
+
+    def test_create_duplicate_category_is_409(self, client, auth_headers):
+        client.post("/api/poi/categories", json={"name": "hiking"}, headers=auth_headers)
+        r = client.post("/api/poi/categories", json={"name": "hiking"}, headers=auth_headers)
+        assert r.status_code == 409
+
+    def test_create_category_conflicting_with_used_category_is_409(self, client, auth_headers, db):
+        user = _current_user(db)
+        db.add(POI(user_id=user.id, name="A", lat=1.0, lon=1.0, category="food", import_name="X"))
+        db.commit()
+
+        r = client.post("/api/poi/categories", json={"name": "food"}, headers=auth_headers)
+        assert r.status_code == 409
+
+    def test_rename_empty_registered_category(self, client, auth_headers):
+        client.post("/api/poi/categories", json={"name": "hiking"}, headers=auth_headers)
+        r = client.patch("/api/poi/categories/hiking", json={"new_name": "trekking"}, headers=auth_headers)
+        assert r.status_code == 200
+
+        cats = {c["name"]: c["count"] for c in client.get("/api/poi/categories", headers=auth_headers).json()}
+        assert "hiking" not in cats
+        assert cats.get("trekking") == 0
+
+    def test_delete_empty_registered_category(self, client, auth_headers):
+        client.post("/api/poi/categories", json={"name": "hiking"}, headers=auth_headers)
+        r = client.delete("/api/poi/categories/hiking", headers=auth_headers)
+        assert r.status_code == 200
+
+        cats = {c["name"]: c["count"] for c in client.get("/api/poi/categories", headers=auth_headers).json()}
+        assert "hiking" not in cats
+
+    def test_rename_merges_into_existing_target_category(self, client, auth_headers, db):
+        # Every account is seeded with "Food" at registration (see auth.py);
+        # this merges the lowercase "food" (from KML auto-detect, say) into it.
+        user = _current_user(db)
+        db.add(POI(user_id=user.id, name="A", lat=1.0, lon=1.0, category="food", import_name="X"))
+        db.commit()
+
+        r = client.patch("/api/poi/categories/food", json={"new_name": "Food"}, headers=auth_headers)
+        assert r.status_code == 200
+
+        cats = {c["name"]: c["count"] for c in client.get("/api/poi/categories", headers=auth_headers).json()}
+        assert cats.get("Food") == 1
+        assert "food" not in cats

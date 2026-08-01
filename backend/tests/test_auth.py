@@ -33,6 +33,17 @@ class TestRegister:
         assert r.status_code == 200
         assert r.json() == [{"name": "My Points", "count": 0}]
 
+    def test_creates_default_categories(self, client):
+        token = _reg(client).json()["access_token"]
+        r = client.get("/api/poi/categories", headers={"Authorization": f"Bearer {token}"})
+        assert r.status_code == 200
+        names = {c["name"] for c in r.json()}
+        assert names == {
+            'Food', 'Medical', 'Transport', 'Accommodation', 'Tourism',
+            'Amenities', 'Bicycle', 'Public Transport', 'Other',
+        }
+        assert all(c["count"] == 0 for c in r.json())
+
     def test_duplicate_email_is_409(self, client):
         email = f"dup_{secrets.token_hex(4)}@test.com"
         _reg(client, email=email)

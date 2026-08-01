@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import {
   ChevronDown, ChevronUp, Sun, Moon,
-  LogOut, User, Key, AlertTriangle, Map, Mail,
+  LogOut, User, Key, AlertTriangle, Map, Mail, Tags,
 } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { useTranslation } from 'react-i18next';
@@ -14,6 +14,7 @@ import Panel from '../../ui/Panel.jsx';
 import Button from '../../ui/Button.jsx';
 import Chip from '../../ui/Chip.jsx';
 import Input from '../../ui/Input.jsx';
+import CategoryManageModal from '../modals/CategoryManageModal.jsx';
 
 const LANGUAGES = [
   { code: 'en', label: 'English' },
@@ -35,6 +36,7 @@ export default function TopIsland() {
   const [changeEmailOpen, setChangeEmailOpen] = useState(false);
   const [newEmail, setNewEmail] = useState('');
   const [deleteConfirm, setDeleteConfirm] = useState(false);
+  const [categoriesModalOpen, setCategoriesModalOpen] = useState(false);
 
   async function savePref(patch) {
     try {
@@ -211,6 +213,16 @@ export default function TopIsland() {
 
             {isAuthenticated && (
               <>
+                <div style={sectionLabel}>{t('poi.title')}</div>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  style={{ width: '100%', marginBottom: 'var(--space-2)' }}
+                  onClick={() => setCategoriesModalOpen(true)}
+                >
+                  <Tags size={13} /> {t('poi.manage_categories')}
+                </Button>
+
                 <div style={sectionLabel}>{t('settings.account')}</div>
                 <div style={{ fontSize: 'var(--text-sm)', color: 'var(--text-secondary)', marginBottom: 'var(--space-2)', display: 'flex', alignItems: 'center', gap: 'var(--space-1)' }}>
                   <User size={13} /> {user?.email}
@@ -295,6 +307,8 @@ export default function TopIsland() {
           </div>
         )}
       </Panel>
+
+      <CategoryManageModal open={categoriesModalOpen} onClose={() => setCategoriesModalOpen(false)} />
     </div>
   );
 }

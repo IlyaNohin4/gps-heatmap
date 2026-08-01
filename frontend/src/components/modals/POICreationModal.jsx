@@ -10,11 +10,7 @@ import Button from '../../ui/Button.jsx';
 import Input from '../../ui/Input.jsx';
 import IconPicker from '../poi/IconPicker.jsx';
 import ColorPicker from '../poi/ColorPicker.jsx';
-
-const CATEGORIES = [
-  'Food', 'Medical', 'Transport', 'Accommodation', 'Tourism',
-  'Amenities', 'Bicycle', 'Public Transport', 'Other'
-];
+import CategorySelect from '../poi/CategorySelect.jsx';
 
 const NEW_LIST_VALUE = '__new__';
 
@@ -122,25 +118,7 @@ export default function POICreationModal({ lat, lon, onClose, onSuccess }) {
           <label style={{ fontSize: 12, color: 'var(--text-secondary)', fontWeight: 600, display: 'block', marginBottom: 'var(--space-1)' }}>
             Category
           </label>
-          <select
-            value={category}
-            onChange={(e) => setCategory(e.target.value)}
-            style={{
-              width: '100%',
-              padding: 'var(--space-2) var(--space-3)',
-              fontSize: 13,
-              border: '1px solid var(--border)',
-              borderRadius: 8,
-              background: 'var(--surface)',
-              color: 'var(--text)',
-              boxSizing: 'border-box',
-            }}
-            disabled={saving}
-          >
-            {CATEGORIES.map((cat) => (
-              <option key={cat} value={cat}>{cat}</option>
-            ))}
-          </select>
+          <CategorySelect value={category} onChange={setCategory} disabled={saving} />
         </div>
 
         <div style={{ marginBottom: 'var(--space-3)' }}>

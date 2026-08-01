@@ -15,6 +15,7 @@ from app.core.deps import get_current_user
 from app.core.limiter import limiter
 from app.core.security import create_access_token, hash_password, verify_password
 from app.models.password_reset import PasswordReset
+from app.models.poi_category import DEFAULT_CATEGORIES, POICategory
 from app.models.poi_import import POIImport
 from app.models.user import User
 
@@ -93,6 +94,10 @@ def register(request: Request, body: RegisterRequest, db: Session = Depends(get_
     # Every account starts with one POI list so Create-POI never has to force
     # the user through "+ New list..." on their very first point.
     db.add(POIImport(user_id=user.id, name="My Points"))
+    # And a set of suggested categories, so the category picker and "Manage
+    # categories" show the same list from day one instead of diverging until
+    # the user actually assigns one of the picker's suggestions to a POI.
+    db.add_all(POICategory(user_id=user.id, name=name) for name in DEFAULT_CATEGORIES)
     db.commit()
 
     return TokenResponse(access_token=create_access_token(user.id))

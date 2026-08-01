@@ -30,6 +30,7 @@ from app.core.database import Base, get_db
 from app.core.limiter import limiter
 from app.models.password_reset import PasswordReset
 from app.models.poi import POI
+from app.models.poi_category import POICategory
 from app.models.poi_import import POIImport
 from app.models.user import User
 from app.main import app
@@ -71,7 +72,7 @@ def _enable_sqlite_fk(dbapi_connection, connection_record):
 # for tests that only care about auth.
 Base.metadata.create_all(
     bind=_engine,
-    tables=[User.__table__, PasswordReset.__table__, POI.__table__, POIImport.__table__],
+    tables=[User.__table__, PasswordReset.__table__, POI.__table__, POIImport.__table__, POICategory.__table__],
 )
 
 _TestingSession = sessionmaker(autocommit=False, autoflush=False, bind=_engine)

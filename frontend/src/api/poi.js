@@ -40,6 +40,23 @@ export async function fetchPOICategories() {
   return data;
 }
 
+export async function createCategory(name) {
+  const { data } = await client.post('/api/poi/categories', { name });
+  return data;
+}
+
+export async function renameCategory(oldName, newName) {
+  const { data } = await client.patch(`/api/poi/categories/${oldName}`, {
+    new_name: newName,
+  });
+  return data;
+}
+
+export async function deleteCategory(name) {
+  const { data } = await client.delete(`/api/poi/categories/${name}`);
+  return data;
+}
+
 export async function updatePOI(id, updates) {
   const { data } = await client.patch(`/api/poi/${id}`, updates);
   return data;
