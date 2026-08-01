@@ -1,6 +1,8 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { toast } from 'react-toastify';
 import { useTranslation } from 'react-i18next';
+import Slider from 'rc-slider';
+import 'rc-slider/assets/index.css';
 import {
   ChevronDown, ChevronUp, Trash2, Globe, Lock, MapPin, Calendar,
   Gauge, Route, Download, Pencil,
@@ -8,13 +10,16 @@ import {
 import useAppStore from '../../store/appStore.js';
 import useMapStore from '../../store/mapStore.js';
 import { togglePublish, downloadTrackFile } from '../../api/tracks.js';
+import { fetchPOICategories } from '../../api/poi.js';
 import TrackDeleteModal from '../modals/TrackDeleteModal.jsx';
 import TrackRenameModal from '../modals/TrackRenameModal.jsx';
 import Card from '../../ui/Card.jsx';
 import Button from '../../ui/Button.jsx';
 import Modal from '../../ui/Modal.jsx';
+import Chip from '../../ui/Chip.jsx';
 
-const FT_PER_M = 3.28084;
+const MIN_RADIUS_KM = 1;
+const MAX_RADIUS_KM = 50;
 
 function formatDate(iso) {
   if (!iso) return '—';
@@ -46,40 +51,48 @@ function elevationLabel(m, unitSystem) {
 }
 
 function DownloadModal({
-  open, onClose, unitSystem, poiRadius, setPoiRadius, onPlainDownload, onDownloadWithMarkers, t,
+  open, onClose, unitSystem, poiRadiusKm, setPoiRadiusKm,
+  categories, selectedCategories, onToggleCategory,
+  onPlainDownload, onDownloadWithMarkers, t,
 }) {
-  const unitLabel = unitSystem === 'imperial' ? 'ft' : 'm';
+  const distanceLabelForKm = unitSystem === 'imperial'
+    ? `${(poiRadiusKm * 0.621371).toFixed(1)} mi`
+    : `${poiRadiusKm} km`;
 
   return (
     <Modal open={open} onClose={onClose} title={t('card.download')}>
       <Button variant="secondary" onClick={onPlainDownload} style={{ width: '100%', marginBottom: 'var(--space-3)' }}>
         {t('card.download')}
       </Button>
-      <div style={{ fontSize: 12, color: 'var(--text-secondary)', fontWeight: 600, marginBottom: 'var(--space-1)' }}>
-        {t('card.download_poi_markers')} ({unitLabel})
+      <div style={{ fontSize: 12, color: 'var(--text-secondary)', fontWeight: 600, marginBottom: 'var(--space-2)' }}>
+        {t('card.download_poi_markers')}: {distanceLabelForKm}
       </div>
-      <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
-        <input
-          type="number"
-          min="1"
-          step="10"
-          value={poiRadius}
-          onChange={(e) => setPoiRadius(parseFloat(e.target.value) || 0)}
-          style={{
-            width: 80,
-            padding: 'var(--space-1) var(--space-2)',
-            fontSize: 13,
-            border: '1px solid var(--border)',
-            borderRadius: 6,
-            background: 'var(--bg)',
-            color: 'var(--text)',
-            boxSizing: 'border-box',
-          }}
-        />
-        <Button onClick={onDownloadWithMarkers} disabled={!poiRadius || poiRadius <= 0} style={{ flex: 1 }}>
-          {t('card.download')}
-        </Button>
-      </div>
+      <Slider
+        min={MIN_RADIUS_KM}
+        max={MAX_RADIUS_KM}
+        value={poiRadiusKm}
+        onChange={setPoiRadiusKm}
+        style={{ marginBottom: 'var(--space-3)' }}
+      />
+
+      {categories.length > 0 && (
+        <>
+          <div style={{ fontSize: 12, color: 'var(--text-secondary)', fontWeight: 600, marginBottom: 'var(--space-1)' }}>
+            {t('card.download_categories')}
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-1)', marginBottom: 'var(--space-3)' }}>
+            {categories.map((c) => (
+              <Chip key={c.name} active={selectedCategories.includes(c.name)} onClick={() => onToggleCategory(c.name)}>
+                {c.name}
+              </Chip>
+            ))}
+          </div>
+        </>
+      )}
+
+      <Button onClick={onDownloadWithMarkers} style={{ width: '100%' }}>
+        {t('card.download')}
+      </Button>
     </Modal>
   );
 }
@@ -100,7 +113,22 @@ export default React.memo(function TrackCard({ track, isSelected, onClick }) {
   const [showRenameModal, setShowRenameModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showDownloadPopover, setShowDownloadPopover] = useState(false);
-  const [poiRadius, setPoiRadius] = useState(100);
+  const [poiRadiusKm, setPoiRadiusKm] = useState(5);
+  const [categories, setCategories] = useState([]);
+  const [selectedCategories, setSelectedCategories] = useState([]);
+
+  useEffect(() => {
+    if (!showDownloadPopover) return;
+    fetchPOICategories()
+      .then((data) => setCategories(data.filter((c) => c.count > 0)))
+      .catch((err) => console.error('Failed to load categories:', err));
+  }, [showDownloadPopover]);
+
+  function toggleCategory(name) {
+    setSelectedCategories((prev) => (
+      prev.includes(name) ? prev.filter((c) => c !== name) : [...prev, name]
+    ));
+  }
 
   async function handlePublish(e) {
     e.stopPropagation();
@@ -113,9 +141,9 @@ export default React.memo(function TrackCard({ track, isSelected, onClick }) {
     }
   }
 
-  async function runDownload(poiRadiusM = null) {
+  async function runDownload(poiRadiusM = null, downloadCategories = null) {
     try {
-      const { blob, filename } = await downloadTrackFile(track.id, poiRadiusM);
+      const { blob, filename } = await downloadTrackFile(track.id, poiRadiusM, downloadCategories);
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
@@ -143,8 +171,7 @@ export default React.memo(function TrackCard({ track, isSelected, onClick }) {
   function handleDownloadWithMarkers(e) {
     e.stopPropagation();
     setShowDownloadPopover(false);
-    const radiusM = unitSystem === 'imperial' ? poiRadius / FT_PER_M : poiRadius;
-    runDownload(radiusM);
+    runDownload(poiRadiusKm * 1000, selectedCategories);
   }
 
   function handleOpenRenameModal(e) {
@@ -362,8 +389,11 @@ export default React.memo(function TrackCard({ track, isSelected, onClick }) {
         open={showDownloadPopover}
         onClose={() => setShowDownloadPopover(false)}
         unitSystem={unitSystem}
-        poiRadius={poiRadius}
-        setPoiRadius={setPoiRadius}
+        poiRadiusKm={poiRadiusKm}
+        setPoiRadiusKm={setPoiRadiusKm}
+        categories={categories}
+        selectedCategories={selectedCategories}
+        onToggleCategory={toggleCategory}
         onPlainDownload={handlePlainDownload}
         onDownloadWithMarkers={handleDownloadWithMarkers}
         t={t}

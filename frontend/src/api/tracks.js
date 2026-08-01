@@ -49,15 +49,17 @@ export async function renameTrack(id, name) {
   return data;
 }
 
-export async function downloadTrackFile(id, poiRadiusM = null) {
+export async function downloadTrackFile(id, poiRadiusM = null, categories = null) {
   // Cache-bust: browsers may have cached an earlier response for this exact
   // URL (e.g. from before a server-side format fix), and GET requests are
   // cacheable by default absent explicit headers.
   const params = { _: Date.now() };
   if (poiRadiusM) params.poi_radius_m = poiRadiusM;
+  if (categories && categories.length > 0) params.categories = categories;
   const { data, headers } = await client.get(`/api/tracks/${id}/download`, {
     responseType: 'blob',
     params,
+    paramsSerializer: { indexes: null },
   });
   const disposition = headers['content-disposition'] || '';
   const match = disposition.match(/filename="((?:[^"\\]|\\.)*)"/);

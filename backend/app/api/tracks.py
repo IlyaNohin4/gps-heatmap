@@ -895,7 +895,8 @@ def download_public_track(public_token: str, db: Session = Depends(get_db)):
 @router.get("/{track_id}/download")
 def download_track(
     track_id: int,
-    poi_radius_m: Optional[float] = Query(None, gt=0, le=20000),
+    poi_radius_m: Optional[float] = Query(None, gt=0, le=50000),
+    categories: Optional[List[str]] = Query(None),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -905,7 +906,10 @@ def download_track(
 
     waypoints = None
     if poi_radius_m:
-        pois = db.query(POI).filter(POI.user_id == current_user.id).all()
+        poi_query = db.query(POI).filter(POI.user_id == current_user.id)
+        if categories:
+            poi_query = poi_query.filter(POI.category.in_(categories))
+        pois = poi_query.all()
         waypoints = _pois_near_track(track.raw_points, pois, poi_radius_m)
 
     return _track_file_response(track, waypoints)
