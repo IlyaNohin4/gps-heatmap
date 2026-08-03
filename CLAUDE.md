@@ -24,7 +24,7 @@ docker compose up --build   # Start all services
 docker compose exec -T frontend npm install
 docker compose exec -T frontend npm run dev       # Already running with HMR
 docker compose exec -T frontend npm run build     # Verify production
-docker compose exec -T frontend npm test          # Playwright E2E
+docker compose exec -T frontend npm run test:e2e  # Playwright E2E
 ```
 
 ### CI

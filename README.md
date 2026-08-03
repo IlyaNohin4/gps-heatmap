@@ -22,6 +22,9 @@ docker compose up --build
 - Backend API: http://localhost:8000
 - API docs: http://localhost:8000/docs
 
+The dev stack (`docker-compose.yml`) publishes Postgres (5432) and Redis
+(6379) on the host for local debugging — production does not (see below).
+
 ## Supported Track Formats
 
 GPX, KML, TCX, FIT, GeoJSON
