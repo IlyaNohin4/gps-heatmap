@@ -39,7 +39,7 @@ id, email, password_hash, created_at
 language (en|es|de|ru|uk)
 theme (light|dark)
 unit_distance (km|mi)
-unit_speed (km/h|mph|m/s|knots)
+unit_speed (kmh|mph|ms)
 ```
 
 ### Track
@@ -129,14 +129,16 @@ UNIQUE (user_id, name)
 
 **User preferences (в БД):**
 - `unit_distance` — km | mi (UI конверсия)
-- `unit_speed` — km/h | mph | m/s | knots (UI конверсия)
+- `unit_speed` — kmh | mph | ms (UI конверсия; коды из VALID_UNIT_SPEED, auth.py — нет knots)
 - `language` — en, es, de, ru, uk
 - `theme` — light | dark
 
 **Синхронизация:**
 - При логине: `GET /api/auth/me` загружает настройки
 - Обновление: `PATCH /api/auth/me`
-- Тема: применяется через inline-скрипт в `index.html` до React (нет флика)
+- Тема: применяется синхронно в начале `main.jsx` (до `ReactDOM.createRoot(...).render(...)`,
+  нет флика) — не inline-скриптом в `index.html`: тот блокировался CSP (`script-src 'self'`
+  без `unsafe-inline`/nonce), см. POLISH.md/коммит "move theme script from inline index.html to main.jsx"
 
 **i18n:** react-i18next, `frontend/src/i18n/translations.js` (5 языков)
 
@@ -156,10 +158,11 @@ POST   /api/auth/change-password       — смена пароля (провер
 DELETE /api/auth/account               — удаление аккаунта (каскадно: tracks/poi/password_resets)
 ```
 
-**Rate limiting (T15):** slowapi, лимит по IP (`get_remote_address`), in-memory storage,
-подключён только к auth-эндпоинтам (`app/core/limiter.py`). Остальной API не лимитирован —
-см. `tasks/FUTURE.md`. За nginx (T11) нужен `--proxy-headers` у uvicorn, иначе limiter
-увидит IP nginx вместо клиента.
+**Rate limiting (T15):** slowapi, лимит по IP (`get_remote_address`), in-memory storage
+(`app/core/limiter.py`). Помимо auth-эндпоинтов (выше) лимитированы: `POST /api/tracks/upload`,
+`/create`, `/export` и `POST /api/poi/upload` (10/minute — тяжёлые/синхронные операции), `POST
+/api/routing/directions` (30/minute). Остальной (лёгкий, чисто-CRUD) API не лимитирован. За
+nginx (T11) нужен `--proxy-headers` у uvicorn, иначе limiter увидит IP nginx вместо клиента.
 
 ### Tracks
 ```
@@ -193,8 +196,10 @@ GET    /api/tracks/geometries          — bulk: [{id, normalized_points}] дл�
 GET    /api/tracks/{id}                — детали трека
 DELETE /api/tracks/{id}
 PATCH  /api/tracks/{id}/rename         — переименование
-PATCH  /api/tracks/{id}/publish        — toggle is_public (первый вызов генерирует
-       public_token, дальше — тот же токен переиспользуется при повторных toggle)
+PATCH  /api/tracks/{id}/publish        — toggle is_public. public_token генерируется
+       один раз при создании трека (default в модели, `track.py:49`), не здесь —
+       /publish только переключает флаг; тот же токен переиспользуется при
+       повторных toggle (см. publish/rotate ниже для смены токена)
 POST   /api/tracks/{id}/publish/rotate — сгенерировать новый public_token, старая
        ссылка перестаёт работать (revoke без удаления трека)
 GET    /api/tracks/{id}/download       — скачивание файла в исходном file_format

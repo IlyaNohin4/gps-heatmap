@@ -50,9 +50,12 @@ ports). See `deploy/README.md` for the deploy steps and DB backup setup.
 
 ## E2E Tests
 
-Playwright specs live in `frontend/tests/`:
+Playwright specs live in `frontend/tests/`. Run them via the dedicated
+`playwright` service/profile (built from `frontend/Dockerfile.playwright`,
+which already has browsers baked in — installing them into the regular
+`frontend` container is a dead end, since that container gets rebuilt from
+scratch on every `docker compose up --build` and loses them):
 
 ```bash
-docker compose exec frontend npx playwright install  # first run only
-docker compose exec frontend npm run test:e2e
+docker compose --profile test run --rm playwright
 ```
