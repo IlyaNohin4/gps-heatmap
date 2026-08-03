@@ -13,7 +13,7 @@ function colorForIndex(i) {
   return TRACK_COLORS[i % TRACK_COLORS.length];
 }
 
-const TrackLayer = memo(function TrackLayer({ tracks, selectedTrackId, showHeatmap }) {
+const TrackLayer = memo(function TrackLayer({ tracks, selectedTrackId, showHeatmap, showStartEndMarkers = true }) {
   const map = useMap();
   const groupRef = useRef(null);
 
@@ -46,7 +46,7 @@ const TrackLayer = memo(function TrackLayer({ tracks, selectedTrackId, showHeatm
       line.addTo(group);
 
       // Start marker (green circle with play icon)
-      if (pts.length > 0) {
+      if (showStartEndMarkers && pts.length > 0) {
         const startIcon = L.divIcon({
           html: `<div style="width: 18px; height: 18px; background: #34c759; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 0 0 2px white; border: 1px solid #000;">
             <svg width="10" height="10" viewBox="0 0 24 24" fill="white" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 5a2 2 0 0 1 3.008-1.728l11.997 6.998a2 2 0 0 1 .003 3.458l-12 7A2 2 0 0 1 5 19z"/></svg>
@@ -58,7 +58,7 @@ const TrackLayer = memo(function TrackLayer({ tracks, selectedTrackId, showHeatm
       }
 
       // End marker (white circle with black flag icon)
-      if (pts.length > 1) {
+      if (showStartEndMarkers && pts.length > 1) {
         const endIcon = L.divIcon({
           html: `<div style="width: 18px; height: 18px; background: #ffffff; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 0 0 2px white; border: 1px solid #000;">
             <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M4 22V4a1 1 0 0 1 .4-.8A6 6 0 0 1 8 2c3 0 5 2 7.333 2q2 0 3.067-.8A1 1 0 0 1 20 4v10a1 1 0 0 1-.4.8A6 6 0 0 1 16 16c-3 0-5-2-8-2a6 6 0 0 0-4 1.528"/></svg>
@@ -69,7 +69,7 @@ const TrackLayer = memo(function TrackLayer({ tracks, selectedTrackId, showHeatm
         L.marker([pts[pts.length - 1].lat, pts[pts.length - 1].lon], { icon: endIcon }).addTo(group);
       }
     });
-  }, [tracks, selectedTrackId, map, showHeatmap]);
+  }, [tracks, selectedTrackId, map, showHeatmap, showStartEndMarkers]);
 
   return null;
 });
