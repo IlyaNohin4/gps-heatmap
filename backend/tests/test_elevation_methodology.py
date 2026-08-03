@@ -37,6 +37,20 @@ class TestRdpProfile1d:
         ys = [0, 1, 2, 3, 4]
         assert _rdp_profile_1d(xs, ys, 0.001) == [0, 4]
 
+    def test_large_zigzag_does_not_recursionerror(self):
+        # M3: a profile RDP can't collapse (every point exceeds eps) splits
+        # off one point per recursion level in the old recursive
+        # implementation — O(n) recursion depth, which crashes past ~1000
+        # points on Python's default recursion limit. Confirms the iterative
+        # rewrite handles a much larger, maximally-adversarial profile fine.
+        n = 5000
+        xs = list(range(n))
+        ys = [1000.0 if i % 2 == 0 else 0.0 for i in range(n)]
+        kept = _rdp_profile_1d(xs, ys, eps=1.0)
+        assert kept[0] == 0
+        assert kept[-1] == n - 1
+        assert len(kept) > 2
+
 
 class TestWindowedAverageByDistance:
     def test_window_larger_than_span_averages_everything(self):

@@ -87,7 +87,12 @@ def _collapse_drift(points: list[dict], distance_threshold: float = 3.0, time_th
             # Replace cluster with centroid
             avg_lat = sum(p['lat'] for p in cluster) / len(cluster)
             avg_lon = sum(p['lon'] for p in cluster) / len(cluster)
-            avg_ele = sum(p.get('elevation') or 0 for p in cluster) / len(cluster) if cluster[0].get('elevation') is not None else None
+            # Only cluster[0]'s elevation used to gate this used to coerce
+            # any other member's missing elevation to 0 via `or 0`, dragging
+            # the centroid down whenever elevation was patchy within a
+            # cluster — average only over members that actually have one.
+            eles = [p['elevation'] for p in cluster if p.get('elevation') is not None]
+            avg_ele = sum(eles) / len(eles) if eles else None
 
             result.append({
                 'lat': avg_lat,
@@ -383,9 +388,15 @@ def _rdp_profile_1d(xs: list[float], ys: list[float], eps: float) -> list[int]:
     keep = [False] * n
     keep[0] = keep[-1] = True
 
-    def recurse(lo: int, hi: int) -> None:
+    # Iterative (explicit stack of index ranges instead of recursion) — same
+    # fix as _simplify_trajectory: a profile that RDP can't collapse much
+    # (e.g. a long noisy/zigzag elevation trace) can otherwise drive the
+    # recursive version past Python's default recursion limit (~1000).
+    stack = [(0, n - 1)]
+    while stack:
+        lo, hi = stack.pop()
         if hi <= lo + 1:
-            return
+            continue
         x0, y0 = xs[lo], ys[lo]
         x1, y1 = xs[hi], ys[hi]
         dx, dy = x1 - x0, y1 - y0
@@ -404,10 +415,9 @@ def _rdp_profile_1d(xs: list[float], ys: list[float], eps: float) -> list[int]:
 
         if dmax > eps and idx != -1:
             keep[idx] = True
-            recurse(lo, idx)
-            recurse(idx, hi)
+            stack.append((lo, idx))
+            stack.append((idx, hi))
 
-    recurse(0, n - 1)
     return [i for i in range(n) if keep[i]]
 
 

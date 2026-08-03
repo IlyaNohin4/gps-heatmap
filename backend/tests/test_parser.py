@@ -6,6 +6,7 @@ import pytest
 
 from app.services.parser_factory import (
     _build_segments,
+    _collapse_drift,
     _detect_osmand,
     _haversine,
     _parse_geojson,
@@ -471,3 +472,50 @@ class TestXXEHardening:
         id_el = root.find(f".//{ns}Id")
         assert id_el is not None
         assert id_el.text != "PWNED"
+
+
+# ── Drift collapse ───────────────────────────────────────────────────────────
+
+class TestCollapseDrift:
+    def _pt(self, lat, lon, sec, elevation=None):
+        return {
+            "lat": lat, "lon": lon, "elevation": elevation,
+            "time": datetime(2024, 1, 1, 10, 0, sec, tzinfo=timezone.utc),
+            "osmand_speed_kmh": None,
+        }
+
+    def test_mixed_missing_elevation_averages_only_present_values(self):
+        # M2: the centroid elevation used to be gated on cluster[0] alone,
+        # then `p.get('elevation') or 0` silently coerced any other missing
+        # member to 0 — corrupting the average whenever elevation was patchy
+        # within a stationary cluster. All 3 points sit within the 3m/10s
+        # cluster threshold; only two carry an elevation reading.
+        pts = [
+            self._pt(48.0, 2.0, 0, elevation=100.0),
+            self._pt(48.0, 2.0, 15, elevation=None),
+            self._pt(48.0, 2.0, 30, elevation=120.0),
+        ]
+        result = _collapse_drift(pts)
+        assert len(result) == 1
+        assert result[0]["elevation"] == 110.0  # avg of 100 and 120, ignoring the missing one
+
+    def test_all_missing_elevation_stays_none(self):
+        pts = [
+            self._pt(48.0, 2.0, 0, elevation=None),
+            self._pt(48.0, 2.0, 15, elevation=None),
+        ]
+        result = _collapse_drift(pts)
+        assert len(result) == 1
+        assert result[0]["elevation"] is None
+
+    def test_first_point_missing_elevation_still_averages_others(self):
+        # Old logic: `cluster[0].get('elevation') is not None` gated the
+        # whole computation, so a missing *first* reading discarded every
+        # other member's real elevation too.
+        pts = [
+            self._pt(48.0, 2.0, 0, elevation=None),
+            self._pt(48.0, 2.0, 15, elevation=200.0),
+        ]
+        result = _collapse_drift(pts)
+        assert len(result) == 1
+        assert result[0]["elevation"] == 200.0
