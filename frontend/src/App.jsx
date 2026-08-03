@@ -203,7 +203,10 @@ function MainPage() {
   async function handleFindInArea() {
     if (!mapInstance) return;
     const bounds = mapInstance.getBounds();
-    const params = { bbox: `${bounds.getWest()},${bounds.getSouth()},${bounds.getEast()},${bounds.getNorth()}` };
+    const params = {
+      bbox: `${bounds.getWest()},${bounds.getSouth()},${bounds.getEast()},${bounds.getNorth()}`,
+      limit: TRACKS_FETCH_LIMIT,
+    };
     try {
       const data = await fetchTracks(params);
       setTracks(data);
