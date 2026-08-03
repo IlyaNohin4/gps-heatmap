@@ -25,3 +25,31 @@ docker compose up --build
 ## Supported Track Formats
 
 GPX, KML, TCX, FIT, GeoJSON
+
+## MCP Server
+
+`mcp_server/` exposes the app's track/POI API as MCP tools (e.g. for driving
+uploads or POI creation from an LLM client). Not started by the default
+`docker compose up` — run with the `mcp` profile:
+
+```bash
+docker compose --profile mcp up mcp_server --build
+```
+
+See `mcp_server/README.md` for the available tools and required
+`mcp_server/.env` config.
+
+## Production Deployment
+
+`docker-compose.prod.yml` + `deploy/nginx.conf` (multi-stage builds,
+non-root containers, nginx security headers, no exposed Postgres/Redis
+ports). See `deploy/README.md` for the deploy steps and DB backup setup.
+
+## E2E Tests
+
+Playwright specs live in `frontend/tests/`:
+
+```bash
+docker compose exec frontend npx playwright install  # first run only
+docker compose exec frontend npm run test:e2e
+```

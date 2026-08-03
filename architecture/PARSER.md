@@ -72,6 +72,17 @@ def _sanitize_gpx(data: bytes) -> bytes:
 
 **Применяется после парсинга, результат → `normalized_points`. Скорость считается только из normalized.**
 
+### 0. Point Ordering (in `_normalize_points`, before any phase below)
+
+Multi-`<trkseg>`/lap GPX/TCX/FIT files can list points out of timestamp
+order across segment boundaries. Every phase below computes deltas assuming
+ascending time, so `_normalize_points()` stable-sorts by `time` first
+(points without a `time` keep their original relative position):
+
+```python
+points = sorted(points, key=lambda p: p["time"].timestamp() if p["time"] else float("-inf"))
+```
+
 ### 1. GPS Drift Collapse (`_collapse_drift`)
 
 Точки, которые:
@@ -117,11 +128,16 @@ def _collapse_drift(points: List[Dict], distance_threshold: float = 3.0, time_th
                 break
         
         if len(cluster) > 1:
-            # Replace cluster with centroid
+            # Replace cluster with centroid. Elevation is averaged only over
+            # cluster members that actually have a reading — gating the
+            # whole computation on cluster[0] alone (and coercing any other
+            # member's missing elevation to 0 via `or 0`) used to corrupt the
+            # centroid whenever elevation was patchy within a cluster.
             avg_lat = sum(p['lat'] for p in cluster) / len(cluster)
             avg_lon = sum(p['lon'] for p in cluster) / len(cluster)
-            avg_elevation = sum(p.get('elevation', 0) for p in cluster) / len(cluster) if cluster[0].get('elevation') else None
-            
+            eles = [p['elevation'] for p in cluster if p.get('elevation') is not None]
+            avg_elevation = sum(eles) / len(eles) if eles else None
+
             result.append({
                 'lat': avg_lat,
                 'lon': avg_lon,
@@ -140,6 +156,14 @@ def _collapse_drift(points: List[Dict], distance_threshold: float = 3.0, time_th
 
 Удалить точки где скорость > 200 км/ч (физический лимит)
 
+A lone bad point between two good ones makes *both* adjacent segments look
+fast (in and out) — naively marking both endpoints of every fast segment as
+outliers would remove the two legitimate neighbors too. A point is only a
+confirmed outlier when segments on **both** sides of it are fast; an
+isolated fast segment (only one bad side) can't be attributed to either
+endpoint, so both are dropped (losing one legitimate point beats keeping a
+provably-bad segment).
+
 ```python
 def _remove_speed_outliers(points: List[Dict], max_speed_kmh: float = 200) -> List[Dict]:
     """
@@ -148,26 +172,32 @@ def _remove_speed_outliers(points: List[Dict], max_speed_kmh: float = 200) -> Li
     """
     if len(points) < 2:
         return points
-    
-    # Calculate speeds between consecutive points
-    outlier_indices = set()
-    
+
+    fast_segments = set()
     for i in range(len(points) - 1):
         dist = haversine(
             points[i]['lat'], points[i]['lon'],
             points[i+1]['lat'], points[i+1]['lon']
         )
         time_diff = (points[i+1]['time'] - points[i]['time']).total_seconds()
-        
+
         if time_diff > 0:
             speed_kmh = (dist / 1000) / (time_diff / 3600)
-            
-            # Mark both endpoints if speed is impossible
             if speed_kmh > max_speed_kmh:
-                outlier_indices.add(i)
-                outlier_indices.add(i + 1)
-    
-    # Keep only non-outlier points
+                fast_segments.add(i)
+
+    outlier_indices = set()
+    for i in fast_segments:
+        left_also_fast = (i - 1) in fast_segments
+        right_also_fast = (i + 1) in fast_segments
+        if right_also_fast:
+            outlier_indices.add(i + 1)  # confirmed: both its segments are fast
+        if left_also_fast:
+            outlier_indices.add(i)  # confirmed: both its segments are fast
+        if not left_also_fast and not right_also_fast:
+            outlier_indices.add(i)      # isolated — can't tell which side is bad
+            outlier_indices.add(i + 1)
+
     return [p for i, p in enumerate(points) if i not in outlier_indices]
 ```
 
@@ -301,7 +331,11 @@ def apply_kalman_filter(points: List[Dict],
    с непустым `elevation`.
 2. Douglas-Peucker (`_rdp_profile_1d`) по этому профилю с `eps=20` —
    упрощает (дистанция, высота) как 2D-кривую, а не (lat, lon) траекторию
-   (это отдельная функция от `_simplify_trajectory`/Phase 6).
+   (это отдельная функция от `_simplify_trajectory`/Phase 6). Итеративная
+   реализация (явный стек, как и `_simplify_trajectory`) — раньше была
+   рекурсивной, что давало риск `RecursionError` на длинном/несжимаемом
+   профиле высоты (несколько тысяч точек, `RecursionError` возможен уже
+   при глубине ~1000).
 3. Скользящее среднее по оставшимся точкам (`_windowed_average_by_distance`,
    окно 0.1км по дистанции, а не по числу точек).
 4. Просуммировать дельты сглаженного профиля: рост дельты → `gain`,
@@ -630,22 +664,24 @@ def _point_to_line_distance(point, line_start, line_end) -> float:
 def _simplify_trajectory(points: list[dict], tolerance_m: float = 15.0) -> list[dict]:
     """
     Douglas-Peucker simplification.
-    Recursively removes points closer than tolerance to the line between endpoints.
-    
+    Removes points closer than tolerance to the line between endpoints.
+
     Args:
         points: list of point dicts with lat, lon
         tolerance_m: perpendicular distance threshold in meters (default 15m)
-    
+
     Returns:
         Simplified point list (~50% reduction)
     """
-    # Recursive algorithm:
-    # 1. Draw line between first and last point
-    # 2. Find point with max perpendicular distance to line
-    # 3. If distance > tolerance:
-    #    a. Split at that point
-    #    b. Recursively simplify left and right parts
-    # 4. Else: replace entire segment with line (keep only endpoints)
+    # Iterative algorithm (explicit stack of index ranges, NOT recursion —
+    # a near-collinear track with thousands of points would otherwise drive
+    # a recursive version past Python's default recursion limit):
+    # 1. Push the full (start, end) range onto the stack.
+    # 2. Pop a range; draw a line between its two endpoints.
+    # 3. Find the point with max perpendicular distance to that line.
+    # 4. If distance > tolerance: keep that point, push (start, point) and
+    #    (point, end) back onto the stack.
+    # 5. Else: nothing else in this range is kept (endpoints already are).
 ```
 
 **Параметры:**

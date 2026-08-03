@@ -59,6 +59,14 @@ speed_segments (JSON)                       [{from:[lat,lon], to:[lat,lon], spee
                                               включает grade_percent/type/distance_km
                                               на пару точек]
 is_public (bool), public_token (string)
+status (string: processing|done|error), error_detail (text, nullable)
+                                             [processing выставляется при создании
+                                              строки (upload/create), Celery-таска
+                                              ставит done/error по завершении.
+                                              list_tracks лениво реапит треки,
+                                              застрявшие в processing дольше
+                                              STUCK_PROCESSING_TIMEOUT (2ч) —
+                                              воркер мог упасть без finally]
 ```
 
 ### PasswordReset
@@ -158,7 +166,9 @@ DELETE /api/auth/account               — удаление аккаунта (к
 GET    /api/tracks                     — список треков юзера (пагинация)
        ?sort=newest|oldest|longest|shortest|fastest|slowest
        ?search=текст
-       ?bbox=minLng,minLat,maxLng,maxLat (PostGIS ST_Intersects)
+       ?bbox=minLng,minLat,maxLng,maxLat (PostGIS ST_Intersects; NaN/Infinity
+       в любой координате или в speed_avg_min/max отклоняется 400 — до
+       PostGIS/SQL не доходит)
        ?file_format=gpx|kml|tcx|fit|geojson
        ?speed_avg_min=X&speed_avg_max=Y
        ?limit=N (default 50, max 500) &offset=N (default 0)
@@ -183,10 +193,17 @@ GET    /api/tracks/geometries          — bulk: [{id, normalized_points}] дл�
 GET    /api/tracks/{id}                — детали трека
 DELETE /api/tracks/{id}
 PATCH  /api/tracks/{id}/rename         — переименование
-PATCH  /api/tracks/{id}/publish        — toggle is_public, generate public_token
+PATCH  /api/tracks/{id}/publish        — toggle is_public (первый вызов генерирует
+       public_token, дальше — тот же токен переиспользуется при повторных toggle)
+POST   /api/tracks/{id}/publish/rotate — сгенерировать новый public_token, старая
+       ссылка перестаёт работать (revoke без удаления трека)
 GET    /api/tracks/{id}/download       — скачивание файла в исходном file_format
        (перегенерируется из raw_points на лету — geojson/gpx/kml/tcx/fit,
        реальные elevation/time, не синтетика; см. POLISH.md 2026-07-21)
+       ?poi_radius_m=X (0 < X <= 50000) — включить в файл POI-маркеры в радиусе
+       X метров от трека (waypoints)
+       ?categories=cat1&categories=cat2 — фильтр POI по категориям (учитывается
+       только вместе с poi_radius_m)
 GET    /api/tracks/public/{public_token}— просмотр без авторизации
 GET    /api/tracks/public/{public_token}/download — скачивание публичного трека
        без авторизации (та же генерация файла, что и у приватного /download)
@@ -208,7 +225,18 @@ POST   /api/poi/create                 — создать одну точку. b
        автовивифицируется через _get_or_create_import, см. § POIImport)
 POST   /api/poi/upload                 — импорт KML/KMZ (max 5MB), import_name берётся
        из имени файла, список тоже автовивифицируется
-GET    /api/poi/categories             — категории с count
+GET    /api/poi/categories             — категории с count (включая с count=0 —
+       каждый новый юзер получает 9 предложенных категорий при регистрации,
+       см. § POICategory ниже)
+POST   /api/poi/categories             — создать пустую категорию. body: {name}.
+       409 при дубликате имени для этого юзера
+PATCH  /api/poi/categories/{name}      — переименование, каскадно обновляет
+       POI.category у всех точек; если новое имя совпадает с уже существующей
+       категорией — merge (все точки старой категории переносятся в целевую,
+       старая категория удаляется), а не 409
+DELETE /api/poi/categories/{name}      — удаляет категорию из реестра, все её POI
+       переводятся в category='other' (сами точки не удаляются). Категорию
+       'other' удалить нельзя (400)
 PATCH  /api/poi/{id}
 DELETE /api/poi/{id}
 POST   /api/poi/imports                — создать пустой список (2026-07-31). body: {name}.
