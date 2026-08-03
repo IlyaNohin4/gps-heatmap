@@ -629,7 +629,6 @@ def _build_segments(points: list[dict]) -> tuple[list[dict], float, float, float
 # OsmAnd 4.x: long namespace, osmand:speed already in km/h.
 _OSMAND_NS_V3 = "https://osmand.net"
 _OSMAND_NS_V4 = "https://osmand.net/docs/technical/osmand-file-formats/osmand-gpx"
-_GPX_NS = "http://www.topografix.com/GPX/1/1"
 
 
 def _detect_osmand(header: bytes) -> Optional[tuple[str, bool]]:
@@ -650,15 +649,18 @@ def _parse_time(text: str) -> Optional[datetime]:
 
 
 def _gpx_iter(root, tag: str):
-    """Yield elements matching tag, supporting both namespaced and bare GPX."""
-    nodes = list(root.iter(f"{{{_GPX_NS}}}{tag}"))
-    return nodes if nodes else list(root.iter(tag))
+    """Yield elements matching tag, in any namespace (GPX 1.0, 1.1, none) or bare.
+
+    `{*}tag` is an lxml wildcard-namespace match — GPX 1.0 files (namespace
+    .../GPX/1/0, still produced by older devices/exporters) used to go
+    unmatched entirely when only the GPX 1.1 namespace was checked.
+    """
+    return list(root.iter(f"{{*}}{tag}"))
 
 
 def _gpx_find(el, tag: str):
-    """Find a child element, supporting both namespaced and bare GPX."""
-    found = el.find(f"{{{_GPX_NS}}}{tag}")
-    return found if found is not None else el.find(tag)
+    """Find a child element, in any namespace (GPX 1.0, 1.1, none) or bare."""
+    return el.find(f"{{*}}{tag}")
 
 
 def _parse_gpx(data: bytes) -> dict:
@@ -929,7 +931,13 @@ _PARSERS = {
 def detect_format(header: bytes, filename: str = "") -> str:
     """Detect GPS file format from magic bytes / content sniffing."""
     h = header[:2048]
-    if header[:4] == b"\x0e\x10\x09\x08":
+    # The FIT spec's actual identifier is the ".FIT" ASCII signature at byte
+    # offset 8 (after header_size/protocol_version/profile_version/data_size).
+    # Matching the exact byte sequence our own fit-tool export happens to
+    # produce (header_size=14, protocol 1.0, profile 20.57) only recognizes
+    # our own round-tripped files — a real device (protocol 2.0, an
+    # arbitrary profile version) fails detection entirely.
+    if len(header) >= 12 and header[8:12] == b".FIT":
         return "fit"
     stripped = h.lstrip()
     if stripped.startswith(b"{"):

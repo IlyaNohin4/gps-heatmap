@@ -185,8 +185,23 @@ class TestDetectFormat:
         assert detect_format(SIMPLE_GEOJSON) == "geojson"
 
     def test_fit_magic_bytes(self):
-        fit_magic = b"\x0e\x10\x09\x08" + b"\x00" * 100
-        assert detect_format(fit_magic) == "fit"
+        # header_size=14, protocol 1.0, profile 20.57 — what our own
+        # fit-tool export happens to produce.
+        fit_header = b"\x0e\x10\x09\x08\x00\x00\x00\x00.FIT" + b"\x00" * 100
+        assert detect_format(fit_header) == "fit"
+
+    def test_fit_magic_bytes_protocol_2_real_device(self):
+        # A real Garmin/Wahoo device: header_size=14, protocol 2.0 (0x20),
+        # an arbitrary profile version (21.158 here) — none of which match
+        # our own export's exact byte sequence, only the ".FIT" signature
+        # at offset 8 that the FIT spec actually defines as the identifier.
+        fit_header = b"\x0e\x20\x6e\x08\x00\x00\x00\x00.FIT" + b"\x00" * 100
+        assert detect_format(fit_header) == "fit"
+
+    def test_fit_header_size_12_no_crc(self):
+        # header_size=12 (no optional 2-byte CRC field) is also spec-valid.
+        fit_header = b"\x0c\x10\x00\x00\x00\x00\x00\x00.FIT" + b"\x00" * 100
+        assert detect_format(fit_header) == "fit"
 
     def test_unknown_raises(self):
         with pytest.raises(ValueError):
@@ -227,6 +242,21 @@ class TestParseGPX:
     def test_recorded_at_is_datetime(self):
         result = _parse_gpx(SIMPLE_GPX)
         assert isinstance(result["recorded_at"], datetime)
+
+    def test_gpx_10_namespace_parses(self):
+        # HIGH: _gpx_iter/_gpx_find only matched the GPX 1.1 namespace or no
+        # namespace — a GPX 1.0 file (older devices/exporters) went entirely
+        # unmatched, parsing to 0 points.
+        gpx_10 = b"""\
+<?xml version="1.0"?>
+<gpx version="1.0" xmlns="http://www.topografix.com/GPX/1/0">
+  <trk><trkseg>
+    <trkpt lat="48.8566" lon="2.3522"><time>2024-01-01T10:00:00Z</time></trkpt>
+    <trkpt lat="48.8600" lon="2.3600"><time>2024-01-01T10:05:00Z</time></trkpt>
+  </trkseg></trk>
+</gpx>"""
+        result = _parse_gpx(gpx_10)
+        assert len(result["points"]) == 2
 
     def test_gpx_with_extensions_stripped(self):
         gpx_with_ext = b"""\
