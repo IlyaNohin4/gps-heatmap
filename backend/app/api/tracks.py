@@ -4,7 +4,7 @@ import secrets
 from typing import List, Optional
 from xml.sax.saxutils import escape as xml_escape
 
-from fastapi import APIRouter, Depends, File, HTTPException, Query, Response, UploadFile, status
+from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, Response, UploadFile, status
 from fastapi.responses import StreamingResponse
 from geoalchemy2.functions import ST_Intersects, ST_MakeEnvelope
 from pydantic import BaseModel, Field
@@ -16,6 +16,7 @@ from app.core.config import settings
 from app.core.database import get_db
 from app.core.deps import get_current_user
 from app.core.http_utils import safe_content_disposition
+from app.core.limiter import limiter
 from app.core.redis_client import redis_client
 from app.models.poi import POI
 from app.models.track import Track
@@ -360,7 +361,9 @@ def list_tracks(
 
 
 @router.post("/upload", status_code=status.HTTP_202_ACCEPTED)
+@limiter.limit("10/minute")
 async def upload_track(
+    request: Request,
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),

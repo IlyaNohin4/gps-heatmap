@@ -3,7 +3,7 @@
 from typing import Dict, List, Optional, Tuple
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
+from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, UploadFile, status
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 import re
@@ -14,6 +14,7 @@ from xml.dom.minidom import Document
 from app.core.database import get_db
 from app.core.deps import get_current_user
 from app.core.http_utils import safe_content_disposition
+from app.core.limiter import limiter
 from app.models.poi import POI
 from app.models.poi_category import POICategory
 from app.models.poi_import import POIImport
@@ -160,7 +161,9 @@ async def create_poi(
 
 
 @router.post("/upload", response_model=UploadResponse, status_code=status.HTTP_201_CREATED)
+@limiter.limit("10/minute")
 async def upload_poi(
+    request: Request,
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),

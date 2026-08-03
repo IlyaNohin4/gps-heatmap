@@ -9,7 +9,11 @@ services:
     image: postgis/postgis:15-3.3
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-user}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password}
+      # No fallback here (unlike POSTGRES_USER/DB): a silently-applied
+      # "password" default in prod means every container on the compose
+      # network gets a DB with a known password if the env var is ever
+      # forgotten at deploy time. Fail the deploy instead.
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set in .env for production}
       POSTGRES_DB: ${POSTGRES_DB:-gps_heatmap}
     volumes:
       - postgres_data_prod:/var/lib/postgresql/data
@@ -23,6 +27,13 @@ services:
 
   redis:
     image: redis:7-alpine
+    # Each track upload's file bytes ride as a Celery task argument through
+    # Redis (the broker) until a worker picks it up; without a cap, a burst
+    # of large uploads (now rate-limited at the API too, see tracks.py/
+    # poi.py's @limiter.limit) could otherwise grow Redis unbounded and take
+    # down the broker + cache together. noeviction: fail new writes loudly
+    # instead of silently dropping cache/queue data once the cap is hit.
+    command: redis-server --maxmemory 512mb --maxmemory-policy noeviction
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s

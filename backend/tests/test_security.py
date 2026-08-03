@@ -103,6 +103,66 @@ class TestFileSizeLimit:
         assert r.status_code != 413
 
 
+class TestUploadRateLimit:
+    def _fake_user(self):
+        u = User()
+        u.id = 1
+        u.email = "ratelimit@test.com"
+        u.language = "en"
+        u.theme = "light"
+        u.unit_distance = "km"
+        u.unit_speed = "kmh"
+        return u
+
+    def test_track_upload_11th_in_a_minute_is_429(self, client, auth_headers, mock_db):
+        # MEDIUM: /api/tracks/upload had no rate limit — each call can push
+        # up to 20MB into Redis as a Celery task argument.
+        from app.main import app
+
+        fake_user = self._fake_user()
+        mock_db.get.return_value = fake_user
+        mock_db.query.return_value.filter.return_value.first.return_value = fake_user
+
+        app.dependency_overrides[get_db] = lambda: (yield mock_db)
+        for _ in range(10):
+            r = client.post(
+                "/api/tracks/upload",
+                headers=auth_headers,
+                files={"file": ("x.exe", io.BytesIO(b"not a gps file"), "application/octet-stream")},
+            )
+            assert r.status_code == 400  # unsupported format, but under the limit
+        r = client.post(
+            "/api/tracks/upload",
+            headers=auth_headers,
+            files={"file": ("x.exe", io.BytesIO(b"not a gps file"), "application/octet-stream")},
+        )
+        app.dependency_overrides.clear()
+        assert r.status_code == 429
+
+    def test_poi_upload_11th_in_a_minute_is_429(self, client, auth_headers, mock_db):
+        from app.main import app
+
+        fake_user = self._fake_user()
+        mock_db.get.return_value = fake_user
+        mock_db.query.return_value.filter.return_value.first.return_value = fake_user
+
+        app.dependency_overrides[get_db] = lambda: (yield mock_db)
+        for _ in range(10):
+            r = client.post(
+                "/api/poi/upload",
+                headers=auth_headers,
+                files={"file": ("x.exe", io.BytesIO(b"not a kml file"), "application/octet-stream")},
+            )
+            assert r.status_code != 429
+        r = client.post(
+            "/api/poi/upload",
+            headers=auth_headers,
+            files={"file": ("x.exe", io.BytesIO(b"not a kml file"), "application/octet-stream")},
+        )
+        app.dependency_overrides.clear()
+        assert r.status_code == 429
+
+
 # ── Upload content integrity ──────────────────────────────────────────────────
 
 class TestUploadContentIntegrity:
