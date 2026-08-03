@@ -143,6 +143,19 @@ class TestBuildSegments:
         assert stats["moving_time_sec"] == 1800
         assert s_avg == pytest.approx(20.0, abs=0.5)
 
+    def test_speed_min_zero_is_not_dropped_to_none(self):
+        # A full stop (identical consecutive coordinates) makes that segment's
+        # speed exactly 0.0 — `if s_min else None` would falsy-collapse a
+        # legitimate 0.0 down to None (M4).
+        pts = [
+            self._pt(48.0, 2.0, 0),
+            self._pt(48.0 + 10 / 111.0, 2.0, 30),  # moving
+            self._pt(48.0 + 10 / 111.0, 2.0, 40),  # stopped: same spot, speed 0.0
+        ]
+        _, _, _, _, s_min, _, _ = _build_segments(pts)
+        assert s_min == 0.0
+        assert s_min is not None
+
     def test_no_timestamps_no_moving_time(self):
         pts = [
             {"lat": 48.0, "lon": 2.0, "elevation": None, "time": None},
