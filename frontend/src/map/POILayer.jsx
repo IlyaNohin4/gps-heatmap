@@ -45,13 +45,21 @@ function iconMarkupFor(category, iconSlug) {
   return iconMarkupCache.get(key);
 }
 
+// L6: this is the one spot where a DB-sourced value lands in innerHTML
+// without going through escapeHtml (the server already validates #RRGGBB on
+// create/update, and KML imports convert through _kml_color_to_hex, so this
+// is currently safe) — a local guard means it stays safe even if that
+// server-side validation is ever loosened, instead of silently breaking.
+const _HEX_COLOR_RE = /^#[0-9a-f]{6}$/i;
+
 function makeDivIcon(category, color, iconSlug) {
   const svgMarkup = iconMarkupFor(category, iconSlug);
+  const safeColor = _HEX_COLOR_RE.test(color) ? color : DEFAULT_POI_COLOR;
 
   return L.divIcon({
     html: `<div style="
       width:32px;height:32px;border-radius:50%;
-      background:${color};
+      background:${safeColor};
       border:3px solid #fff;
       box-shadow:0 2px 8px rgba(0,0,0,0.4);
       display:flex;align-items:center;justify-content:center;
