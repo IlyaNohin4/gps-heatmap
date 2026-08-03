@@ -74,9 +74,12 @@ def create_poi(
     icon: Optional[str] = None,
     color: Optional[str] = None,
     visited: bool = False,
+    import_name: str = "My Points",
 ) -> dict:
     """Create a new POI. icon must be one of the app's fixed icon slugs (see list_poi
-    output for examples already in use); color must be a hex value like #RRGGBB."""
+    output for examples already in use); color must be a hex value like #RRGGBB.
+    import_name is the list the POI is filed under — every account has a default
+    "My Points" list; pass an existing or new list name to file it elsewhere."""
     resp = client.post(
         "/api/poi/create",
         json={
@@ -88,6 +91,7 @@ def create_poi(
             "icon": icon,
             "color": color,
             "visited": visited,
+            "import_name": import_name,
         },
     )
     _raise_for_status(resp)
