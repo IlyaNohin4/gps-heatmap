@@ -31,6 +31,24 @@ client = httpx.Client(
 
 mcp = FastMCP("gps-heatmap")
 
+_DATA_DIR = Path("/data").resolve()
+
+
+def _resolve_under_data(path_str: str) -> Path:
+    """Resolve path_str and enforce it stays under /data.
+
+    The docstrings for upload_track/export_track have always claimed this
+    boundary, but nothing actually enforced it — an AI client (compromised
+    or just confused) could pass any path, and since mcp_server's own
+    source is bind-mounted read-write (docker-compose.yml), export_track's
+    write could reach e.g. /app/server.py. Blocks absolute escapes and
+    "../" traversal alike, since resolve() collapses both before the check.
+    """
+    resolved = Path(path_str).expanduser().resolve()
+    if not resolved.is_relative_to(_DATA_DIR):
+        raise RuntimeError(f"Path must be under {_DATA_DIR}: {path_str}")
+    return resolved
+
 
 def _raise_for_status(resp: httpx.Response) -> None:
     if resp.status_code >= 400:
@@ -162,7 +180,7 @@ def upload_track(file_path: str) -> dict:
     container) — place the file there first. Processing happens asynchronously in
     the backend; poll get_track with the returned id to check when statistics are
     available."""
-    path = Path(file_path).expanduser()
+    path = _resolve_under_data(file_path)
     if not path.is_file():
         raise RuntimeError(f"File not found: {path}")
     with path.open("rb") as f:
@@ -200,7 +218,7 @@ def export_track(track_id: int, output_path: str, poi_radius_m: Optional[float] 
     resp = client.get(f"/api/tracks/{track_id}/download", params=params)
     _raise_for_status(resp)
 
-    out_path = Path(output_path).expanduser()
+    out_path = _resolve_under_data(output_path)
     out_path.parent.mkdir(parents=True, exist_ok=True)
     out_path.write_bytes(resp.content)
     return f"Saved to {out_path} ({len(resp.content)} bytes)"
