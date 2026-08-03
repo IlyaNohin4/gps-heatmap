@@ -317,6 +317,15 @@ class TestSecurityHeaders:
         assert "Permissions-Policy" in r.headers
         assert "Content-Security-Policy" in r.headers
 
+    def test_csp_img_src_covers_every_map_tile_domain(self, client):
+        # HIGH: img-src previously omitted mt1.google.com (Google layers) and
+        # tile.openstreetmap.de (the "OSM.de" layer) — those tiles loaded
+        # fine in dev (Vite sets no CSP) but were silently blocked in prod.
+        r = client.get("/api/auth/me")
+        csp = r.headers["Content-Security-Policy"]
+        for domain in ("https://mt1.google.com", "https://tile.openstreetmap.de"):
+            assert domain in csp, f"{domain} missing from CSP img-src"
+
 
 # ── Auth token security ────────────────────────────────────────────────────────
 

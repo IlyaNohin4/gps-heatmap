@@ -15,7 +15,7 @@ export const TILE_LAYERS = {
     maxZoom: 19,
     subdomains: [],
   },
-  'stamen-terrain': {
+  'osm-de': {
     url: 'https://tile.openstreetmap.de/tiles/osmde/{z}/{x}/{y}.png',
     attribution: '© <a href="https://openstreetmap.org">OpenStreetMap</a> contributors | Map tiles by <a href="https://www.openstreetmap.de">OpenStreetMap.de</a>',
     maxZoom: 18,
@@ -37,8 +37,8 @@ export const TILE_LAYERS = {
 export const LAYER_OPTIONS = [
   { id: 'osm',            label: 'OpenStreetMap' },
   { id: 'topo',           label: 'OpenTopoMap' },
-  { id: 'esri-satellite', label: 'Esri Satellite' },
-  { id: 'stamen-terrain', label: 'Stamen Terrain' },
+  { id: 'osm-de',         label: 'OpenStreetMap.de' },
   { id: 'google-street',  label: 'Google Street' },
   { id: 'google-satellite', label: 'Google Satellite' },
+  { id: 'esri-satellite', label: 'Esri Satellite' },
 ];

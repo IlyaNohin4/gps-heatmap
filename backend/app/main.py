@@ -34,7 +34,8 @@ _CSP_STRICT = (
     "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; "
     "img-src 'self' data: https://*.tile.openstreetmap.org https://*.tile.opentopomap.org "
     "https://*.tile-cyclosm.openstreetmap.fr https://tile.waymarkedtrails.org "
-    "https://server.arcgisonline.com https://*.googleapis.com https://*.gstatic.com; "
+    "https://server.arcgisonline.com https://*.googleapis.com https://*.gstatic.com "
+    "https://mt1.google.com https://tile.openstreetmap.de; "
     "connect-src 'self' https://nominatim.openstreetmap.org https://overpass-api.de"
 )
 
