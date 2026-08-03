@@ -117,7 +117,17 @@ def login(request: Request, body: LoginRequest, db: Session = Depends(get_db)):
 def forgot_password(request: Request, body: ForgotPasswordRequest, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.email == body.email).first()
     if not user:
+        # Do comparable-cost work (bcrypt is deliberately slow) so response
+        # time doesn't leak whether this email is registered.
+        hash_password(secrets.token_urlsafe(16))
         return  # Don't reveal whether email exists
+
+    # Old tokens (expired or already used) don't need to stick around —
+    # trim them whenever this user requests a new one.
+    db.query(PasswordReset).filter(
+        PasswordReset.user_id == user.id,
+        (PasswordReset.used == True) | (PasswordReset.expires_at <= datetime.now(timezone.utc)),
+    ).delete(synchronize_session=False)
 
     token = secrets.token_urlsafe(64)
     token_hash = hashlib.sha256(token.encode()).hexdigest()

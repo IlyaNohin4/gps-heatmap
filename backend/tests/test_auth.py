@@ -308,6 +308,39 @@ class TestPasswordReset:
         assert len(reset.token) == 64
         assert all(c in "0123456789abcdef" for c in reset.token)
 
+    def test_forgot_password_prunes_expired_and_used_tokens(self, client, db, registered_user, monkeypatch):
+        from app.models.password_reset import PasswordReset
+        from app.models.user import User
+
+        monkeypatch.setenv("RESEND_API_KEY", "")
+
+        email, _, _ = registered_user
+        user = db.query(User).filter(User.email == email).first()
+
+        expired = PasswordReset(
+            token="expired" * 8,
+            user_id=user.id,
+            expires_at=datetime.now(timezone.utc) - timedelta(hours=1),
+        )
+        used = PasswordReset(
+            token="used" * 12,
+            user_id=user.id,
+            expires_at=datetime.now(timezone.utc) + timedelta(hours=1),
+            used=True,
+        )
+        db.add_all([expired, used])
+        db.commit()
+        expired_token, used_token = expired.token, used.token
+
+        r = client.post("/api/auth/forgot-password", json={"email": email})
+        assert r.status_code == 204
+
+        # Compare by token value, not id — SQLite reuses a deleted row's
+        # rowid for the very next insert, so the fresh token created by this
+        # same request could otherwise collide with a stale id.
+        assert db.query(PasswordReset).filter(PasswordReset.token == expired_token).first() is None
+        assert db.query(PasswordReset).filter(PasswordReset.token == used_token).first() is None
+
     def test_reset_token_cannot_be_reused(self, client, db, registered_user):
         from app.models.password_reset import PasswordReset
         from app.models.user import User
