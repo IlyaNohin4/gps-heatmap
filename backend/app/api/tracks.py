@@ -300,15 +300,26 @@ def list_tracks(
     # separate scheduled job. STUCK_PROCESSING_TIMEOUT gives real in-flight
     # tracks (this deployment processes strictly sequentially, one at a time)
     # plenty of room before being treated as abandoned.
-    db.query(Track).filter(
+    # SELECT first — an UPDATE+COMMIT on every single track listing (the
+    # overwhelming majority of which have nothing stuck) is wasted write
+    # traffic; a stuck track is rare enough that the extra existence check
+    # up front is cheaper overall.
+    _stuck_cutoff = datetime.datetime.now(datetime.timezone.utc) - STUCK_PROCESSING_TIMEOUT
+    _stuck_exists = db.query(Track.id).filter(
         Track.user_id == current_user.id,
         Track.status == "processing",
-        Track.uploaded_at < datetime.datetime.now(datetime.timezone.utc) - STUCK_PROCESSING_TIMEOUT,
-    ).update(
-        {"status": "error", "error_detail": "Processing timed out or the worker crashed"},
-        synchronize_session=False,
-    )
-    db.commit()
+        Track.uploaded_at < _stuck_cutoff,
+    ).first()
+    if _stuck_exists:
+        db.query(Track).filter(
+            Track.user_id == current_user.id,
+            Track.status == "processing",
+            Track.uploaded_at < _stuck_cutoff,
+        ).update(
+            {"status": "error", "error_detail": "Processing timed out or the worker crashed"},
+            synchronize_session=False,
+        )
+        db.commit()
 
     q = db.query(Track).filter(Track.user_id == current_user.id)
 
