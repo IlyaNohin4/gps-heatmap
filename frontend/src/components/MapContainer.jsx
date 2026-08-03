@@ -8,6 +8,9 @@ import {
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import 'leaflet.heat';
+import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png';
+import markerIcon from 'leaflet/dist/images/marker-icon.png';
+import markerShadow from 'leaflet/dist/images/marker-shadow.png';
 
 import useMapStore from '../store/mapStore.js';
 import useAppStore from '../store/appStore.js';
@@ -25,9 +28,9 @@ import CoordinatesContextMenu from '../components/map/CoordinatesContextMenu.jsx
 
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
-  iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
-  iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
-  shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+  iconRetinaUrl: markerIcon2x,
+  iconUrl: markerIcon,
+  shadowUrl: markerShadow,
 });
 
 // Wires the real Leaflet map instance into our Zustand store
@@ -114,7 +117,7 @@ function useVisibleTracks() {
 
 function MapLayers() {
   const {
-    showSpeed, showHeatmap, showPOI, showTrackCreator, toggleTrackCreator,
+    showSpeed, showHeatmap, showPOI, showStartEndMarkers, showTrackCreator, toggleTrackCreator,
     trackCreatorState,
     setTrackCreatorState,
     undoWaypoint,
@@ -134,7 +137,7 @@ function MapLayers() {
 
       {/* Plain coloured polylines (default) */}
       {!showSpeed && (
-        <TrackLayer tracks={visibleTracks} selectedTrackId={selectedTrackId} showHeatmap={showHeatmap} />
+        <TrackLayer tracks={visibleTracks} selectedTrackId={selectedTrackId} showHeatmap={showHeatmap} showStartEndMarkers={showStartEndMarkers} />
       )}
 
       {/* Speed gradient segments */}

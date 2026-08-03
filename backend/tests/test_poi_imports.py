@@ -194,6 +194,40 @@ class TestExportImport:
         assert "restaurant.png" in body
         assert "<styleUrl>#style0</styleUrl>" in body
 
+    def test_export_name_with_cdata_terminator_does_not_500(self, client, auth_headers, db):
+        # L4: minidom's CDATASection.writexml raises ValueError if the data
+        # contains a literal "]]>" (it would otherwise prematurely close the
+        # section) — a POI name/description containing that exact substring
+        # used to 500 the whole export.
+        user = _current_user(db)
+        db.add(POIImport(user_id=user.id, name="Tricky"))
+        poi = POI(
+            user_id=user.id,
+            name="weird]]>name",
+            lat=48.5,
+            lon=34.8,
+            category="food",
+            description="desc]]>with]]>terminators",
+            source="uploaded",
+            import_name="Tricky",
+        )
+        db.add(poi)
+        db.commit()
+
+        r = client.get("/api/poi/imports/Tricky/export", headers=auth_headers)
+        assert r.status_code == 200
+        body = r.content.decode("utf-8")
+
+        # The raw XML must not contain an actual "]]>" outside of a section
+        # boundary that reconstructs the original text — round-trip it back
+        # through a real XML parser instead of string-matching the escape.
+        from lxml import etree
+        root = etree.fromstring(r.content)
+        ns = "{http://www.opengis.net/kml/2.2}"
+        placemark = root.find(f".//{ns}Placemark")
+        assert placemark.find(f"{ns}name").text == "weird]]>name"
+        assert placemark.find(f"{ns}description").text == "desc]]>with]]>terminators"
+
     def test_export_poi_without_captured_style_has_no_style_block(self, client, auth_headers, db):
         user = _current_user(db)
         db.add(POIImport(user_id=user.id, name="Plain"))

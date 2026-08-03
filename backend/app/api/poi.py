@@ -523,6 +523,27 @@ def export_import(
 _RAW_KML_COLOR_RE = re.compile(r'^[0-9a-fA-F]{8}$')
 
 
+def _append_cdata(parent, doc: Document, text: str) -> None:
+    """Append `text` as a CDATA section, safe even if it contains a literal
+    "]]>" — minidom's CDATASection.writexml *raises ValueError* the moment a
+    section's data contains that substring (it would otherwise prematurely
+    close the section), so a POI name/description containing it used to 500
+    the whole export.
+
+    "]]>" can't be escaped inside one CDATA node (minidom's own check
+    forbids it), and splitting into multiple sibling CDATA/text nodes hits a
+    separate minidom pretty-printing bug (toprettyxml injects whitespace
+    between sibling text-like children, corrupting the content) — so this
+    rare case falls back to a plain, properly-escaped text node instead of
+    CDATA. Every other name/description (the overwhelming majority) keeps
+    using CDATA as before.
+    """
+    if "]]>" in text:
+        parent.appendChild(doc.createTextNode(text))
+    else:
+        parent.appendChild(doc.createCDATASection(text))
+
+
 def _build_kml(import_name: str, pois: List[POI]) -> str:
     """Build a KML document, restoring each POI's original <Style> (icon href +
     color) and altitude when captured on import, so round-tripping a file we
@@ -536,7 +557,7 @@ def _build_kml(import_name: str, pois: List[POI]) -> str:
     document = doc.createElement("Document")
     kml.appendChild(document)
     name_el = doc.createElement("name")
-    name_el.appendChild(doc.createCDATASection(import_name))
+    _append_cdata(name_el, doc, import_name)
     document.appendChild(name_el)
 
     # One <Style> per unique (href, color) pair, referenced by styleUrl —
@@ -590,11 +611,11 @@ def _build_kml(import_name: str, pois: List[POI]) -> str:
         placemark_elements.append(placemark)
 
         name = doc.createElement("name")
-        name.appendChild(doc.createCDATASection(poi.name))
+        _append_cdata(name, doc, poi.name)
         placemark.appendChild(name)
 
         description = doc.createElement("description")
-        description.appendChild(doc.createCDATASection(poi.description or ""))
+        _append_cdata(description, doc, poi.description or "")
         placemark.appendChild(description)
 
         style_id = _style_id_for(poi)
