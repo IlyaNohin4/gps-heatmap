@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { useMap, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
+import { Undo2, Redo2, Eraser, Download } from 'lucide-react';
 
 import useMapStore from '../store/mapStore.js';
 import { fetchDirections } from '../api/routing.js';
@@ -235,9 +236,14 @@ export function TrackCreatorPanel({
             onUndo();
           }}
           disabled={waypoints.length === 0}
+          title="Undo"
           style={{
-            fontSize: 12,
-            padding: '5px 10px',
+            width: 28,
+            height: 28,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: 0,
             borderRadius: 8,
             border: '1px solid var(--border)',
             background: 'var(--bg)',
@@ -246,7 +252,7 @@ export function TrackCreatorPanel({
             opacity: waypoints.length === 0 ? 0.5 : 1,
           }}
         >
-          Undo
+          <Undo2 size={14} />
         </button>
 
         <button
@@ -255,9 +261,14 @@ export function TrackCreatorPanel({
             onRedo();
           }}
           disabled={redoStack.length === 0}
+          title="Redo"
           style={{
-            fontSize: 12,
-            padding: '5px 10px',
+            width: 28,
+            height: 28,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: 0,
             borderRadius: 8,
             border: '1px solid var(--border)',
             background: 'var(--bg)',
@@ -266,7 +277,7 @@ export function TrackCreatorPanel({
             opacity: redoStack.length === 0 ? 0.5 : 1,
           }}
         >
-          Redo
+          <Redo2 size={14} />
         </button>
 
         <button
@@ -274,9 +285,14 @@ export function TrackCreatorPanel({
             e.stopPropagation();
             onClear();
           }}
+          title="Clear"
           style={{
-            fontSize: 12,
-            padding: '5px 10px',
+            width: 28,
+            height: 28,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: 0,
             borderRadius: 8,
             border: '1px solid var(--border)',
             background: 'var(--bg)',
@@ -284,7 +300,7 @@ export function TrackCreatorPanel({
             color: 'var(--text)',
           }}
         >
-          Clear
+          <Eraser size={14} />
         </button>
 
         <button
@@ -293,9 +309,14 @@ export function TrackCreatorPanel({
             onSave();
           }}
           disabled={waypoints.length < 2}
+          title="Save"
           style={{
-            fontSize: 12,
-            padding: '5px 12px',
+            width: 28,
+            height: 28,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: 0,
             borderRadius: 8,
             background: 'var(--accent)',
             color: '#fff',
@@ -304,7 +325,7 @@ export function TrackCreatorPanel({
             opacity: waypoints.length < 2 ? 0.5 : 1,
           }}
         >
-          Save
+          <Download size={14} />
         </button>
 
         <button
