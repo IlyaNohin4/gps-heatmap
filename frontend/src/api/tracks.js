@@ -44,6 +44,11 @@ export async function togglePublish(id) {
   return data;
 }
 
+export async function rotatePublicLink(id) {
+  const { data } = await client.post(`/api/tracks/${id}/publish/rotate`);
+  return data;
+}
+
 export async function renameTrack(id, name) {
   const { data } = await client.patch(`/api/tracks/${id}/rename`, { name });
   return data;

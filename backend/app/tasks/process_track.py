@@ -37,6 +37,14 @@ def _points_to_linestring(points: list[dict]) -> str:
     retry_backoff_max=60,
     retry_jitter=True,
     max_retries=3,
+    # L8: without a bound, a genuinely still-running task (huge file) could
+    # outlive _semaphore's 1h Redis lock timeout — the lock would silently
+    # expire out from under it, letting a queued track jump in and process
+    # concurrently despite "sequential only" being the whole point of the
+    # lock. Capping real processing well under that 1h keeps the lock timeout
+    # a pure crash/deadlock safety net, never something a live task can hit.
+    soft_time_limit=1500,  # 25 min: raises SoftTimeLimitExceeded inside the task
+    time_limit=1800,  # 30 min: worker hard-kills the task if that isn't enough
 )
 def process_track(self, track_id: int, file_bytes: bytes) -> dict:
     """Full processing pipeline for an uploaded GPS track file.

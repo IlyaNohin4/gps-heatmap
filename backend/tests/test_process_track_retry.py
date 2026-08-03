@@ -50,6 +50,36 @@ class TestRetryPolicy:
         assert process_track.retry_jitter is True
         assert process_track.max_retries == 3
 
+    def test_time_limit_is_well_under_the_lock_timeout(self):
+        # L8: real processing must finish (or self-terminate) well before
+        # _semaphore's 1h Redis lock timeout, or the lock can silently
+        # expire under a still-running task and let a queued track jump in.
+        from app.tasks.process_track import _semaphore
+
+        assert process_track.soft_time_limit is not None
+        assert process_track.time_limit is not None
+        assert process_track.time_limit < _semaphore.timeout
+
+    def test_soft_time_limit_exceeded_sets_error_without_retry(self):
+        from celery.exceptions import SoftTimeLimitExceeded
+
+        track = _mock_track()
+        db = MagicMock()
+        db.query.return_value.filter.return_value.first.return_value = track
+
+        process_track.push_request(id="test-task-id", retries=0)
+        try:
+            with patch("app.tasks.process_track.SessionLocal", return_value=db), \
+                 patch("app.tasks.process_track._semaphore"), \
+                 patch("app.services.parser_factory.parse", side_effect=SoftTimeLimitExceeded()), \
+                 patch.object(process_track, "update_state"):
+                with pytest.raises(SoftTimeLimitExceeded):
+                    process_track._orig_run(track.id, b"<gpx></gpx>")
+        finally:
+            process_track.pop_request()
+
+        assert track.status == "error"
+
     def test_broken_file_sets_error_without_retry(self):
         """A corrupt file (parser raises ValueError) must mark the track as
         error and return immediately — no exception propagates, no retry."""

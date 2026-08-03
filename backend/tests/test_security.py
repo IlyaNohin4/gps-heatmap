@@ -151,6 +151,32 @@ class TestUploadContentIntegrity:
         assert sent_content == original
         assert len(sent_content) == len(original)
 
+    def test_dotfile_upload_falls_back_to_track_name(self, client, auth_headers, mock_db):
+        # L6: name = filename.rsplit(".", 1)[0] gives "" for a dotfile-style
+        # filename like ".gpx" (no basename), not the intended "track" fallback.
+        from app.main import app
+
+        fake_user = self._fake_user()
+        mock_db.get.return_value = fake_user
+        mock_db.query.return_value.filter.return_value.first.return_value = fake_user
+        mock_db.refresh.side_effect = lambda obj: setattr(obj, "id", 1)
+
+        content = b"<?xml version='1.0'?><gpx version='1.1'><trk><trkseg><trkpt lat=\"1\" lon=\"2\"></trkpt></trkseg></trk></gpx>"
+
+        with patch("app.api.tracks.process_track") as mock_task:
+            mock_task.delay.return_value.id = "task-dotfile"
+            app.dependency_overrides[get_db] = lambda: (yield mock_db)
+            r = client.post(
+                "/api/tracks/upload",
+                headers=auth_headers,
+                files={"file": (".gpx", io.BytesIO(content), "application/gpx+xml")},
+            )
+            app.dependency_overrides.clear()
+
+        assert r.status_code == 202
+        added_track = mock_db.add.call_args[0][0]
+        assert added_track.name == "track"
+
 
 # ── Unsupported / spoofed formats ─────────────────────────────────────────────
 
@@ -278,6 +304,18 @@ class TestXSSInInputs:
         )
         app.dependency_overrides.clear()
         assert r.status_code == 400
+
+
+# ── Security response headers ──────────────────────────────────────────────────
+
+class TestSecurityHeaders:
+    def test_response_carries_hardening_headers(self, client):
+        r = client.get("/api/auth/me")  # any route; middleware applies globally
+        assert r.headers["X-Content-Type-Options"] == "nosniff"
+        assert r.headers["X-Frame-Options"] == "DENY"
+        assert r.headers["Referrer-Policy"] == "strict-origin-when-cross-origin"
+        assert "Permissions-Policy" in r.headers
+        assert "Content-Security-Policy" in r.headers
 
 
 # ── Auth token security ────────────────────────────────────────────────────────

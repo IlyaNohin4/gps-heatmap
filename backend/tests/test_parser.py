@@ -9,10 +9,12 @@ from app.services.parser_factory import (
     _collapse_drift,
     _detect_osmand,
     _haversine,
+    _normalize_points,
     _parse_geojson,
     _parse_gpx,
     _parse_kml,
     _parse_tcx,
+    _remove_speed_outliers,
     detect_format,
     parse,
 )
@@ -519,3 +521,62 @@ class TestCollapseDrift:
         result = _collapse_drift(pts)
         assert len(result) == 1
         assert result[0]["elevation"] == 200.0
+
+
+# ── Point ordering ────────────────────────────────────────────────────────────
+
+class TestNormalizePointsOrdering:
+    def _pt(self, lat, lon, sec):
+        return {
+            "lat": lat, "lon": lon, "elevation": None,
+            "time": datetime(2024, 1, 1, 10, 0, sec, tzinfo=timezone.utc),
+            "osmand_speed_kmh": None,
+        }
+
+    def test_out_of_order_segments_are_sorted_before_normalizing(self):
+        # L1: a multi-<trkseg> file can list a later segment's points before
+        # an earlier segment's — _normalize_points must sort by time first,
+        # or every downstream phase computes deltas against out-of-order
+        # timestamps (negative time_diff, bogus speed spikes).
+        pts = [
+            self._pt(48.0, 2.0, 20),
+            self._pt(48.001, 2.0, 25),
+            self._pt(47.999, 2.0, 0),  # earliest timestamp, listed last
+        ]
+        result = _normalize_points(pts)
+        times = [p["time"] for p in result]
+        assert times == sorted(times)
+
+
+# ── Speed outlier removal ───────────────────────────────────────────────────────
+
+class TestRemoveSpeedOutliers:
+    def _pt(self, lat, lon, sec):
+        return {
+            "lat": lat, "lon": lon, "elevation": None,
+            "time": datetime(2024, 1, 1, 10, 0, sec, tzinfo=timezone.utc),
+            "osmand_speed_kmh": None,
+        }
+
+    def test_lone_spike_point_keeps_its_legitimate_neighbors(self):
+        # L2: point 1 jumps far away then back — both adjacent segments look
+        # "fast," but only point 1 is actually bad. Points 0 and 2 must survive.
+        pts = [
+            self._pt(48.0, 2.0, 0),
+            self._pt(49.0, 2.0, 1),   # ~111km in 1s — impossible speed in and out
+            self._pt(48.0, 2.0, 2),
+        ]
+        result = _remove_speed_outliers(pts)
+        assert len(result) == 2
+        assert result[0]["lat"] == 48.0 and result[1]["lat"] == 48.0
+
+    def test_isolated_fast_segment_drops_both_endpoints(self):
+        # Only one bad segment, no corroborating second fast segment on
+        # either side — can't attribute the jump to a single point, so both
+        # endpoints of that segment are dropped (matches prior behavior).
+        pts = [
+            self._pt(48.0, 2.0, 0),
+            self._pt(49.0, 2.0, 1),  # impossible speed, isolated
+        ]
+        result = _remove_speed_outliers(pts)
+        assert result == []

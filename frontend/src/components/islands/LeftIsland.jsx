@@ -37,7 +37,7 @@ function LeftIslandContent({ onUploadClick, loading, allTracksVisible, onToggleV
   const { selectedTrackId, setSelectedTrack, isUploadingIds, activePanel, setActivePanel, tracksListVersion, setTracks, bumpTracksListVersion } = useAppStore();
   const {
     showTrackCreator, toggleTrackCreator, mapInstance,
-    trackCreatorState, setTrackCreatorState, undoWaypoint, redoWaypoint, clearTrackCreatorState,
+    trackCreatorState, setTrackCreatorState, undoWaypoint, redoWaypoint, clearTrackCreatorState, clearTrackCreatorPoints,
   } = useMapStore();
   const { isAuthenticated } = useAuthStore();
   const [showSaveModal, setShowSaveModal] = useState(false);
@@ -146,7 +146,13 @@ function LeftIslandContent({ onUploadClick, loading, allTracksVisible, onToggleV
       flexDirection: 'column',
       overflow: 'hidden',
     }}>
-      {sidebarOpen && <Panel className="panel-animate-in-left" style={{
+      {/* Always mounted, hidden via the wrapper's width:0/overflow:hidden
+          above — not `{sidebarOpen && <Panel>}` — collapsing/expanding the
+          sidebar chevron used to fully unmount this, which orphaned the
+          tracks list's IntersectionObserver on its old (now-detached)
+          sentinel node: infinite scroll silently stopped working for the
+          rest of the session after any chevron toggle (see POLISH.md). */}
+      <Panel className="panel-animate-in-left" style={{
         display: 'flex',
         flexDirection: 'column',
         height: '100%',
@@ -342,7 +348,7 @@ function LeftIslandContent({ onUploadClick, loading, allTracksVisible, onToggleV
               setProfile={(p) => setTrackCreatorState({ profile: p })}
               onUndo={undoWaypoint}
               onRedo={redoWaypoint}
-              onClear={clearTrackCreatorState}
+              onClear={clearTrackCreatorPoints}
               onSave={() => setShowSaveModal(true)}
               onCancel={() => {
                 clearTrackCreatorState();
@@ -394,7 +400,7 @@ function LeftIslandContent({ onUploadClick, loading, allTracksVisible, onToggleV
         <div style={{ display: currentTab === 'poi' ? 'flex' : 'none', flexDirection: 'column', flex: 1, minHeight: 0 }}>
           <POITab />
         </div>
-      </Panel>}
+      </Panel>
     </div>
 
     {/* Floating collapse/expand toggle — replaces old inline collapse button

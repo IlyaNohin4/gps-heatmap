@@ -364,6 +364,36 @@ class TestTogglePublish:
         assert r.status_code == 404
 
 
+class TestRotatePublicToken:
+    def test_rotate_issues_a_new_token(self, client, auth_headers, mock_db):
+        from app.main import app
+
+        fake_user = _make_fake_user()
+        track = _make_track(7, fake_user.id, is_public=True, public_token="old-token")
+        _setup_mock_db_user(mock_db, fake_user)
+        mock_db.query.return_value.filter.return_value.first.return_value = track
+        mock_db.refresh.side_effect = lambda t: None
+
+        app.dependency_overrides[get_db] = lambda: (yield mock_db)
+        r = client.post("/api/tracks/7/publish/rotate", headers=auth_headers)
+        app.dependency_overrides.clear()
+        assert r.status_code == 200
+        assert track.public_token != "old-token"
+        assert r.json()["public_token"] == track.public_token
+
+    def test_rotate_not_found_is_404(self, client, auth_headers, mock_db):
+        from app.main import app
+
+        fake_user = _make_fake_user()
+        _setup_mock_db_user(mock_db, fake_user)
+        mock_db.query.return_value.filter.return_value.first.return_value = None
+
+        app.dependency_overrides[get_db] = lambda: (yield mock_db)
+        r = client.post("/api/tracks/999/publish/rotate", headers=auth_headers)
+        app.dependency_overrides.clear()
+        assert r.status_code == 404
+
+
 # ── Public track ───────────────────────────────────────────────────────────────
 
 class TestPublicTrack:

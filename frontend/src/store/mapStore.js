@@ -8,6 +8,7 @@ const useMapStore = create((set, get) => ({
   showHeatmap: false,
   showSpeed: false,
   showPOI: false,
+  showStartEndMarkers: true,
   poiCategories: [],
   poiCreationMode: false,
   pois: [],
@@ -37,6 +38,7 @@ const useMapStore = create((set, get) => ({
   toggleHeatmap: () => set((s) => ({ showHeatmap: !s.showHeatmap, showSpeed: false })),
   toggleSpeed: () => set((s) => ({ showSpeed: !s.showSpeed, showHeatmap: false })),
   togglePOI: () => set((s) => ({ showPOI: !s.showPOI })),
+  toggleStartEndMarkers: () => set((s) => ({ showStartEndMarkers: !s.showStartEndMarkers })),
   toggleTrackCreator: () => set((s) => ({ showTrackCreator: !s.showTrackCreator })),
   setPoiCreationMode: (mode) => set({ poiCreationMode: mode }),
   setPOIs: (pois) => set({ pois }),
@@ -159,6 +161,21 @@ const useMapStore = create((set, get) => ({
       },
     }),
 
+  // Used by the panel's own "Clear" button (points only) — unlike
+  // clearTrackCreatorState, must NOT reset mode/profile: the user is still
+  // in the panel and didn't ask to switch Manual/Auto or the routing profile.
+  clearTrackCreatorPoints: () =>
+    set((s) => ({
+      trackCreatorState: {
+        ...s.trackCreatorState,
+        waypoints: [],
+        redoStack: [],
+        routePoints: [],
+        error: null,
+        routing: false,
+      },
+    })),
+
   // Called on logout / auth switch (App.jsx): clears data belonging to the previous
   // user. Does NOT touch UI settings (activeLayer, showHeatmap/Speed/POI, poiCategories,
   // showTrackCreator, poiCreationMode) — those are not per-user data (see T21).
@@ -186,6 +203,18 @@ const useMapStore = create((set, get) => ({
         ...s.trackCreatorState,
         waypoints: [...s.trackCreatorState.waypoints, latlng],
         redoStack: [], // Clear redo stack on new waypoint
+      },
+    })),
+
+  // QA#8: dragging an existing waypoint to reposition it (Manual mode) —
+  // route recompute for Auto mode is already keyed off `waypoints` identity
+  // via TrackCreator's fetch-route effect, so clearing routePoints here
+  // isn't needed (unlike undo/redo, this doesn't touch redoStack).
+  updateWaypoint: (index, latlng) =>
+    set((s) => ({
+      trackCreatorState: {
+        ...s.trackCreatorState,
+        waypoints: s.trackCreatorState.waypoints.map((w, i) => (i === index ? latlng : w)),
       },
     })),
 

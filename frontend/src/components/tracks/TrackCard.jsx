@@ -5,11 +5,11 @@ import Slider from 'rc-slider';
 import 'rc-slider/assets/index.css';
 import {
   ChevronDown, ChevronUp, Trash2, Globe, Lock, MapPin, Calendar,
-  Gauge, Route, Download, Pencil, Loader2, AlertTriangle,
+  Gauge, Route, Download, Pencil, Loader2, AlertTriangle, RefreshCw,
 } from 'lucide-react';
 import useAppStore from '../../store/appStore.js';
 import useMapStore from '../../store/mapStore.js';
-import { togglePublish, downloadTrackFile } from '../../api/tracks.js';
+import { togglePublish, rotatePublicLink, downloadTrackFile } from '../../api/tracks.js';
 import { fetchPOICategories } from '../../api/poi.js';
 import TrackDeleteModal from '../modals/TrackDeleteModal.jsx';
 import TrackRenameModal from '../modals/TrackRenameModal.jsx';
@@ -138,6 +138,16 @@ export default React.memo(function TrackCard({ track, isSelected, onClick }) {
       toast.success(result.is_public ? t('toast.published') : t('toast.unpublished'));
     } catch {
       toast.error(t('toast.publish_failed'));
+    }
+  }
+
+  async function handleRotateLink(e) {
+    e.stopPropagation();
+    try {
+      await rotatePublicLink(track.id);
+      toast.success(t('toast.link_rotated'));
+    } catch {
+      toast.error(t('toast.link_rotate_failed'));
     }
   }
 
@@ -273,6 +283,16 @@ export default React.memo(function TrackCard({ track, isSelected, onClick }) {
           >
             {published ? <Globe size={14} color="var(--accent)" /> : <Lock size={14} />}
           </Button>
+          {published && (
+            <Button
+              iconOnly
+              variant="ghost"
+              onClick={handleRotateLink}
+              title={t('card.rotate_link')}
+            >
+              <RefreshCw size={14} />
+            </Button>
+          )}
           <Button
             iconOnly
             variant="ghost"

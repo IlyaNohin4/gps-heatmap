@@ -1,5 +1,6 @@
 import datetime
 import math
+import secrets
 from typing import List, Optional
 from xml.sax.saxutils import escape as xml_escape
 
@@ -386,7 +387,9 @@ async def upload_track(
 
     content = bytes(content)
 
-    name = (file.filename or "track").rsplit(".", 1)[0]
+    # rsplit(".", 1)[0] on a dotfile-style name like ".gpx" (no basename)
+    # gives "", not the extension-stripped "track" fallback intended below.
+    name = (file.filename or "track").rsplit(".", 1)[0] or "track"
     track = Track(user_id=current_user.id, name=name, file_format=fmt, raw_points=None, status="processing")
     db.add(track)
     db.commit()
@@ -930,6 +933,28 @@ def toggle_publish(
     if not track:
         raise HTTPException(status_code=404, detail="Track not found")
     track.is_public = not track.is_public
+    db.commit()
+    db.refresh(track)
+    return TrackOut.from_orm_dt(track)
+
+
+@router.post("/{track_id}/publish/rotate", response_model=TrackOut)
+def rotate_public_token(
+    track_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Issue a new public_token, invalidating the old share link.
+
+    L10: public_token was set once at track creation and never rotated —
+    toggling is_public off/on just reused the same permanent token, so a
+    link accidentally shared (or one the owner simply wants to revoke) had
+    no way to be invalidated short of deleting the track outright.
+    """
+    track = db.query(Track).filter(Track.id == track_id, Track.user_id == current_user.id).first()
+    if not track:
+        raise HTTPException(status_code=404, detail="Track not found")
+    track.public_token = secrets.token_urlsafe(32)
     db.commit()
     db.refresh(track)
     return TrackOut.from_orm_dt(track)

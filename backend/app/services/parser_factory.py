@@ -110,12 +110,21 @@ def _collapse_drift(points: list[dict], distance_threshold: float = 3.0, time_th
 
 
 def _remove_speed_outliers(points: list[dict], max_speed_kmh: float = 200) -> list[dict]:
-    """Remove points with impossible speed > max_speed_kmh."""
+    """Remove points with impossible speed > max_speed_kmh.
+
+    L2: a lone bad point between two good ones makes *both* adjacent
+    segments look fast (in and out), so naively marking both endpoints of
+    every fast segment as outliers removes the two legitimate neighbors too
+    — a 3-point spike lost all 3 points instead of just the bad middle one.
+    A point is only a confirmed outlier when segments on *both* sides of it
+    are fast; an isolated fast segment (only one bad side) can't be
+    attributed to either endpoint, so both are dropped as before — losing
+    one legitimate point is preferable to keeping a provably-bad segment.
+    """
     if len(points) < 2:
         return points
 
-    outlier_indices = set()
-
+    fast_segments = set()
     for i in range(len(points) - 1):
         p0, p1 = points[i], points[i + 1]
         if not (p0['time'] and p1['time']):
@@ -126,10 +135,21 @@ def _remove_speed_outliers(points: list[dict], max_speed_kmh: float = 200) -> li
 
         if time_diff > 0:
             speed_kmh = dist_km / (time_diff / 3600)
-
             if speed_kmh > max_speed_kmh:
-                outlier_indices.add(i)
-                outlier_indices.add(i + 1)
+                fast_segments.add(i)
+
+    outlier_indices = set()
+    for i in fast_segments:
+        left_also_fast = (i - 1) in fast_segments
+        right_also_fast = (i + 1) in fast_segments
+        if right_also_fast:
+            outlier_indices.add(i + 1)  # confirmed: both its segments are fast
+        if left_also_fast:
+            outlier_indices.add(i)  # confirmed: both its segments are fast
+        if not left_also_fast and not right_also_fast:
+            # isolated fast segment — can't tell which side is bad
+            outlier_indices.add(i)
+            outlier_indices.add(i + 1)
 
     return [p for i, p in enumerate(points) if i not in outlier_indices]
 
@@ -321,6 +341,14 @@ def _normalize_points(points: list[dict]) -> list[dict]:
     """
     if len(points) < 2:
         return points
+
+    # L1: multi-<trkseg>/lap GPX/TCX/FIT exports can list points out of
+    # timestamp order across segment boundaries — every phase below computes
+    # deltas assuming ascending time, so an out-of-order run produces
+    # negative time_diff / bogus speed spikes. Stable sort (points without a
+    # time keep their original relative position) fixes this before anything
+    # else runs.
+    points = sorted(points, key=lambda p: p["time"].timestamp() if p["time"] else float("-inf"))
 
     points = _collapse_drift(points)
     points = _remove_speed_outliers(points)
