@@ -83,13 +83,18 @@ def register(request: Request, body: RegisterRequest, db: Session = Depends(get_
     user = User(email=body.email, password_hash=hash_password(body.password))
     db.add(user)
     try:
-        db.commit()
+        # flush (not commit) assigns user.id and surfaces the unique-email
+        # race below without ending the transaction — L5: this used to be a
+        # separate commit from the POIImport/categories below, so a crash
+        # (OOM, restart) between the two left a real, loginable account with
+        # no starter list, which Create-POI's flow assumes always exists.
+        # One transaction now: either all of it lands, or none of it does.
+        db.flush()
     except IntegrityError:
         # Two concurrent registrations for the same email both passed the
         # check above; the unique constraint on User.email is the real guard.
         db.rollback()
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Email already registered")
-    db.refresh(user)
 
     # Every account starts with one POI list so Create-POI never has to force
     # the user through "+ New list..." on their very first point.
@@ -99,6 +104,7 @@ def register(request: Request, body: RegisterRequest, db: Session = Depends(get_
     # the user actually assigns one of the picker's suggestions to a POI.
     db.add_all(POICategory(user_id=user.id, name=name) for name in DEFAULT_CATEGORIES)
     db.commit()
+    db.refresh(user)
 
     return TokenResponse(access_token=create_access_token(user.id))
 
