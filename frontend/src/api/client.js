@@ -41,7 +41,13 @@ client.interceptors.response.use(
         const hasToken = raw ? JSON.parse(raw)?.state?.token : false;
         if (hasToken) {
           useAuthStore.getState().logout();
-          window.location.href = '/';
+          // L4: a stale token doesn't need auth on /track/:token (public,
+          // no-login-required) — a background 401 there (e.g. getMe) used
+          // to bounce someone reading a shared link back to the homepage.
+          // Clearing the dead token locally is still fine, just not the redirect.
+          if (!window.location.pathname.startsWith('/track/')) {
+            window.location.href = '/';
+          }
         }
       } catch (_) {}
     }
