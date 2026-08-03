@@ -241,7 +241,7 @@ def update_me(
     return current_user
 
 
-@router.post("/change-password", status_code=status.HTTP_204_NO_CONTENT)
+@router.post("/change-password", response_model=TokenResponse)
 @limiter.limit("5/minute")
 def change_password(
     request: Request,
@@ -255,11 +255,28 @@ def change_password(
     current_user.password_changed_at = datetime.now(timezone.utc)
     db.commit()
 
+    # password_changed_at invalidates every token issued before this instant
+    # (see deps.py), including the one on this very request — hand back a
+    # fresh one so the user isn't logged out by their own password change.
+    return TokenResponse(access_token=create_access_token(current_user.id))
+
+
+class DeleteAccountRequest(BaseModel):
+    password: str
+
 
 @router.delete("/account", status_code=status.HTTP_204_NO_CONTENT)
+@limiter.limit("5/minute")
 def delete_account(
+    request: Request,
+    body: DeleteAccountRequest,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
+    # A JWT alone (30-day lifetime, sits in localStorage) is not enough proof
+    # of intent for an irreversible cascade delete of every track/POI/list —
+    # require the password, same bar as change-password (M9).
+    if not verify_password(body.password, current_user.password_hash):
+        raise HTTPException(status_code=400, detail="Incorrect password")
     db.delete(current_user)
     db.commit()

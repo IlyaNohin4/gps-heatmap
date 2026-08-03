@@ -177,7 +177,11 @@ class TestChangePassword:
             json={"old_password": old_pw, "new_password": "NewPass456"},
             headers=auth_headers,
         )
-        assert r.status_code == 204
+        assert r.status_code == 200
+        # M12: returns a fresh token instead of logging the user out, since
+        # password_changed_at would otherwise invalidate the token that was
+        # just used to make this very request.
+        assert "access_token" in r.json()
         # Can log in with new password
         r2 = client.post("/api/auth/login", json={"email": email, "password": "NewPass456"})
         assert r2.status_code == 200
@@ -196,11 +200,16 @@ class TestChangePassword:
             json={"old_password": old_pw, "new_password": "NewPass456"},
             headers=auth_headers,
         )
-        assert r.status_code == 204
+        assert r.status_code == 200
 
         # The token issued before the change must now be rejected
         r2 = client.get("/api/auth/me", headers=auth_headers)
         assert r2.status_code == 401
+
+        # But the freshly issued token from the response works fine
+        new_token = r.json()["access_token"]
+        r3 = client.get("/api/auth/me", headers={"Authorization": f"Bearer {new_token}"})
+        assert r3.status_code == 200
 
     def test_wrong_old_password_is_400(self, client, auth_headers):
         r = client.post(
@@ -337,15 +346,23 @@ class TestPasswordReset:
 
 class TestDeleteAccount:
     def test_deletes_user(self, client, registered_user, auth_headers):
-        email, _, _ = registered_user
-        r = client.delete("/api/auth/account", headers=auth_headers)
+        email, password, _ = registered_user
+        r = client.request("DELETE", "/api/auth/account", json={"password": password}, headers=auth_headers)
         assert r.status_code == 204
         # Login should now fail
         r2 = client.post("/api/auth/login", json={"email": email, "password": "TestPass123"})
         assert r2.status_code == 401
 
+    def test_wrong_password_is_400(self, client, auth_headers):
+        r = client.request("DELETE", "/api/auth/account", json={"password": "WrongPass1"}, headers=auth_headers)
+        assert r.status_code == 400
+
+    def test_missing_password_is_422(self, client, auth_headers):
+        r = client.request("DELETE", "/api/auth/account", json={}, headers=auth_headers)
+        assert r.status_code == 422
+
     def test_unauthenticated_is_401(self, client):
-        r = client.delete("/api/auth/account")
+        r = client.request("DELETE", "/api/auth/account", json={"password": "whatever"})
         assert r.status_code == 401
 
 

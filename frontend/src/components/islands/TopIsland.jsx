@@ -36,6 +36,7 @@ export default function TopIsland() {
   const [changeEmailOpen, setChangeEmailOpen] = useState(false);
   const [newEmail, setNewEmail] = useState('');
   const [deleteConfirm, setDeleteConfirm] = useState(false);
+  const [deletePassword, setDeletePassword] = useState('');
   const [categoriesModalOpen, setCategoriesModalOpen] = useState(false);
 
   async function savePref(patch) {
@@ -82,7 +83,12 @@ export default function TopIsland() {
     e.preventDefault();
     if (!oldPass || !newPass) return toast.error(t('validation.fill_all_fields'));
     try {
-      await client.post('/api/auth/change-password', { old_password: oldPass, new_password: newPass });
+      const { data } = await client.post('/api/auth/change-password', { old_password: oldPass, new_password: newPass });
+      // password_changed_at invalidates every token issued before this
+      // instant, including the one just used to make this request — swap in
+      // the fresh one the backend returns so the user isn't logged out by
+      // their own password change (M12).
+      useAuthStore.getState().setToken(data.access_token);
       toast.success(t('settings.password_changed'));
       setOldPass(''); setNewPass(''); setChangePassOpen(false);
     } catch (err) {
@@ -109,11 +115,18 @@ export default function TopIsland() {
   async function handleDeleteAccount() {
     if (!deleteConfirm) {
       setDeleteConfirm(true);
-      setTimeout(() => setDeleteConfirm(false), 4000);
+      setTimeout(() => { setDeleteConfirm(false); setDeletePassword(''); }, 15000);
+      return;
+    }
+    if (!deletePassword) {
+      toast.error(t('validation.fill_all_fields'));
       return;
     }
     try {
-      await client.delete('/api/auth/account');
+      // A JWT alone isn't enough proof of intent for an irreversible cascade
+      // delete of every track/POI/list (M9) — backend now requires the
+      // password too, same bar as change-password.
+      await client.delete('/api/auth/account', { data: { password: deletePassword } });
       // Clear token from localStorage immediately so that any in-flight
       // polling requests returning 401 (user no longer exists) don't
       // trigger the interceptor's page-reload before logout() runs.
@@ -285,6 +298,16 @@ export default function TopIsland() {
                   </form>
                 )}
 
+                {deleteConfirm && (
+                  <Input
+                    type="password"
+                    placeholder={t('settings.current_password')}
+                    value={deletePassword}
+                    onChange={(e) => setDeletePassword(e.target.value)}
+                    autoFocus
+                    style={{ marginBottom: 'var(--space-2)' }}
+                  />
+                )}
                 <div style={{ display: 'flex', justifyContent: 'center', gap: 'var(--space-2)', marginTop: 'var(--space-1)' }}>
                   <Button
                     variant="secondary"

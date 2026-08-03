@@ -11,6 +11,7 @@ const useAuthStore = create(
       login: (token, user) => set({ token, user, isAuthenticated: true }),
       logout: () => set({ token: null, user: null, isAuthenticated: false }),
       setUser: (user) => set({ user }),
+      setToken: (token) => set({ token }),
     }),
     {
       name: 'gps_auth',
