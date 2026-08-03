@@ -162,6 +162,51 @@ class TestUploadRateLimit:
         app.dependency_overrides.clear()
         assert r.status_code == 429
 
+    def test_create_track_11th_in_a_minute_is_429(self, client, auth_headers, mock_db):
+        # M1: /api/tracks/create and /api/tracks/export had no rate limit —
+        # a bare-minimum body (invalid format, rejected before any real
+        # work) still counts against the limit here since @limiter.limit
+        # wraps the whole endpoint.
+        from app.main import app
+
+        fake_user = self._fake_user()
+        mock_db.get.return_value = fake_user
+        mock_db.query.return_value.filter.return_value.first.return_value = fake_user
+
+        points = [{"lat": 1.0, "lon": 2.0}, {"lat": 1.1, "lon": 2.1}]
+        app.dependency_overrides[get_db] = lambda: (yield mock_db)
+        for _ in range(10):
+            r = client.post(
+                "/api/tracks/create",
+                headers=auth_headers,
+                json={"name": "Track", "points": points, "format": "shp"},
+            )
+            assert r.status_code == 400  # invalid format, but under the limit
+        r = client.post(
+            "/api/tracks/create",
+            headers=auth_headers,
+            json={"name": "Track", "points": points, "format": "shp"},
+        )
+        app.dependency_overrides.clear()
+        assert r.status_code == 429
+
+    def test_create_track_too_many_points_is_422(self, client, auth_headers, mock_db):
+        from app.main import app
+
+        fake_user = self._fake_user()
+        mock_db.get.return_value = fake_user
+        mock_db.query.return_value.filter.return_value.first.return_value = fake_user
+
+        huge = [{"lat": 1.0, "lon": 2.0 + i * 0.0001} for i in range(50_001)]
+        app.dependency_overrides[get_db] = lambda: (yield mock_db)
+        r = client.post(
+            "/api/tracks/create",
+            headers=auth_headers,
+            json={"name": "Track", "points": huge, "format": "gpx"},
+        )
+        app.dependency_overrides.clear()
+        assert r.status_code == 422
+
 
 # ── Upload content integrity ──────────────────────────────────────────────────
 

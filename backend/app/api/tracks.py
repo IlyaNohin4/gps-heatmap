@@ -51,7 +51,7 @@ class Point(BaseModel):
 
 class CreateTrackBody(BaseModel):
     name: str = Field(..., max_length=255)
-    points: List[Point]
+    points: List[Point] = Field(..., max_length=50_000)
     format: str = "gpx"
 
 
@@ -449,12 +449,14 @@ _EXPORT_MEDIA_TYPES = {
 
 class ExportTrackBody(BaseModel):
     name: str = Field("Track", max_length=255)
-    points: List[Point]
+    points: List[Point] = Field(..., max_length=50_000)
     format: str = "gpx"
 
 
 @router.post("/export")
+@limiter.limit("10/minute")
 async def export_track(
+    request: Request,
     body: ExportTrackBody,
     current_user: User = Depends(get_current_user),
 ):
@@ -477,7 +479,9 @@ async def export_track(
 
 
 @router.post("/create", response_model=TrackOut, status_code=status.HTTP_201_CREATED)
+@limiter.limit("10/minute")
 async def create_track(
+    request: Request,
     body: CreateTrackBody,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),

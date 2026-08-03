@@ -36,6 +36,16 @@ class TestDirectionsProxy:
         )
         assert resp.status_code == 422
 
+    def test_rejects_too_many_coordinates(self, client, auth_headers):
+        # M1: no upper bound — ORS itself caps at a much lower number anyway.
+        coords = [[30.5 + i * 0.001, 50.4] for i in range(101)]
+        resp = client.post(
+            "/api/routing/directions",
+            json={"profile": "foot-walking", "coordinates": coords},
+            headers=auth_headers,
+        )
+        assert resp.status_code == 422
+
     def test_proxies_successful_response_without_leaking_key(self, client, auth_headers):
         from app.core.config import settings
 

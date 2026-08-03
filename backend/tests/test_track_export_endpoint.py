@@ -61,3 +61,32 @@ def test_default_name_when_blank(client, auth_headers):
     )
     assert r.status_code == 200
     assert "Track.geojson" in r.headers["content-disposition"]
+
+
+def test_too_many_points_is_422(client, auth_headers):
+    # M1: no upper bound meant a synchronous FIT/TCX generation of ~500k
+    # points (as much as prod's 25MB nginx body limit allows) could tie up
+    # a request worker for tens of seconds.
+    huge = [{"lat": 55.0, "lon": 37.0 + i * 0.0001} for i in range(50_001)]
+    r = client.post(
+        "/api/tracks/export",
+        json={"name": "Track", "points": huge, "format": "gpx"},
+        headers=auth_headers,
+    )
+    assert r.status_code == 422
+
+
+def test_export_11th_in_a_minute_is_429(client, auth_headers):
+    for _ in range(10):
+        r = client.post(
+            "/api/tracks/export",
+            json={"name": "Track", "points": POINTS, "format": "gpx"},
+            headers=auth_headers,
+        )
+        assert r.status_code == 200
+    r = client.post(
+        "/api/tracks/export",
+        json={"name": "Track", "points": POINTS, "format": "gpx"},
+        headers=auth_headers,
+    )
+    assert r.status_code == 429

@@ -28,6 +28,8 @@ class DirectionsRequest(BaseModel):
     def coordinates_must_be_valid(cls, v):
         if len(v) < 2:
             raise ValueError("At least 2 coordinates required")
+        if len(v) > 100:
+            raise ValueError("Too many coordinates (max 100) — ORS rejects more anyway")
         for pair in v:
             if len(pair) != 2:
                 raise ValueError("Each coordinate must be [lng, lat]")
