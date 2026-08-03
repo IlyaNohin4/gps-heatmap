@@ -28,10 +28,22 @@ class Settings(BaseSettings):
         return [origin.strip() for origin in self.CORS_ORIGINS.split(",") if origin.strip()]
 
     def model_post_init(self, __context):
-        if self.ENVIRONMENT == "production" and self.JWT_SECRET == "change_me":
+        if self.ENVIRONMENT != "production":
+            return
+        if self.JWT_SECRET == "change_me":
             raise RuntimeError(
                 "Production environment detected but JWT_SECRET is set to default 'change_me'. "
                 "Set a secure JWT_SECRET in .env before running production."
+            )
+        # docker-compose.prod.yml no longer falls back to "password" for
+        # POSTGRES_PASSWORD, but DATABASE_URL is set independently here (not
+        # derived from that compose var) — someone could still hand-copy the
+        # dev .env's default DB URL into a prod .env. Catch that too.
+        if ":password@" in self.DATABASE_URL:
+            raise RuntimeError(
+                "Production environment detected but DATABASE_URL uses the default "
+                "'password' credential. Set a secure database password in .env "
+                "before running production."
             )
 
 
