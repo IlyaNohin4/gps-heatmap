@@ -33,6 +33,8 @@ def _make_track(track_id: int, user_id: int, **kwargs) -> Track:
     t.speed_segments = [{"from": [48.8, 2.3], "to": [48.9, 2.4], "speed_kmh": 15.0}]
     t.is_public = kwargs.get("is_public", False)
     t.public_token = kwargs.get("public_token", secrets.token_urlsafe(32))
+    t.status = kwargs.get("status", "done")
+    t.error_detail = kwargs.get("error_detail", None)
     return t
 
 
@@ -187,6 +189,42 @@ class TestListTracks:
             app.dependency_overrides[get_db] = lambda: (yield mock_db)
             r = client.get("/api/tracks?bbox=not,valid", headers=auth_headers)
             app.dependency_overrides.clear()
+        assert r.status_code == 400
+
+    def test_nonfinite_bbox_is_400(self, client, auth_headers, mock_db):
+        from app.main import app
+
+        fake_user = _make_fake_user()
+        _setup_mock_db_user(mock_db, fake_user)
+
+        # float("nan")/float("inf") parse fine in Python but must not reach
+        # ST_MakeEnvelope — NaN/Infinity make a broken PostGIS envelope.
+        with patch("app.api.tracks.ST_MakeEnvelope"), patch("app.api.tracks.ST_Intersects"):
+            app.dependency_overrides[get_db] = lambda: (yield mock_db)
+            r = client.get("/api/tracks?bbox=nan,inf,-inf,1", headers=auth_headers)
+            app.dependency_overrides.clear()
+        assert r.status_code == 400
+
+    def test_nonfinite_speed_avg_min_is_400(self, client, auth_headers, mock_db):
+        from app.main import app
+
+        fake_user = _make_fake_user()
+        _setup_mock_db_user(mock_db, fake_user)
+
+        app.dependency_overrides[get_db] = lambda: (yield mock_db)
+        r = client.get("/api/tracks?speed_avg_min=nan", headers=auth_headers)
+        app.dependency_overrides.clear()
+        assert r.status_code == 400
+
+    def test_nonfinite_speed_avg_max_is_400(self, client, auth_headers, mock_db):
+        from app.main import app
+
+        fake_user = _make_fake_user()
+        _setup_mock_db_user(mock_db, fake_user)
+
+        app.dependency_overrides[get_db] = lambda: (yield mock_db)
+        r = client.get("/api/tracks?speed_avg_max=inf", headers=auth_headers)
+        app.dependency_overrides.clear()
         assert r.status_code == 400
 
 

@@ -19,7 +19,7 @@ from app.core.redis_client import redis_client
 from app.models.poi import POI
 from app.models.track import Track
 from app.models.user import User
-from app.services.parser_factory import _haversine
+from app.services.parser_factory import _haversine, detect_format as _detect_format
 from app.tasks.process_track import process_track
 
 router = APIRouter(prefix="/api/tracks", tags=["tracks"])
@@ -31,16 +31,11 @@ UPLOAD_CHUNK_SIZE = 1024 * 1024  # 1 MB — read in chunks so the size limit abo
 # TTL matches how long a client might reasonably still be polling.
 TASK_OWNER_TTL_SECONDS = 24 * 3600
 
+STUCK_PROCESSING_TIMEOUT = datetime.timedelta(hours=2)
+
 
 def _register_task_owner(task_id: str, user_id: int) -> None:
     redis_client.setex(f"task_owner:{task_id}", TASK_OWNER_TTL_SECONDS, str(user_id))
-
-# Magic bytes for supported formats
-MAGIC = {
-    b"<?xml": ["gpx", "kml", "tcx"],
-    b"\x0e\x10\x09\x08": ["fit"],
-    b"{": ["geojson"],
-}
 
 ALLOWED_FORMATS = {"gpx", "kml", "tcx", "fit", "geojson"}
 
@@ -58,25 +53,9 @@ class CreateTrackBody(BaseModel):
     format: str = "gpx"
 
 
-def _detect_format(header: bytes, filename: str) -> str:
-    """Detect file format from magic bytes, fall back to extension."""
-    for magic, fmts in MAGIC.items():
-        if header.startswith(magic):
-            ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
-            if ext in fmts:
-                return ext
-            # XML-like: try to distinguish by content
-            if b"<gpx" in header[:2048]:
-                return "gpx"
-            if b"<kml" in header[:2048]:
-                return "kml"
-            if b"<TrainingCenterDatabase" in header[:2048] or b"<tcx" in header[:2048]:
-                return "tcx"
-            return fmts[0]
-    # JSON check
-    if header.lstrip()[:1] == b"{":
-        return "geojson"
-    raise ValueError("Unrecognized file format")
+# _detect_format now imported from parser_factory (content-first detection,
+# rejects an extension that doesn't match the actual bytes) — this used to be
+# duplicated here with weaker, extension-trusting logic a renamed file could spoof.
 
 
 def _points_to_gpx(points: List[Point]) -> str:
@@ -247,6 +226,8 @@ class TrackOut(BaseModel):
     regions: Optional[List[str]]
     is_public: bool
     public_token: str
+    status: str
+    error_detail: Optional[str]
 
     model_config = {"from_attributes": True}
 
@@ -269,6 +250,8 @@ class TrackOut(BaseModel):
             regions=t.regions,
             is_public=t.is_public,
             public_token=t.public_token,
+            status=t.status,
+            error_detail=t.error_detail,
         )
 
 
@@ -309,6 +292,22 @@ def list_tracks(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
+    # Lazy reaper: a track can get stuck in "processing" forever if the
+    # Celery worker is killed mid-task (OOM, SIGKILL, host reboot) — there's
+    # no Celery beat/cron in this deployment, so sweep it here instead of a
+    # separate scheduled job. STUCK_PROCESSING_TIMEOUT gives real in-flight
+    # tracks (this deployment processes strictly sequentially, one at a time)
+    # plenty of room before being treated as abandoned.
+    db.query(Track).filter(
+        Track.user_id == current_user.id,
+        Track.status == "processing",
+        Track.uploaded_at < datetime.datetime.now(datetime.timezone.utc) - STUCK_PROCESSING_TIMEOUT,
+    ).update(
+        {"status": "error", "error_detail": "Processing timed out or the worker crashed"},
+        synchronize_session=False,
+    )
+    db.commit()
+
     q = db.query(Track).filter(Track.user_id == current_user.id)
 
     if search:
@@ -320,14 +319,20 @@ def list_tracks(
         q = q.filter(Track.file_format == file_format)
 
     if speed_avg_min is not None:
+        if not math.isfinite(speed_avg_min):
+            raise HTTPException(status_code=400, detail="speed_avg_min must be a finite number")
         q = q.filter(Track.speed_avg >= speed_avg_min)
     if speed_avg_max is not None:
+        if not math.isfinite(speed_avg_max):
+            raise HTTPException(status_code=400, detail="speed_avg_max must be a finite number")
         q = q.filter(Track.speed_avg <= speed_avg_max)
 
     if bbox:
         try:
             min_lng, min_lat, max_lng, max_lat = (float(x) for x in bbox.split(","))
         except ValueError:
+            raise HTTPException(status_code=400, detail="bbox must be minLng,minLat,maxLng,maxLat")
+        if not all(math.isfinite(v) for v in (min_lng, min_lat, max_lng, max_lat)):
             raise HTTPException(status_code=400, detail="bbox must be minLng,minLat,maxLng,maxLat")
         envelope = ST_MakeEnvelope(min_lng, min_lat, max_lng, max_lat, 4326)
         q = q.filter(ST_Intersects(Track.geom, envelope))
@@ -382,7 +387,7 @@ async def upload_track(
     content = bytes(content)
 
     name = (file.filename or "track").rsplit(".", 1)[0]
-    track = Track(user_id=current_user.id, name=name, file_format=fmt, raw_points=None)
+    track = Track(user_id=current_user.id, name=name, file_format=fmt, raw_points=None, status="processing")
     db.add(track)
     db.commit()
     db.refresh(track)
@@ -472,7 +477,7 @@ async def create_track(
 
     # Create track record
     name = body.name.strip()
-    track = Track(user_id=current_user.id, name=name, file_format=body.format, raw_points=None)
+    track = Track(user_id=current_user.id, name=name, file_format=body.format, raw_points=None, status="processing")
     db.add(track)
     db.commit()
     db.refresh(track)
