@@ -687,6 +687,8 @@ def _parse_gpx(data: bytes) -> dict:
             lon = float(trkpt.get("lon"))
         except (TypeError, ValueError):
             continue
+        if not (-90 <= lat <= 90 and -180 <= lon <= 180):
+            continue
 
         ele_el = _gpx_find(trkpt, "ele")
         ele = float(ele_el.text) if ele_el is not None and ele_el.text else None
@@ -755,9 +757,11 @@ def _parse_kml(data: bytes) -> dict:
                 try:
                     lon, lat = float(parts[0]), float(parts[1])
                     ele = float(parts[2]) if len(parts) >= 3 else None
-                    points.append({"lat": lat, "lon": lon, "elevation": ele, "time": None})
                 except ValueError:
                     continue
+                if not (-90 <= lat <= 90 and -180 <= lon <= 180):
+                    continue
+                points.append({"lat": lat, "lon": lon, "elevation": ele, "time": None})
 
     raw_points = points
     cleaned_points = _normalize_points(points) if points else []
@@ -799,6 +803,8 @@ def _parse_tcx(data: bytes) -> dict:
         try:
             lat, lon = float(lat_el.text), float(lon_el.text)
         except (TypeError, ValueError):
+            continue
+        if not (-90 <= lat <= 90 and -180 <= lon <= 180):
             continue
         ele = float(alt_el.text) if alt_el is not None and alt_el.text else None
         t = None
@@ -849,6 +855,8 @@ def _parse_fit(data: bytes) -> dict:
         # FIT uses semicircles
         lat = raw_lat * (180 / 2**31)
         lon = raw_lon * (180 / 2**31)
+        if not (-90 <= lat <= 90 and -180 <= lon <= 180):
+            continue  # corrupt/garbage semicircle value
         ele = flds.get("altitude")
         t = flds.get("timestamp")
         if t and t.tzinfo is None:
@@ -906,10 +914,16 @@ def _parse_geojson(data: bytes) -> dict:
 
     points: list[dict] = []
     for c in coords:
-        if len(c) >= 2:
-            lon, lat = c[0], c[1]
-            ele = c[2] if len(c) >= 3 else None
-            points.append({"lat": lat, "lon": lon, "elevation": ele, "time": None})
+        if len(c) < 2:
+            continue
+        try:
+            lon, lat = float(c[0]), float(c[1])
+            ele = float(c[2]) if len(c) >= 3 and c[2] is not None else None
+        except (TypeError, ValueError):
+            continue  # e.g. coordinates given as non-numeric strings
+        if not (-90 <= lat <= 90 and -180 <= lon <= 180):
+            continue
+        points.append({"lat": lat, "lon": lon, "elevation": ele, "time": None})
 
     raw_points = points
     cleaned_points = _normalize_points(points) if points else []

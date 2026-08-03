@@ -227,6 +227,21 @@ class TestParseGPX:
         for pt in result["points"]:
             assert "lat" in pt and "lon" in pt
 
+    def test_out_of_range_lat_is_skipped(self):
+        # L2: GPX/KML/TCX/FIT parsers didn't range-check lat/lon like the
+        # POI parser already does.
+        gpx = b"""\
+<?xml version="1.0"?>
+<gpx version="1.1">
+  <trk><trkseg>
+    <trkpt lat="9999" lon="2.0"><time>2024-01-01T10:00:00Z</time></trkpt>
+    <trkpt lat="48.0" lon="2.0"><time>2024-01-01T10:01:00Z</time></trkpt>
+    <trkpt lat="48.1" lon="2.1"><time>2024-01-01T10:02:00Z</time></trkpt>
+  </trkseg></trk>
+</gpx>"""
+        result = _parse_gpx(gpx)
+        assert len(result["points"]) == 2
+
     def test_distance_positive(self):
         result = _parse_gpx(SIMPLE_GPX)
         assert result["distance_km"] > 0
@@ -438,6 +453,26 @@ class TestParseGeoJSON:
             b'[[[2.0,48.0],[2.1,48.1]]]},"properties":{}}'
             b']}'
         )
+        result = _parse_geojson(data)
+        assert len(result["points"]) == 2
+
+    def test_string_coordinates_skipped_not_crashed(self):
+        # L1: coordinates given as strings (some exporters emit these) used
+        # to reach _haversine unconverted and blow up with a TypeError
+        # instead of just skipping the bad point.
+        data = b'{"type":"LineString","coordinates":[["13.4","52.5"],[2.0,48.0],[3.0,49.0]]}'
+        result = _parse_geojson(data)
+        assert len(result["points"]) == 3  # the string pair converts fine via float()
+
+    def test_non_numeric_coordinate_skipped(self):
+        data = b'{"type":"LineString","coordinates":[["abc","xyz"],[2.0,48.0],[3.0,49.0]]}'
+        result = _parse_geojson(data)
+        assert len(result["points"]) == 2  # the truly non-numeric pair is dropped
+
+    def test_out_of_range_coordinate_skipped(self):
+        # L2: track parsers didn't validate lat/lon ranges the way the POI
+        # parser already does — a bogus lat=9999 used to reach PostGIS as-is.
+        data = b'{"type":"LineString","coordinates":[[2.0,9999.0],[2.0,48.0],[3.0,49.0]]}'
         result = _parse_geojson(data)
         assert len(result["points"]) == 2
 
