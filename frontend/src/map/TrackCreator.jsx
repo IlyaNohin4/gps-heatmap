@@ -285,6 +285,7 @@ export function TrackCreatorPanel({
             e.stopPropagation();
             onClear();
           }}
+          disabled={waypoints.length === 0}
           title="Clear"
           style={{
             width: 28,
@@ -296,8 +297,9 @@ export function TrackCreatorPanel({
             borderRadius: 8,
             border: '1px solid var(--border)',
             background: 'var(--bg)',
-            cursor: 'pointer',
+            cursor: waypoints.length === 0 ? 'not-allowed' : 'pointer',
             color: 'var(--text)',
+            opacity: waypoints.length === 0 ? 0.5 : 1,
           }}
         >
           <Eraser size={14} />
