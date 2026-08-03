@@ -16,7 +16,7 @@ export async function forgotPassword(email) {
 }
 
 export async function resetPassword(token, password) {
-  const { data } = await client.post('/api/auth/reset-password', { token, password });
+  const { data } = await client.post(`/api/auth/reset-password/${encodeURIComponent(token)}`, { password });
   return data;
 }
 

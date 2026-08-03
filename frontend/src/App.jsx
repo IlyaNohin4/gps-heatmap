@@ -29,6 +29,7 @@ import { Search, RotateCcw } from 'lucide-react';
 
 // Lazy-load the public track page so it doesn't pull leaflet into the main bundle
 const PublicTrackPage = lazy(() => import('./pages/PublicTrackPage.jsx'));
+const ResetPasswordPage = lazy(() => import('./pages/ResetPasswordPage.jsx'));
 
 // Dev-only UI-kit demo page — the `import.meta.env.DEV ? ... : null` branch lets Rollup
 // dead-code-eliminate the dynamic import entirely from the production bundle.
@@ -330,6 +331,14 @@ export default function App() {
           element={
             <Suspense fallback={<div style={{ padding: 32, textAlign: 'center' }}>Loading…</div>}>
               <PublicTrackPage />
+            </Suspense>
+          }
+        />
+        <Route
+          path="/reset-password/:token"
+          element={
+            <Suspense fallback={<div style={{ padding: 32, textAlign: 'center' }}>Loading…</div>}>
+              <ResetPasswordPage />
             </Suspense>
           }
         />
