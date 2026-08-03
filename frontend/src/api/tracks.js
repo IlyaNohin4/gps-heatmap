@@ -5,9 +5,25 @@ export async function fetchTracksPage(params = {}) {
   return data;
 }
 
+// M2: every caller wants "every track the user has" for the heatmap/list
+// preload (see App.jsx's TRACKS_FETCH_LIMIT comment) — a single page capped
+// at the backend's own limit=500 ceiling silently dropped tracks 501+ with
+// no error, the exact same class of bug already fixed once at limit=50.
+// Paginate internally so growth past any one page size is invisible to
+// every call site instead of needing the same fix repeated per caller.
 export async function fetchTracks(params = {}) {
-  const data = await fetchTracksPage(params);
-  return data.items;
+  const pageSize = params.limit || 500;
+  let offset = 0;
+  let all = [];
+  // Safety valve: bail out after a very large number of tracks instead of
+  // looping forever if the backend ever returns a malformed has_more.
+  for (let page = 0; page < 200; page++) {
+    const data = await fetchTracksPage({ ...params, limit: pageSize, offset });
+    all = all.concat(data.items);
+    if (!data.has_more || data.items.length === 0) break;
+    offset += pageSize;
+  }
+  return all;
 }
 
 export async function uploadTrack(file, onProgress) {
