@@ -55,7 +55,9 @@ services:
     build: ./frontend
     ports:
       - "5173:5173"
-    env_file: .env
+    # No env_file here: the frontend has no business holding backend secrets
+    # (JWT_SECRET, DATABASE_URL, RESEND_API_KEY, ...). Vite loads its own
+    # VITE_-prefixed vars from the bind-mounted frontend/.env below.
     volumes:
       - ./frontend:/app
       - /app/node_modules
