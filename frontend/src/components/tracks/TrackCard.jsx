@@ -5,7 +5,7 @@ import Slider from 'rc-slider';
 import 'rc-slider/assets/index.css';
 import {
   ChevronDown, ChevronUp, Trash2, Globe, Lock, MapPin, Calendar,
-  Gauge, Route, Download, Pencil,
+  Gauge, Route, Download, Pencil, Loader2, AlertTriangle,
 } from 'lucide-react';
 import useAppStore from '../../store/appStore.js';
 import useMapStore from '../../store/mapStore.js';
@@ -231,6 +231,25 @@ export default React.memo(function TrackCard({ track, isSelected, onClick }) {
           {fmt || '?'}
         </span>
 
+        {track.status === 'processing' && (
+          <span
+            className="ui-badge"
+            title={t('card.processing')}
+            style={{ background: '#8e8e93', color: '#fff', flexShrink: 0, display: 'flex', alignItems: 'center', gap: 4 }}
+          >
+            <Loader2 size={11} className="spin" /> {t('card.processing')}
+          </span>
+        )}
+        {track.status === 'error' && (
+          <span
+            className="ui-badge"
+            title={track.error_detail || t('card.processing_failed')}
+            style={{ background: '#ff3b30', color: '#fff', flexShrink: 0, display: 'flex', alignItems: 'center', gap: 4 }}
+          >
+            <AlertTriangle size={11} /> {t('card.processing_failed')}
+          </span>
+        )}
+
         <span style={{
           flex: 1,
           minWidth: 0,
@@ -359,26 +378,18 @@ export default React.memo(function TrackCard({ track, isSelected, onClick }) {
                 <div style={{ fontSize: 'var(--text-sm)' }}>{elevationLabel(track.elevation_loss, unitSystem)}</div>
               </div>
             )}
-            {(() => {
-              // "__error: ..." is a backend-internal marker (process_track.py
-              // reuses the regions column to record a processing failure,
-              // since Track has no dedicated status/error field) — never a
-              // real region, must not be shown to the user as one.
-              const validRegions = track.regions?.filter((r) => !r.startsWith('__error:')) ?? [];
-              if (!validRegions.length) return null;
-              return (
-                <div style={{ gridColumn: '1/-1' }}>
-                  <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: 600, marginBottom: 'var(--space-1)', display: 'flex', alignItems: 'center', gap: 'var(--space-1)' }}>
-                    <MapPin size={10} /> {t('card.regions')}
-                  </div>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-1)' }}>
-                    {validRegions.map((r, i) => (
-                      <span key={i} className="track-tag">{r}</span>
-                    ))}
-                  </div>
+            {track.regions?.length > 0 && (
+              <div style={{ gridColumn: '1/-1' }}>
+                <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: 600, marginBottom: 'var(--space-1)', display: 'flex', alignItems: 'center', gap: 'var(--space-1)' }}>
+                  <MapPin size={10} /> {t('card.regions')}
                 </div>
-              );
-            })()}
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-1)' }}>
+                  {track.regions.map((r, i) => (
+                    <span key={i} className="track-tag">{r}</span>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}

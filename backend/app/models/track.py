@@ -47,3 +47,9 @@ class Track(Base):
 
     is_public = Column(Boolean, default=False)
     public_token = Column(String(64), unique=True, default=lambda: secrets.token_urlsafe(32))
+
+    # "processing" | "done" | "error" — set to "processing" at upload, then
+    # finalized by the Celery task. See M1: a track stuck in "processing"
+    # (e.g. worker crash mid-task) is lazily reaped in list_tracks().
+    status = Column(String(20), nullable=False, default="processing", index=True)
+    error_detail = Column(Text, nullable=True)

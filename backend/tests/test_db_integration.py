@@ -1,7 +1,7 @@
 """Integration tests: Parser → Database persistence."""
 
 import json
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 import pytest
 
@@ -168,3 +168,40 @@ def test_elevation_gain_loss_saved(db_session, test_user):
     assert saved.elevation_loss == 5.0
 
     print(f"✓ Elevation metrics saved correctly: gain={saved.elevation_gain}m, loss={saved.elevation_loss}m")
+
+
+def test_stuck_processing_track_is_reaped_on_list(db_session, test_user):
+    """M1: a track stuck in status='processing' past STUCK_PROCESSING_TIMEOUT
+    (e.g. the Celery worker was killed mid-task) must be lazily flipped to
+    'error' the next time the owner lists their tracks, instead of lingering
+    forever as an indistinguishable "ghost" with no metrics."""
+    from app.api.tracks import list_tracks
+
+    stuck = Track(
+        user_id=test_user.id,
+        name="Stuck Track",
+        file_format="gpx",
+        status="processing",
+        uploaded_at=datetime.now(timezone.utc) - timedelta(hours=3),
+    )
+    fresh = Track(
+        user_id=test_user.id,
+        name="Fresh Track",
+        file_format="gpx",
+        status="processing",
+        uploaded_at=datetime.now(timezone.utc),
+    )
+    db_session.add_all([stuck, fresh])
+    db_session.commit()
+
+    list_tracks(
+        sort=None, search=None, bbox=None, file_format=None,
+        speed_avg_min=None, speed_avg_max=None, limit=50, offset=0,
+        db=db_session, current_user=test_user,
+    )
+
+    db_session.refresh(stuck)
+    db_session.refresh(fresh)
+    assert stuck.status == "error"
+    assert stuck.error_detail == "Processing timed out or the worker crashed"
+    assert fresh.status == "processing"

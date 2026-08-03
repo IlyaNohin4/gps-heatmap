@@ -268,3 +268,12 @@ input:where(:not([type="checkbox"]):not([type="radio"])):focus, select:focus, te
 .leaflet-tile-pane {
   transition: opacity 0.3s ease-out;
 }
+
+.spin {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}

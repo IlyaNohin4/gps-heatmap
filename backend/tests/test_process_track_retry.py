@@ -69,7 +69,8 @@ class TestRetryPolicy:
 
         assert result["status"] == "error"
         assert "not a valid gpx" in result["detail"]
-        assert any(str(r).startswith("__error:") for r in track.regions)
+        assert track.status == "error"
+        assert "not a valid gpx" in track.error_detail
         db.commit.assert_called()
 
     def test_transient_db_error_propagates_without_setting_error(self):
@@ -115,4 +116,4 @@ class TestRetryPolicy:
         finally:
             process_track.pop_request()
 
-        assert any(str(r).startswith("__error:") for r in track.regions)
+        assert track.status == "error"

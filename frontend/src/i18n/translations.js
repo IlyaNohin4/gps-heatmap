@@ -103,6 +103,8 @@ const translations = {
       elev_loss: 'Elev loss',
       regions: 'Regions',
       unnamed: 'Unnamed track',
+      processing: 'Processing',
+      processing_failed: 'Processing failed',
       confirm_delete: 'Click again to confirm',
     },
     // Sort options
@@ -329,6 +331,8 @@ const translations = {
       elev_loss: 'Потеря высоты',
       regions: 'Регионы',
       unnamed: 'Трек без названия',
+      processing: 'Обработка',
+      processing_failed: 'Ошибка обработки',
       confirm_delete: 'Нажмите ещё раз для подтверждения',
     },
     sort: {
@@ -548,6 +552,8 @@ const translations = {
       elev_loss: 'Втрата висоти',
       regions: 'Регіони',
       unnamed: 'Трек без назви',
+      processing: 'Обробка',
+      processing_failed: 'Помилка обробки',
       confirm_delete: 'Натисніть ще раз для підтвердження',
     },
     sort: {
@@ -767,6 +773,8 @@ const translations = {
       elev_loss: 'Höhenverlust',
       regions: 'Regionen',
       unnamed: 'Unbenannter Track',
+      processing: 'Verarbeitung',
+      processing_failed: 'Verarbeitung fehlgeschlagen',
       confirm_delete: 'Erneut klicken zum Bestätigen',
     },
     sort: {
@@ -986,6 +994,8 @@ const translations = {
       elev_loss: 'Desnivel −',
       regions: 'Regiones',
       unnamed: 'Track sin nombre',
+      processing: 'Procesando',
+      processing_failed: 'Error de procesamiento',
       confirm_delete: 'Haz clic de nuevo para confirmar',
     },
     sort: {

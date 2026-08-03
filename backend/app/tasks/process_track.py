@@ -111,6 +111,7 @@ def process_track(self, track_id: int, file_bytes: bytes) -> dict:
             track.recorded_at = result["recorded_at"]
             track.regions = regions or []
             track.geom = geom
+            track.status = "done"
 
             db.commit()
             return {"status": "done", "track_id": track_id}
@@ -139,7 +140,8 @@ def process_track(self, track_id: int, file_bytes: bytes) -> dict:
 def _set_error(db: Session, track, detail: str) -> None:
     if track:
         try:
-            track.regions = [f"__error: {detail[:200]}"]
+            track.status = "error"
+            track.error_detail = detail[:500]
             db.commit()
         except Exception:
             db.rollback()
