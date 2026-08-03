@@ -137,8 +137,8 @@ async def create_poi(
     _validate_icon(request.icon)
     _validate_color(request.color)
 
-    if request.import_name:
-        _get_or_create_import(db, current_user.id, request.import_name)
+    # import_name is required (min_length=1) on this schema — always truthy here.
+    _get_or_create_import(db, current_user.id, request.import_name)
 
     # Create POI
     poi = POI(
@@ -228,7 +228,7 @@ async def upload_poi(
 
 @router.get("", response_model=POIListResponse)
 def list_poi(
-    category: str = None,
+    category: Optional[str] = Query(None, max_length=255),
     search: Optional[str] = Query(None, max_length=200),
     limit: int = Query(50, ge=1, le=5000),
     offset: int = Query(0, ge=0),

@@ -82,7 +82,7 @@ class POIParser:
     }
 
     @staticmethod
-    def parse(file_bytes: bytes) -> Tuple[List[Dict], str]:
+    def parse(file_bytes: bytes) -> Tuple[List[Dict], Optional[str]]:
         """
         Parse KML or KMZ file.
 
