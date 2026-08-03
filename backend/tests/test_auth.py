@@ -164,6 +164,38 @@ class TestUpdateMe:
         assert data["unit_distance"] == "mi"
         assert data["unit_speed"] == "mph"
 
+    def test_change_email_without_password_is_400(self, client, auth_headers):
+        # MEDIUM: a stolen JWT alone shouldn't be enough to change the
+        # account's email (then request a password reset on the new one).
+        r = client.patch("/api/auth/me", json={"email": "newmail@test.com"}, headers=auth_headers)
+        assert r.status_code == 400
+
+    def test_change_email_with_wrong_password_is_400(self, client, auth_headers):
+        r = client.patch(
+            "/api/auth/me",
+            json={"email": "newmail@test.com", "password": "WrongPass999"},
+            headers=auth_headers,
+        )
+        assert r.status_code == 400
+
+    def test_change_email_with_correct_password_succeeds(self, client, registered_user, auth_headers):
+        _, password, _ = registered_user
+        r = client.patch(
+            "/api/auth/me",
+            json={"email": "newmail@test.com", "password": password},
+            headers=auth_headers,
+        )
+        assert r.status_code == 200
+        assert r.json()["email"] == "newmail@test.com"
+
+    def test_unchanged_email_does_not_require_password(self, client, registered_user, auth_headers):
+        # Re-submitting the same email (e.g. as part of a form save that
+        # also updates other prefs) shouldn't demand a password — nothing
+        # is actually changing.
+        email, _, _ = registered_user
+        r = client.patch("/api/auth/me", json={"email": email, "theme": "dark"}, headers=auth_headers)
+        assert r.status_code == 200
+
 
 # ---------------------------------------------------------------------------
 # POST /change-password
@@ -356,6 +388,29 @@ class TestPasswordReset:
         client.post(f"/api/auth/reset-password/{token}", json={"password": "FirstReset1"})
         r = client.post(f"/api/auth/reset-password/{token}", json={"password": "SecondReset2"})
         assert r.status_code == 400
+
+    def test_reset_invalidates_other_pending_tokens_for_same_user(self, client, db, registered_user):
+        # MEDIUM: a second still-valid reset token (e.g. requested again by
+        # the user, or by an attacker racing them) must stop working once
+        # any one of them has been used.
+        from app.models.password_reset import PasswordReset
+        from app.models.user import User
+
+        email, _, _ = registered_user
+        user = db.query(User).filter(User.email == email).first()
+        expires = datetime.now(timezone.utc) + timedelta(hours=1)
+
+        token_a = secrets.token_urlsafe(32)
+        token_b = secrets.token_urlsafe(32)
+        db.add(PasswordReset(token=hashlib.sha256(token_a.encode()).hexdigest(), user_id=user.id, expires_at=expires))
+        db.add(PasswordReset(token=hashlib.sha256(token_b.encode()).hexdigest(), user_id=user.id, expires_at=expires))
+        db.commit()
+
+        r = client.post(f"/api/auth/reset-password/{token_a}", json={"password": "FirstReset1"})
+        assert r.status_code == 204
+
+        r2 = client.post(f"/api/auth/reset-password/{token_b}", json={"password": "SecondReset2"})
+        assert r2.status_code == 400
 
     def test_expired_token_is_400(self, client, db, registered_user):
         from app.models.password_reset import PasswordReset

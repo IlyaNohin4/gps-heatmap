@@ -37,6 +37,7 @@ export default function TopIsland() {
   const [newPass, setNewPass] = useState('');
   const [changeEmailOpen, setChangeEmailOpen] = useState(false);
   const [newEmail, setNewEmail] = useState('');
+  const [emailChangePassword, setEmailChangePassword] = useState('');
   const [deleteConfirm, setDeleteConfirm] = useState(false);
   const [deletePassword, setDeletePassword] = useState('');
   const [categoriesModalOpen, setCategoriesModalOpen] = useState(false);
@@ -102,12 +103,13 @@ export default function TopIsland() {
   async function handleChangeEmail(e) {
     e.preventDefault();
     const trimmed = newEmail.trim();
-    if (!trimmed) return;
+    if (!trimmed || !emailChangePassword) return toast.error(t('validation.fill_all_fields'));
     try {
-      const updated = await updatePrefs({ email: trimmed });
+      const updated = await updatePrefs({ email: trimmed, password: emailChangePassword });
       setUser(updated);
       toast.success(t('toast.email_updated'));
       setNewEmail('');
+      setEmailChangePassword('');
       setChangeEmailOpen(false);
     } catch (err) {
       toast.error(apiErrorMessage(err, t('toast.email_failed')));
@@ -283,6 +285,13 @@ export default function TopIsland() {
                       onChange={(e) => setNewEmail(e.target.value)}
                       style={{ marginBottom: 'var(--space-2)' }}
                       autoFocus
+                    />
+                    <Input
+                      type="password"
+                      placeholder={t('settings.current_password')}
+                      value={emailChangePassword}
+                      onChange={(e) => setEmailChangePassword(e.target.value)}
+                      style={{ marginBottom: 'var(--space-2)' }}
                     />
                     <Button type="submit" style={{ width: '100%' }}>
                       {t('settings.update')}

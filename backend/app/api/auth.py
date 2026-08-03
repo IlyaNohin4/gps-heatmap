@@ -171,6 +171,15 @@ def reset_password(request: Request, token: str, body: ResetPasswordRequest, db:
     user.password_hash = hash_password(body.password)
     user.password_changed_at = now
     reset.used = True
+    # MEDIUM: if the user (or an attacker who requested a reset first)
+    # generated multiple reset tokens, only the one just used was being
+    # invalidated — the others stayed valid for up to an hour after a
+    # successful reset already happened.
+    db.query(PasswordReset).filter(
+        PasswordReset.user_id == user.id,
+        PasswordReset.id != reset.id,
+        PasswordReset.used == False,
+    ).update({"used": True}, synchronize_session=False)
     db.commit()
 
 
@@ -195,6 +204,7 @@ class UserOut(BaseModel):
 
 class UpdatePrefsRequest(BaseModel):
     email: Optional[EmailStr] = None
+    password: Optional[str] = None  # required when changing email — see M9-style guard below
     language: Optional[str] = None
     theme: Optional[str] = None
     unit_distance: Optional[str] = None
@@ -227,6 +237,12 @@ def update_me(
     if body.email is not None:
         normalized = body.email.lower().strip()
         if normalized != current_user.email:
+            # A stolen JWT (30-day lifetime, localStorage) alone shouldn't be
+            # enough to hijack the account: change the email, then request a
+            # password reset on the new address. Same bar as change-password/
+            # delete-account.
+            if not body.password or not verify_password(body.password, current_user.password_hash):
+                raise HTTPException(status_code=400, detail="Current password is required to change email")
             if db.query(User).filter(User.email == normalized, User.id != current_user.id).first():
                 raise HTTPException(status_code=409, detail="Email already in use")
             current_user.email = normalized
