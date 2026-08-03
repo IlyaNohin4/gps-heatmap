@@ -88,6 +88,18 @@ class TestLogin:
         assert r.status_code == 200
         assert "access_token" in r.json()
 
+    def test_unknown_email_does_comparable_cost_dummy_work(self, client, monkeypatch):
+        # LOW: an unknown email used to skip straight to a 401 without ever
+        # touching bcrypt, while a known email always ran verify_password —
+        # the timing gap leaks which emails are registered.
+        calls = []
+        import app.api.auth as auth_module
+        monkeypatch.setattr(auth_module, "hash_password", lambda pw: calls.append(pw) or "x")
+
+        r = client.post("/api/auth/login", json={"email": "nobody@test.com", "password": "whatever123"})
+        assert r.status_code == 401
+        assert len(calls) == 1
+
     def test_wrong_password_is_401(self, client, registered_user):
         email, _, _ = registered_user
         r = client.post("/api/auth/login", json={"email": email, "password": "WrongPass999"})

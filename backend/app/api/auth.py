@@ -107,7 +107,15 @@ def register(request: Request, body: RegisterRequest, db: Session = Depends(get_
 @limiter.limit("5/minute")
 def login(request: Request, body: LoginRequest, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.email == body.email).first()
-    if not user or not verify_password(body.password, user.password_hash):
+    if not user:
+        # Same timing-oracle mitigation as forgot_password: do comparable-cost
+        # dummy work (bcrypt is deliberately slow) instead of returning
+        # immediately, so response time doesn't reveal whether this email is
+        # registered. (/register's 409 already leaks this more directly, so
+        # the value here is limited, but it's cheap and closes one more path.)
+        hash_password(secrets.token_urlsafe(16))
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
+    if not verify_password(body.password, user.password_hash):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
     return TokenResponse(access_token=create_access_token(user.id))
 
