@@ -116,7 +116,18 @@ export default function UploadZone({ inputRef: externalInputRef, onTrackFiles, o
         attempts++;
         try {
           const status = await pollTaskStatus(taskId);
-          if (status.state === 'SUCCESS' || status.status === 'done' || status.status === 'completed') {
+          // A parser error is a *permanent* failure the task catches and
+          // returns as {"status": "error", ...} — Celery still reports the
+          // task itself as SUCCESS (it ran to completion without raising),
+          // so the real outcome is nested in `result`, not the top-level
+          // `state`. Checking `state === 'SUCCESS'` alone shows a false
+          // "uploaded" toast for a track that was actually rejected.
+          if (status.state === 'SUCCESS' && status.result?.status === 'error') {
+            clearInterval(interval);
+            removeUploadingId(taskId);
+            toast.error(t('tracks.upload_failed', { name: filename }));
+            resolve();
+          } else if (status.state === 'SUCCESS' || status.status === 'done' || status.status === 'completed') {
             clearInterval(interval);
             removeUploadingId(taskId);
             try {
