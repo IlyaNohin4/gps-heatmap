@@ -46,14 +46,14 @@ export async function createCategory(name) {
 }
 
 export async function renameCategory(oldName, newName) {
-  const { data } = await client.patch(`/api/poi/categories/${oldName}`, {
+  const { data } = await client.patch(`/api/poi/categories/${encodeURIComponent(oldName)}`, {
     new_name: newName,
   });
   return data;
 }
 
 export async function deleteCategory(name) {
-  const { data } = await client.delete(`/api/poi/categories/${name}`);
+  const { data } = await client.delete(`/api/poi/categories/${encodeURIComponent(name)}`);
   return data;
 }
 
@@ -77,18 +77,18 @@ export async function createImport(name) {
 }
 
 export async function renameImport(oldName, newName) {
-  const { data } = await client.patch(`/api/poi/imports/${oldName}`, {
+  const { data } = await client.patch(`/api/poi/imports/${encodeURIComponent(oldName)}`, {
     new_name: newName,
   });
   return data;
 }
 
 export async function deleteImport(importName) {
-  await client.delete(`/api/poi/imports/${importName}`);
+  await client.delete(`/api/poi/imports/${encodeURIComponent(importName)}`);
 }
 
 export async function exportImport(importName) {
-  const { data } = await client.get(`/api/poi/imports/${importName}/export`, {
+  const { data } = await client.get(`/api/poi/imports/${encodeURIComponent(importName)}/export`, {
     responseType: 'blob',
   });
   const url = window.URL.createObjectURL(new Blob([data]));
