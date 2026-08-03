@@ -49,7 +49,15 @@ services:
         condition: service_healthy
     volumes:
       - ./backend:/app
-    command: watchmedo auto-restart -d /app -p '*.py' --recursive -- celery -A app.tasks.celery_app worker --loglevel=info
+    # --concurrency=1 matches prod (docker-compose.prod.yml): without it,
+    # prefork spawns one worker process per CPU, so multiple process_track
+    # tasks can start concurrently and pile up blocking on `with
+    # _semaphore:` (see process_track.py) — each one's soft_time_limit/
+    # time_limit ticks from task start, including time spent waiting for
+    # the lock, so a task can get hard-killed while still queued behind
+    # another. With concurrency=1 the lock becomes a pure belt-and-suspenders
+    # safety net instead of the actual serialization mechanism.
+    command: watchmedo auto-restart -d /app -p '*.py' --recursive -- celery -A app.tasks.celery_app worker --loglevel=info --concurrency=1
 
   frontend:
     build: ./frontend
