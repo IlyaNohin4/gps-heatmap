@@ -27,7 +27,7 @@ def test_parse_kml_simple():
     assert poi_list[0]['name'] == 'Test Cafe'
     assert poi_list[0]['lat'] == 48.540
     assert poi_list[0]['lon'] == 34.807
-    assert poi_list[0]['category'] == 'food'
+    assert poi_list[0]['category'] == 'Other'
     assert poi_list[0]['description'] == 'A nice cafe'
 
 
@@ -55,9 +55,9 @@ def test_parse_kml_multiple():
 
     assert error is None
     assert len(poi_list) == 3
-    assert poi_list[0]['category'] == 'food'
-    assert poi_list[1]['category'] == 'water'
-    assert poi_list[2]['category'] == 'bike'
+    assert poi_list[0]['category'] == 'Other'
+    assert poi_list[1]['category'] == 'Other'
+    assert poi_list[2]['category'] == 'Other'
 
 
 def test_parse_kml_with_elevation():
@@ -80,7 +80,7 @@ def test_parse_kml_with_elevation():
     assert len(poi_list) == 1
     assert poi_list[0]['lat'] == 48.540
     assert poi_list[0]['lon'] == 34.807
-    assert poi_list[0]['category'] == 'shelter'
+    assert poi_list[0]['category'] == 'Other'
     assert poi_list[0]['kml_altitude'] == 1234.5
 
 
@@ -164,21 +164,22 @@ def test_parse_invalid_xml():
     assert len(poi_list) == 0
 
 
-def test_category_detection():
-    """Test auto-category detection from keywords."""
-    test_cases = [
-        ('McDonald Pizza', 'food'),
-        ('Central Fountain', 'water'),
-        ('Bike Rental Shop', 'bike'),
-        ('Emergency Hospital', 'medical'),
-        ('Auto Repair Service', 'repair'),
-        ('Mountain Shelter Hut', 'shelter'),
-        ('Random Place', 'other'),
-    ]
-
-    for name, expected_category in test_cases:
-        category = POIParser._detect_category(name, '')
-        assert category == expected_category, f"Expected {expected_category} for '{name}', got {category}"
+def test_imported_poi_defaults_to_other_category():
+    # QA#7: keyword-based auto-detection was removed (unreliable, and its
+    # lowercase category names diverged from the capitalized defaults) —
+    # every imported POI now gets 'Other' regardless of its name/description.
+    kml = b"""<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2">
+  <Document>
+    <Placemark>
+      <name>McDonald Pizza</name>
+      <Point><coordinates>10,20</coordinates></Point>
+    </Placemark>
+  </Document>
+</kml>"""
+    poi_list, error = POIParser.parse(kml)
+    assert error is None
+    assert poi_list[0]['category'] == 'Other'
 
 
 def test_parse_kmz_format():

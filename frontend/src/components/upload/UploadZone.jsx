@@ -13,7 +13,10 @@ const TRACKS_FETCH_LIMIT = 500;
 const TRACK_FORMATS = ['.gpx', '.kml', '.tcx', '.fit', '.geojson'];
 const POI_FORMATS = ['.kml', '.kmz'];
 const ACCEPTED = [...TRACK_FORMATS, ...POI_FORMATS];
-const MAX_SIZE = 20 * 1024 * 1024; // 20MB
+// Must match backend/app/core/config.py's MAX_FILE_SIZE_MB — not exposed to
+// the frontend via API/env, so this is the frontend's own source of truth.
+const MAX_FILE_SIZE_MB = 20;
+const MAX_SIZE = MAX_FILE_SIZE_MB * 1024 * 1024;
 
 function getExt(filename) {
   const parts = filename.toLowerCase().split('.');
@@ -22,7 +25,7 @@ function getExt(filename) {
 
 export default function UploadZone({ inputRef: externalInputRef, onTrackFiles, onPOIFiles }) {
   const { t } = useTranslation();
-  const { addTrack, addUploadingId, removeUploadingId, bumpTracksListVersion } = useAppStore();
+  const { tracks, addTrack, addUploadingId, removeUploadingId, bumpTracksListVersion } = useAppStore();
   const [dragging, setDragging] = useState(false);
   // Queue progress: { current, total } | null
   const [queueProgress, setQueueProgress] = useState(null);
@@ -48,7 +51,7 @@ export default function UploadZone({ inputRef: externalInputRef, onTrackFiles, o
         continue;
       }
       if (file.size > MAX_SIZE) {
-        toast.error(t('validation.file_too_large', { name: file.name }));
+        toast.error(t('validation.file_too_large', { name: file.name, maxSize: MAX_FILE_SIZE_MB }));
         continue;
       }
       if (isKml(file.name)) {
@@ -57,6 +60,13 @@ export default function UploadZone({ inputRef: externalInputRef, onTrackFiles, o
           toast.error(t('validation.kml_looks_like_poi', { name: file.name }));
           continue;
         }
+      }
+      // QA#4: doesn't block the upload (a same-named track can be
+      // legitimate — e.g. re-uploading a corrected file) — just a heads-up
+      // so the user notices before ending up with two "Morning Ride"s.
+      const baseName = file.name.replace(/\.[^.]+$/, '');
+      if (tracks.some((tr) => tr.name?.toLowerCase() === baseName.toLowerCase())) {
+        toast.warn(t('validation.duplicate_track_name', { name: baseName }));
       }
       validFiles.push(file);
     }

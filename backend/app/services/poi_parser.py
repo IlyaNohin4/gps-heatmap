@@ -60,15 +60,6 @@ class POIParser:
     # gigabytes and exhaust worker memory.
     MAX_DECOMPRESSED_BYTES = 5 * 1024 * 1024
 
-    CATEGORY_KEYWORDS = {
-        'food': ['cafe', 'restaurant', 'bar', 'pizza', 'burger', 'coffee'],
-        'water': ['water', 'fountain', 'well', 'spring', 'stream'],
-        'repair': ['repair', 'workshop', 'mechanic', 'service', 'maintenance'],
-        'bike': ['bike', 'bicycle', 'cycling', 'rental', 'shop'],
-        'medical': ['hospital', 'clinic', 'doctor', 'pharmacy', 'health'],
-        'shelter': ['shelter', 'hut', 'cabin', 'lodge', 'camp', 'hostel'],
-    }
-
     # Maps keywords found in a KML <Icon><href> (Google Maps / OsmAnd icon
     # filenames, e.g. ".../restaurant-71.png", "poi_shop_bicycle") to one of
     # our ICON_SLUGS. Checked in order, first match wins.
@@ -189,8 +180,12 @@ class POIParser:
 
                 desc = (desc_elem.text or '').strip() if desc_elem is not None else ''
 
-                # Auto-detect category
-                category = POIParser._detect_category(name, desc)
+                # QA#7: keyword-based category guessing (_detect_category) was
+                # unreliable and its lowercase category names ('food', 'other', ...)
+                # diverged from the capitalized default categories ('Food', 'Other',
+                # ...) — removed; imported POIs fall into 'Other' for the user to
+                # recategorize themselves instead of a wrong guess.
+                category = 'Other'
 
                 # Auto-detect icon/color from the placemark's KML style, if any
                 icon, color = POIParser._resolve_style(placemark, styles, ns)
@@ -291,13 +286,3 @@ class POIParser:
         aa, bb, gg, rr = text[0:2], text[2:4], text[4:6], text[6:8]
         return f"#{rr}{gg}{bb}".lower()
 
-    @staticmethod
-    def _detect_category(name: str, description: str) -> str:
-        """Auto-detect POI category from name and description."""
-        text = (name + ' ' + description).lower()
-
-        for category, keywords in POIParser.CATEGORY_KEYWORDS.items():
-            if any(kw in text for kw in keywords):
-                return category
-
-        return 'other'

@@ -7,6 +7,7 @@ import { toast } from 'react-toastify';
 import { useTranslation } from 'react-i18next';
 import useAppStore from '../../store/appStore.js';
 import useAuthStore from '../../store/authStore.js';
+import useMapStore from '../../store/mapStore.js';
 import client from '../../api/client.js';
 import { updatePrefs } from '../../api/auth.js';
 import { apiErrorMessage } from '../../utils/apiError.js';
@@ -26,6 +27,7 @@ const LANGUAGES = [
 
 export default function TopIsland() {
   const { theme, unitSystem, language, expandedTrackInfo, setTheme, setUnitSystem, setLanguage, setExpandedTrackInfo, activePanel, setActivePanel } = useAppStore();
+  const { showStartEndMarkers, toggleStartEndMarkers } = useMapStore();
   const { isAuthenticated, user, logout, setUser } = useAuthStore();
   const { t, i18n } = useTranslation();
   const open = activePanel === 'top';
@@ -220,6 +222,18 @@ export default function TopIsland() {
                   title="Always show"
                 >
                   Always
+                </Chip>
+              </div>
+            </div>
+
+            <div style={row}>
+              <span style={{ fontSize: 'var(--text-sm)', color: 'var(--text)' }}>{t('settings.start_end_markers')}</span>
+              <div style={chipGroup}>
+                <Chip active={showStartEndMarkers} onClick={() => !showStartEndMarkers && toggleStartEndMarkers()}>
+                  {t('settings.on')}
+                </Chip>
+                <Chip active={!showStartEndMarkers} onClick={() => showStartEndMarkers && toggleStartEndMarkers()}>
+                  {t('settings.off')}
                 </Chip>
               </div>
             </div>

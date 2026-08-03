@@ -34,6 +34,7 @@ export default function TrackCreator() {
   const {
     trackCreatorState,
     addWaypoint,
+    updateWaypoint,
     setTrackCreatorState,
   } = useMapStore();
 
@@ -63,14 +64,20 @@ export default function TrackCreator() {
     markersRef.current = [];
 
     waypoints.forEach((latlng, i) => {
-      const marker = L.marker(latlng, { icon: WAYPOINT_ICON })
+      const marker = L.marker(latlng, { icon: WAYPOINT_ICON, draggable: true })
         .addTo(layerGroupRef.current)
         .bindTooltip(i === 0 ? 'Start' : i === waypoints.length - 1 ? 'End' : `Point ${i + 1}`, {
           permanent: false,
         });
+      // QA#8: reposition an existing point by dragging it, instead of only
+      // being able to undo/redo. `i` is captured per-marker at creation
+      // time; markers are always fully torn down and rebuilt on every
+      // `waypoints` change (see cleanup above), so the index a marker was
+      // built with never goes stale.
+      marker.on('dragend', () => updateWaypoint(i, marker.getLatLng()));
       markersRef.current.push(marker);
     });
-  }, [waypoints]);
+  }, [waypoints, updateWaypoint]);
 
   // Draw route line
   useEffect(() => {

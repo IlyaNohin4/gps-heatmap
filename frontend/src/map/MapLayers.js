@@ -9,10 +9,11 @@ export const TILE_LAYERS = {
     attribution: '© <a href="https://opentopomap.org">OpenTopoMap</a> | © OpenStreetMap contributors',
     maxZoom: 17,
   },
-  'carto-voyager': {
-    url: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png',
-    attribution: '© <a href="https://carto.com/attributions">CARTO</a> | © OpenStreetMap contributors',
-    maxZoom: 20,
+  'esri-satellite': {
+    url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+    attribution: '© <a href="https://www.esri.com">Esri</a>',
+    maxZoom: 19,
+    subdomains: [],
   },
   'stamen-terrain': {
     url: 'https://tile.openstreetmap.de/tiles/osmde/{z}/{x}/{y}.png',
@@ -36,7 +37,7 @@ export const TILE_LAYERS = {
 export const LAYER_OPTIONS = [
   { id: 'osm',            label: 'OpenStreetMap' },
   { id: 'topo',           label: 'OpenTopoMap' },
-  { id: 'carto-voyager',  label: 'CARTO Voyager' },
+  { id: 'esri-satellite', label: 'Esri Satellite' },
   { id: 'stamen-terrain', label: 'Stamen Terrain' },
   { id: 'google-street',  label: 'Google Street' },
   { id: 'google-satellite', label: 'Google Satellite' },
