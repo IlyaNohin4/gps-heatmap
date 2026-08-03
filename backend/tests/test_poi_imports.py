@@ -47,6 +47,17 @@ class TestCreateImport:
         r = client.post("/api/poi/imports", json={"name": "Hiking"})
         assert r.status_code == 401
 
+    def test_blank_name_is_422(self, client, auth_headers):
+        # L3: max_length alone doesn't reject an empty/whitespace-only name.
+        r = client.post("/api/poi/imports", json={"name": "   "}, headers=auth_headers)
+        assert r.status_code == 422
+
+    def test_name_is_stripped(self, client, auth_headers):
+        # L3: " Hiking" and "Hiking" used to be distinct lists.
+        r = client.post("/api/poi/imports", json={"name": "  Hiking  "}, headers=auth_headers)
+        assert r.status_code == 201
+        assert r.json()["name"] == "Hiking"
+
 
 class TestCreatePOIIntoImport:
     def test_create_poi_with_new_import_name_registers_list(self, client, auth_headers):
@@ -121,6 +132,11 @@ class TestRenameImport:
         client.post("/api/poi/imports", json={"name": "B"}, headers=auth_headers)
         r = client.patch("/api/poi/imports/A", json={"new_name": "B"}, headers=auth_headers)
         assert r.status_code == 409
+
+    def test_rename_to_blank_name_is_422(self, client, auth_headers):
+        client.post("/api/poi/imports", json={"name": "A"}, headers=auth_headers)
+        r = client.patch("/api/poi/imports/A", json={"new_name": "   "}, headers=auth_headers)
+        assert r.status_code == 422
 
 
 class TestDeleteImport:

@@ -5,7 +5,7 @@ from pathlib import Path
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, UploadFile, status
 from fastapi.responses import StreamingResponse
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 import re
 from sqlalchemy import func
 from sqlalchemy.orm import Session
@@ -83,20 +83,50 @@ class ImportInfo(BaseModel):
     count: int
 
 
+def _strip_and_require_nonempty(v: str) -> str:
+    # L3: "Food" and " Food" used to be distinct categories/lists (no
+    # normalization), and a bare "" or " " name could be created outright
+    # (max_length alone doesn't reject an empty/whitespace-only string).
+    stripped = v.strip()
+    if not stripped:
+        raise ValueError("Name cannot be empty")
+    return stripped
+
+
 class RenameImportRequest(BaseModel):
-    new_name: str = Field(..., max_length=255)
+    new_name: str = Field(..., min_length=1, max_length=255)
+
+    @field_validator("new_name")
+    @classmethod
+    def _strip_new_name(cls, v: str) -> str:
+        return _strip_and_require_nonempty(v)
 
 
 class RenameCategoryRequest(BaseModel):
     new_name: str = Field(..., min_length=1, max_length=100)
 
+    @field_validator("new_name")
+    @classmethod
+    def _strip_new_name(cls, v: str) -> str:
+        return _strip_and_require_nonempty(v)
+
 
 class CreateCategoryRequest(BaseModel):
     name: str = Field(..., min_length=1, max_length=100)
 
+    @field_validator("name")
+    @classmethod
+    def _strip_name(cls, v: str) -> str:
+        return _strip_and_require_nonempty(v)
+
 
 class CreateImportRequest(BaseModel):
-    name: str = Field(..., max_length=255)
+    name: str = Field(..., min_length=1, max_length=255)
+
+    @field_validator("name")
+    @classmethod
+    def _strip_name(cls, v: str) -> str:
+        return _strip_and_require_nonempty(v)
 
 
 class CreatePOIRequest(BaseModel):
