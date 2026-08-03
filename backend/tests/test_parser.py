@@ -9,12 +9,14 @@ from app.services.parser_factory import (
     _collapse_drift,
     _detect_osmand,
     _haversine,
+    _KalmanFilter1D,
     _normalize_points,
     _parse_geojson,
     _parse_gpx,
     _parse_kml,
     _parse_tcx,
     _remove_speed_outliers,
+    _smooth_elevation,
     detect_format,
     parse,
 )
@@ -419,6 +421,26 @@ class TestParseGeoJSON:
         assert result["speed_avg"] is None
         assert all(seg["speed_kmh"] is None for seg in result["speed_segments"])
 
+    def test_multilinestring_feature_not_ignored(self):
+        # LOW: MultiLineString (a common QGIS export shape) used to be
+        # silently ignored — coords stayed empty, parsing to 0 points.
+        data = (
+            b'{"type":"Feature","geometry":{"type":"MultiLineString","coordinates":'
+            b'[[[2.0,48.0],[2.1,48.1]],[[3.0,49.0],[3.1,49.1],[3.2,49.2]]]},"properties":{}}'
+        )
+        result = _parse_geojson(data)
+        assert len(result["points"]) == 5
+
+    def test_multilinestring_in_feature_collection(self):
+        data = (
+            b'{"type":"FeatureCollection","features":['
+            b'{"type":"Feature","geometry":{"type":"MultiLineString","coordinates":'
+            b'[[[2.0,48.0],[2.1,48.1]]]},"properties":{}}'
+            b']}'
+        )
+        result = _parse_geojson(data)
+        assert len(result["points"]) == 2
+
 
 # ── Public parse() API ─────────────────────────────────────────────────────────
 
@@ -610,3 +632,40 @@ class TestRemoveSpeedOutliers:
         ]
         result = _remove_speed_outliers(pts)
         assert result == []
+
+
+# ── Elevation smoothing ──────────────────────────────────────────────────────
+
+class TestSmoothElevation:
+    def _pt(self, ele):
+        return {"lat": 48.0, "lon": 2.0, "elevation": ele, "time": None, "osmand_speed_kmh": None}
+
+    def test_leading_missing_elevation_backfills_not_zero(self):
+        # LOW: a leading run of None elevations used to fall back to a
+        # hardcoded 0 (sea level) for the Savitzky-Golay window's fill
+        # values, instead of the first real reading — the None points
+        # themselves stay None either way (never rewritten), but that 0
+        # dragged the window's fit, distorting the *smoothed* value of the
+        # nearby real points at the start of the track.
+        points = [self._pt(None), self._pt(None), self._pt(100.0), self._pt(101.0), self._pt(102.0)]
+        result = _smooth_elevation(points)
+        assert result[0]["elevation"] is None
+        assert result[1]["elevation"] is None
+        assert result[2]["elevation"] > 50.0
+        assert result[3]["elevation"] > 50.0
+        assert result[4]["elevation"] > 50.0
+
+
+# ── Kalman filter ────────────────────────────────────────────────────────────
+
+class TestKalmanFilter1D:
+    def test_velocity_updates_from_residual_not_near_zero(self):
+        # LOW: velocity was computed from (z - self.x) *after* self.x had
+        # already been corrected toward z, making the residual ~0 and
+        # velocity barely ever learn from data.
+        kf = _KalmanFilter1D(process_variance=0.01, measurement_variance=0.00001)
+        kf.x = 0.0
+        # Steady, consistent motion: position increases by 1.0 per second.
+        for t in range(1, 6):
+            kf.update(float(t), dt=1.0)
+        assert kf.v > 0.5  # should have picked up on the steady drift

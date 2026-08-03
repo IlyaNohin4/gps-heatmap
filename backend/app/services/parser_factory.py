@@ -45,16 +45,23 @@ class _KalmanFilter1D:
 
     def update(self, z: float, dt: float) -> float:
         """Update with new measurement, return filtered position."""
-        dt = max(dt, 0.01)  # Avoid division by zero
+        dt = max(dt, 0.01)  # Avoid division by zero (always > 0 after this)
 
         # Predict
-        self.x = self.x + self.v * dt
+        x_pred = self.x + self.v * dt
         self.P = self.P + self.Q
 
-        # Update
+        # Update. The residual (z - x_pred) must be computed against the
+        # *predicted* position for both the position and velocity update —
+        # computing it after already updating self.x (as this used to)
+        # measures against the corrected position instead, which is always
+        # near z, so the residual is ~0 and velocity barely ever learns from
+        # data. Low practical impact at these defaults (K≈1 anyway), but the
+        # math didn't match a real Kalman filter's equations.
         K = self.P / (self.P + self.R)  # Kalman gain
-        self.x = self.x + K * (z - self.x)
-        self.v = self.v + K * (z - self.x) / dt if dt > 0 else self.v
+        residual = z - x_pred
+        self.x = x_pred + K * residual
+        self.v = self.v + K * residual / dt
         self.P = (1 - K) * self.P
 
         return self.x
@@ -214,17 +221,16 @@ def _smooth_elevation(points: list[dict], window: int = 5, polyorder: int = 2) -
     if not elevations or elevations.count(None) > len(elevations) * 0.5:
         return points
 
-    # Handle missing elevations: interpolate with neighbors
+    # Handle missing elevations: forward-fill from the previous filled value,
+    # or for a *leading* run of Nones (no previous value yet) back-fill with
+    # the first real elevation anywhere in the track — not a hardcoded 0,
+    # which used to drag the Savitzky-Golay window at the start of the track
+    # toward sea level and distort gain/loss near the beginning.
+    first_real = next(e for e in elevations if e is not None)  # exists: the >50%-missing guard above already returned if not
     filled_ele = []
-    for i, ele in enumerate(elevations):
+    for ele in elevations:
         if ele is None:
-            # Try to interpolate from neighbors
-            if i > 0 and filled_ele:
-                filled_ele.append(filled_ele[-1])
-            elif i < len(elevations) - 1 and elevations[i + 1] is not None:
-                filled_ele.append(elevations[i + 1])
-            else:
-                filled_ele.append(0)
+            filled_ele.append(filled_ele[-1] if filled_ele else first_real)
         else:
             filled_ele.append(ele)
 
@@ -874,19 +880,29 @@ def _parse_fit(data: bytes) -> dict:
 
 # ── GeoJSON ───────────────────────────────────────────────────────────────────
 
+def _geom_coords(geom: dict) -> list:
+    """Flatten a LineString or MultiLineString geometry into one coordinate
+    list. MultiLineString (a common QGIS/GIS export shape) used to be
+    silently ignored — coords stayed empty and the file parsed to "0 points"
+    with no error."""
+    gtype = geom.get("type")
+    if gtype == "LineString":
+        return geom.get("coordinates", [])
+    if gtype == "MultiLineString":
+        return [pt for line in geom.get("coordinates", []) for pt in line]
+    return []
+
+
 def _parse_geojson(data: bytes) -> dict:
     obj = json.loads(data)
     coords: list[Any] = []
     if obj.get("type") == "FeatureCollection":
         for feat in obj.get("features", []):
-            geom = feat.get("geometry", {})
-            if geom.get("type") == "LineString":
-                coords.extend(geom.get("coordinates", []))
+            coords.extend(_geom_coords(feat.get("geometry", {})))
     elif obj.get("type") == "Feature":
-        geom = obj.get("geometry", {})
-        coords = geom.get("coordinates", [])
-    elif obj.get("type") == "LineString":
-        coords = obj.get("coordinates", [])
+        coords = _geom_coords(obj.get("geometry", {}))
+    elif obj.get("type") in ("LineString", "MultiLineString"):
+        coords = _geom_coords(obj)
 
     points: list[dict] = []
     for c in coords:
