@@ -42,6 +42,11 @@ export default function TrackCreator() {
   const layerGroupRef = useRef(null);
   const markersRef = useRef([]);
   const routeLineRef = useRef(null);
+  // Tracks the (waypoints, profile) pair the current routePoints came from,
+  // so switching Manual -> Auto -> Manual -> Auto with unchanged waypoints
+  // doesn't refetch from ORS or blank the drawn line in between — see the
+  // fetch effect below.
+  const lastFetchKeyRef = useRef(null);
 
   const { waypoints, mode, profile, routing, error, routePoints } = trackCreatorState;
 
@@ -102,12 +107,25 @@ export default function TrackCreator() {
     }
   }, [waypoints, routePoints, mode]);
 
-  // Fetch ORS route in auto mode when waypoints change
+  // Fetch ORS route in auto mode when waypoints change. Only touches
+  // routePoints while actually in auto mode — switching to Manual and back
+  // used to blank routePoints on the way out and always re-fetch on the way
+  // back in, even with identical waypoints, making an unsaved auto-routed
+  // track visibly disappear on every mode round-trip. Manual mode's own
+  // render path ignores routePoints entirely, so leaving them untouched
+  // while away is safe, and the key check below skips the refetch (and the
+  // route staying drawn the whole time) when nothing actually changed.
   useEffect(() => {
-    if (mode !== 'auto' || waypoints.length < 2) {
+    if (mode !== 'auto') return;
+
+    if (waypoints.length < 2) {
       setTrackCreatorState({ routePoints: [], error: null, routing: false });
+      lastFetchKeyRef.current = null;
       return;
     }
+
+    const key = JSON.stringify(waypoints.map((w) => [w.lat, w.lng])) + '|' + profile;
+    if (key === lastFetchKeyRef.current) return;
 
     let cancelled = false;
     setTrackCreatorState({ routing: true, error: null });
@@ -115,6 +133,7 @@ export default function TrackCreator() {
     fetchRoute(waypoints, profile)
       .then((pts) => {
         if (!cancelled) {
+          lastFetchKeyRef.current = key;
           setTrackCreatorState({ routePoints: pts || [], routing: false });
         }
       })
