@@ -92,9 +92,11 @@ def process_track(self, track_id: int, file_bytes: bytes) -> dict:
 
             self.update_state(state="PROGRESS", meta={"step": "geocoding"})
 
-            # 3. Geocode regions
+            # 3. Geocode regions, in the owning user's UI language
+            from app.models.user import User
             from app.services.regions import get_regions
-            regions = get_regions(norm_points)
+            owner = db.query(User.language).filter(User.id == track.user_id).first()
+            regions = get_regions(norm_points, language=owner.language if owner else "en")
 
             self.update_state(state="PROGRESS", meta={"step": "saving"})
 
