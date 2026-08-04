@@ -44,6 +44,11 @@ export default function UploadZone({ inputRef: externalInputRef, onTrackFiles, o
 
   async function processFiles(files) {
     const validFiles = [];
+    // QA#4: collected instead of toasted one-per-file below — doesn't block
+    // the upload (a same-named track can be legitimate, e.g. re-uploading a
+    // corrected file), just a heads-up. Dropping 10 files with clashing
+    // names used to fire 10 separate toasts; one summary reads better.
+    const duplicateNames = [];
     for (const file of files) {
       const ext = getExt(file.name);
       if (!ACCEPTED.includes(ext)) {
@@ -61,14 +66,16 @@ export default function UploadZone({ inputRef: externalInputRef, onTrackFiles, o
           continue;
         }
       }
-      // QA#4: doesn't block the upload (a same-named track can be
-      // legitimate — e.g. re-uploading a corrected file) — just a heads-up
-      // so the user notices before ending up with two "Morning Ride"s.
       const baseName = file.name.replace(/\.[^.]+$/, '');
       if (tracks.some((tr) => tr.name?.toLowerCase() === baseName.toLowerCase())) {
-        toast.warn(t('validation.duplicate_track_name', { name: baseName }));
+        duplicateNames.push(baseName);
       }
       validFiles.push(file);
+    }
+    if (duplicateNames.length === 1) {
+      toast.warn(t('validation.duplicate_track_name', { name: duplicateNames[0] }));
+    } else if (duplicateNames.length > 1) {
+      toast.warn(t('validation.duplicate_track_names', { names: duplicateNames.join(', '), count: duplicateNames.length }));
     }
     if (!validFiles.length) return;
 

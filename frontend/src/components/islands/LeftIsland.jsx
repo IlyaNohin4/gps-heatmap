@@ -38,6 +38,7 @@ function LeftIslandContent({ onUploadClick, loading, allTracksVisible, onToggleV
   const {
     showTrackCreator, toggleTrackCreator, mapInstance,
     trackCreatorState, setTrackCreatorState, undoWaypoint, redoWaypoint, clearTrackCreatorState, clearTrackCreatorPoints,
+    mapBounds, filterByMapBounds,
   } = useMapStore();
   const { isAuthenticated } = useAuthStore();
   const [showSaveModal, setShowSaveModal] = useState(false);
@@ -65,12 +66,18 @@ function LeftIslandContent({ onUploadClick, loading, allTracksVisible, onToggleV
 
   const buildParams = useCallback((offset) => {
     const params = { sort, limit: 50, offset };
-    if (search.trim()) params.search = search.trim();
+    // Don't fire a search until there's enough to actually narrow anything
+    // down — 1-2 characters match almost every track name and just thrash
+    // the backend on every keystroke. Substring matching (already the
+    // backend's ilike('%...%')) needs no change here.
+    const trimmed = search.trim();
+    if (trimmed.length >= 3) params.search = trimmed;
     if (formatFilter !== 'all') params.file_format = formatFilter;
     if (speedRange[0] > 0) params.speed_avg_min = speedRange[0];
     if (speedRange[1] < 200) params.speed_avg_max = speedRange[1];
+    if (filterByMapBounds && mapBounds) params.bbox = mapBounds;
     return params;
-  }, [search, sort, formatFilter, speedRange]);
+  }, [search, sort, formatFilter, speedRange, filterByMapBounds, mapBounds]);
 
   // Список фильтруется/сортируется на сервере — это отдельный от карты поток
   // данных: App.jsx грузит все треки (limit=500) для heatmap через
@@ -182,6 +189,17 @@ function LeftIslandContent({ onUploadClick, loading, allTracksVisible, onToggleV
           >
             <MapPin size={14} /> POI
           </Button>
+          {currentTab === 'tracks' && (
+            <Button
+              iconOnly
+              variant="ghost"
+              active={allTracksVisible}
+              onClick={onToggleVisibility}
+              title={allTracksVisible ? 'Hide all tracks' : 'Show all tracks'}
+            >
+              {allTracksVisible ? <Eye size={15} /> : <EyeOff size={15} />}
+            </Button>
+          )}
         </div>
 
         {/* Tracks Tab */}
@@ -194,31 +212,36 @@ function LeftIslandContent({ onUploadClick, loading, allTracksVisible, onToggleV
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder={t('tracks.search')}
-              style={{ borderRadius: 'var(--radius-search)', height: '34px', paddingRight: search ? 30 : undefined }}
+              style={{ borderRadius: 'var(--radius-search)', height: '34px', paddingRight: search ? 56 : 30 }}
             />
             {search && (
-              <button onClick={() => setSearch('')} style={{ position: 'absolute', right: 'var(--space-2)', background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', display: 'flex' }}>
+              <button onClick={() => setSearch('')} style={{ position: 'absolute', right: 30, background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', display: 'flex' }}>
                 <X size={13} />
               </button>
             )}
+            <button
+              onClick={() => setActivePanel(filterOpen ? null : 'left:filter')}
+              title="Filters"
+              style={{
+                position: 'absolute',
+                right: 'var(--space-2)',
+                background: 'none',
+                border: 'none',
+                color: filterOpen ? 'var(--accent)' : 'var(--text-secondary)',
+                cursor: 'pointer',
+                display: 'flex',
+              }}
+            >
+              <Filter size={14} />
+            </button>
           </div>
           <Button
             iconOnly
             variant="ghost"
-            active={allTracksVisible}
-            onClick={onToggleVisibility}
-            title={allTracksVisible ? 'Hide all tracks' : 'Show all tracks'}
+            onClick={() => setSidebarOpen(false)}
+            title={t('chart.collapse')}
           >
-            {allTracksVisible ? <Eye size={15} /> : <EyeOff size={15} />}
-          </Button>
-          <Button
-            iconOnly
-            variant="ghost"
-            active={filterOpen}
-            onClick={() => setActivePanel(filterOpen ? null : 'left:filter')}
-            title="Filters"
-          >
-            <Filter size={15} />
+            <ChevronLeft size={15} />
           </Button>
         </div>
 
@@ -371,11 +394,24 @@ function LeftIslandContent({ onUploadClick, loading, allTracksVisible, onToggleV
           onSaveToDb={async (trackName, format, points) => {
             setSavingTrack(true);
             try {
-              await createTrackFromPoints(
+              const created = await createTrackFromPoints(
                 trackName,
                 trackCreatorState.mode === 'auto' ? trackCreatorState.routePoints : trackCreatorState.waypoints,
                 format
               );
+
+              // /api/tracks/create queues the same Celery process_track task
+              // as file upload — it returns while status is still
+              // "processing", so poll the track itself until that resolves,
+              // otherwise the card shows "processing" forever until some
+              // unrelated action happens to refetch the list.
+              const POLL_INTERVAL_MS = 2000;
+              const MAX_ATTEMPTS = 150; // ~5 minutes
+              for (let attempts = 0; attempts < MAX_ATTEMPTS; attempts++) {
+                const current = await getTrack(created.id);
+                if (current.status !== 'processing') break;
+                await new Promise((r) => setTimeout(r, POLL_INTERVAL_MS));
+              }
 
               const updatedTracks = await fetchTracks({ limit: TRACKS_FETCH_LIMIT });
               setTracks(updatedTracks);
@@ -403,30 +439,33 @@ function LeftIslandContent({ onUploadClick, loading, allTracksVisible, onToggleV
       </Panel>
     </div>
 
-    {/* Floating collapse/expand toggle — replaces old inline collapse button
-        and mini reopen-island; always visible, docked to the right edge of
-        the island regardless of open/collapsed state (see tasks note). */}
+    {/* Floating expand toggle — collapsing now happens from the button in
+        the search row (see above), so this only needs to exist once the
+        island is actually collapsed and that row isn't on screen to click.
+        Smaller than the old dual-purpose button since it's a single icon
+        with a single job. */}
+    {!sidebarOpen && (
     <Panel
       onClick={(e) => e.stopPropagation()}
       style={{
         position: 'fixed',
-        left: sidebarOpen ? 16 + 300 + 8 : 16 + 8,
+        left: 16 + 8,
         top: '50%',
         transform: 'translateY(-50%)',
         zIndex: 1000,
-        padding: 'var(--space-2)',
-        transition: 'left 0.2s ease',
+        padding: 'var(--space-1)',
       }}
     >
       <Button
         variant="ghost"
         iconOnly
-        onClick={() => setSidebarOpen(!sidebarOpen)}
-        title={sidebarOpen ? t('chart.collapse') : t('tracks.show_sidebar')}
+        onClick={() => setSidebarOpen(true)}
+        title={t('tracks.show_sidebar')}
       >
-        {sidebarOpen ? <ChevronLeft size={16} /> : <ChevronRight size={16} />}
+        <ChevronRight size={13} />
       </Button>
     </Panel>
+    )}
     </>
   );
 }

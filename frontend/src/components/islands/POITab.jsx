@@ -205,7 +205,9 @@ export default React.memo(function POITab() {
 
   const buildListParams = useCallback((offset) => {
     const params = { limit: 50, offset };
-    if (search.trim()) params.search = search.trim();
+    // Same 3-char floor as the Tracks tab's search — see LeftIsland.jsx.
+    const trimmed = search.trim();
+    if (trimmed.length >= 3) params.search = trimmed;
     if (categoryFilter !== 'all') params.category = categoryFilter;
     return params;
   }, [search, categoryFilter]);
