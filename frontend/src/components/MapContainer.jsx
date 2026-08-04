@@ -24,6 +24,7 @@ import POILayer from '../map/POILayer.jsx';
 import TrackCreator from '../map/TrackCreator.jsx';
 import POIContextMenu from '../components/poi/POIContextMenu.jsx';
 import POICreationModal from '../components/modals/POICreationModal.jsx';
+import POIRenameModal from '../components/modals/POIRenameModal.jsx';
 import CoordinatesContextMenu from '../components/map/CoordinatesContextMenu.jsx';
 
 delete L.Icon.Default.prototype._getIconUrl;
@@ -115,7 +116,7 @@ function useVisibleTracks() {
   return { visibleTracks, selectedTrackId };
 }
 
-function MapLayers() {
+function MapLayers({ onPOIClick }) {
   const {
     showSpeed, showHeatmap, showPOI, showStartEndMarkers, showTrackCreator, toggleTrackCreator,
     trackCreatorState,
@@ -152,7 +153,7 @@ function MapLayers() {
 
       {/* POI markers */}
       {showPOI && (
-        <POILayer />
+        <POILayer onPOIClick={onPOIClick} />
       )}
 
       {/* Track creator (map click handler) */}
@@ -167,7 +168,15 @@ export default function MapContainer() {
   const [contextMenu, setContextMenu] = useState(null);
   const [coordsMenu, setCoordsMenu] = useState(null);
   const [creatingPOI, setCreatingPOI] = useState(null);
+  const [detailsPOI, setDetailsPOI] = useState(null);
   const poiCreationMode = useMapStore((s) => s.poiCreationMode);
+
+  const handlePOIRenamed = (updatedPOI) => {
+    useMapStore.getState().setPOIs(
+      useMapStore.getState().pois.map((p) => (p.id === updatedPOI.id ? updatedPOI : p))
+    );
+    useAppStore.getState().bumpPOIListVersion();
+  };
 
   const handleContextMenu = (lat, lon, x, y) => {
     setContextMenu({ lat, lon, x, y });
@@ -202,7 +211,7 @@ export default function MapContainer() {
         zoomControl={false}
         attributionControl={false}
       >
-        <MapLayers />
+        <MapLayers onPOIClick={setDetailsPOI} />
         <POIContextMenuHandler
           poiCreationMode={poiCreationMode}
           onContextMenu={handleContextMenu}
@@ -230,6 +239,16 @@ export default function MapContainer() {
         />
       )}
 
+      <POIRenameModal
+        poi={detailsPOI}
+        isOpen={!!detailsPOI}
+        onClose={() => setDetailsPOI(null)}
+        onRenamed={(updated) => {
+          handlePOIRenamed(updated);
+          setDetailsPOI(null);
+        }}
+      />
+
       {coordsMenu && (
         <>
           <div
@@ -246,6 +265,10 @@ export default function MapContainer() {
             x={coordsMenu.x}
             y={coordsMenu.y}
             onClose={() => setCoordsMenu(null)}
+            onCreatePOI={() => {
+              setCreatingPOI({ lat: coordsMenu.lat, lon: coordsMenu.lon });
+              setCoordsMenu(null);
+            }}
           />
         </>
       )}

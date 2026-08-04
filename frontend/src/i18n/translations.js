@@ -141,6 +141,7 @@ const translations = {
       on: 'On',
       off: 'Off',
       coordinates_copied: '✅ Coordinates copied to clipboard',
+      create_poi_here: 'Create POI here',
     },
     // Bottom island
     chart: {
@@ -385,6 +386,7 @@ const translations = {
       on: 'Вкл',
       off: 'Выкл',
       coordinates_copied: '✅ Координаты скопированы в буфер',
+      create_poi_here: 'Создать точку здесь',
     },
     chart: {
       elevation: 'Высота',
@@ -624,6 +626,7 @@ const translations = {
       on: 'Увімк',
       off: 'Вимк',
       coordinates_copied: '✅ Координати скопійовані в буфер обміну',
+      create_poi_here: 'Створити точку тут',
     },
     chart: {
       elevation: 'Висота',
@@ -863,6 +866,7 @@ const translations = {
       on: 'Ein',
       off: 'Aus',
       coordinates_copied: '✅ Koordinaten in Zwischenablage kopiert',
+      create_poi_here: 'POI hier erstellen',
     },
     chart: {
       elevation: 'Höhe',
@@ -1102,6 +1106,7 @@ const translations = {
       on: 'Activado',
       off: 'Desactivado',
       coordinates_copied: '✅ Coordenadas copiadas al portapapeles',
+      create_poi_here: 'Crear POI aquí',
     },
     chart: {
       elevation: 'Elevación',

@@ -8,7 +8,6 @@ import 'leaflet.markercluster/dist/MarkerCluster.Default.css';
 
 import useMapStore from '../store/mapStore.js';
 import { fetchPOI } from '../api/poi.js';
-import { escapeHtml } from '../utils/escapeHtml.js';
 import { POI_ICON_COMPONENT, DEFAULT_POI_ICON, DEFAULT_POI_COLOR } from '../utils/poiIcons.js';
 
 const CATEGORY_COLORS = {
@@ -71,7 +70,7 @@ function makeDivIcon(category, color, iconSlug) {
   });
 }
 
-export default function POILayer() {
+export default function POILayer({ onPOIClick }) {
   const map = useMap();
   const { hiddenImports, pois } = useMapStore();
   const groupRef = useRef(null);
@@ -107,13 +106,12 @@ export default function POILayer() {
       const color = poi.color || CATEGORY_COLORS[category] || DEFAULT_POI_COLOR;
       const icon = makeDivIcon(category, color, poi.icon);
 
-      return L.marker([poi.lat, poi.lon], { icon }).bindPopup(`
-          <div style="font-size: 12px; max-width: 200px;">
-            <strong>${escapeHtml(poi.name)}</strong>
-            <br><small style="color: #666;">${escapeHtml(category)}</small>
-            ${poi.description ? `<br><small>${escapeHtml(poi.description)}</small>` : ''}
-          </div>
-        `);
+      const marker = L.marker([poi.lat, poi.lon], { icon });
+      // Clicking a marker opens the full details/edit modal (icon, name,
+      // category, visited) instead of a plain Leaflet popup — reuses
+      // POIRenameModal wholesale rather than duplicating its fields here.
+      if (onPOIClick) marker.on('click', () => onPOIClick(poi));
+      return marker;
     });
 
     groupRef.current.addLayers(markers);

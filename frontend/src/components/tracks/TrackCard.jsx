@@ -341,27 +341,25 @@ export default React.memo(function TrackCard({ track, isSelected, onClick }) {
       )}
 
       {expanded && (
-        <div style={{ paddingTop: 12, borderTop: '1px solid var(--border)' }}>
-          {!shouldShowTrackInfo() && (
-            <div style={{
-              display: 'flex',
-              justifyContent: 'center',
-              gap: 'var(--space-1)',
-              marginBottom: 'var(--space-3)',
-              paddingBottom: 'var(--space-3)',
-              borderBottom: '1px solid var(--border)',
-            }}>
-              <Button iconOnly variant="ghost" onClick={handleOpenRenameModal} title={t('card.rename')}>
-                <Pencil size={14} />
-              </Button>
-              <Button iconOnly variant="ghost" onClick={handleDownload} title={t('card.download')}>
-                <Download size={14} />
-              </Button>
-              <Button iconOnly variant="ghost" onClick={handleOpenDeleteModal} title={t('card.delete')}>
-                <Trash2 size={14} />
-              </Button>
-            </div>
-          )}
+        <Modal open={expanded} onClose={() => setExpanded(false)} title={track.name || t('card.unnamed')}>
+          <div style={{
+            display: 'flex',
+            justifyContent: 'center',
+            gap: 'var(--space-1)',
+            marginBottom: 'var(--space-3)',
+            paddingBottom: 'var(--space-3)',
+            borderBottom: '1px solid var(--border)',
+          }}>
+            <Button iconOnly variant="ghost" onClick={handleOpenRenameModal} title={t('card.rename')}>
+              <Pencil size={14} />
+            </Button>
+            <Button iconOnly variant="ghost" onClick={handleDownload} title={t('card.download')}>
+              <Download size={14} />
+            </Button>
+            <Button iconOnly variant="ghost" onClick={handleOpenDeleteModal} title={t('card.delete')}>
+              <Trash2 size={14} />
+            </Button>
+          </div>
 
           <div style={{
             display: 'grid',
@@ -411,7 +409,7 @@ export default React.memo(function TrackCard({ track, isSelected, onClick }) {
               </div>
             )}
           </div>
-        </div>
+        </Modal>
       )}
       </div>
 

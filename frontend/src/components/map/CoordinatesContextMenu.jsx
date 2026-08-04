@@ -1,9 +1,9 @@
 import React from 'react';
-import { Copy, X } from 'lucide-react';
+import { Copy, MapPin, X } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { useTranslation } from 'react-i18next';
 
-export default function CoordinatesContextMenu({ lat, lon, x, y, onClose }) {
+export default function CoordinatesContextMenu({ lat, lon, x, y, onClose, onCreatePOI }) {
   const { t } = useTranslation();
   const coordsText = `${lat.toFixed(6)}, ${lon.toFixed(6)}`;
 
@@ -72,10 +72,29 @@ export default function CoordinatesContextMenu({ lat, lon, x, y, onClose }) {
           gap: 6,
           padding: '8px',
           fontSize: 13,
+          marginBottom: onCreatePOI ? 8 : 0,
         }}
       >
         <Copy size={14} /> Copy
       </button>
+
+      {onCreatePOI && (
+        <button
+          onClick={onCreatePOI}
+          className="btn-secondary"
+          style={{
+            width: '100%',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 6,
+            padding: '8px',
+            fontSize: 13,
+          }}
+        >
+          <MapPin size={14} /> {t('map.create_poi_here')}
+        </button>
+      )}
     </div>
   );
 }
