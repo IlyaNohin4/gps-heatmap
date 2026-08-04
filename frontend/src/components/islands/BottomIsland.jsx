@@ -109,24 +109,15 @@ export default forwardRef(function BottomIsland(_props, ref) {
   const track = trackData ? { ...trackData, name: listTrack?.name ?? trackData.name } : trackData;
 
   const chartData = (() => {
-    const points = track?.normalized_points || track?.raw_points || [];
+    const points = track?.normalized_points || [];
     if (!points.length) return [];
 
-    const speedByIdx = new Array(points.length).fill(null);
-    const coordKey = (lat, lon) => `${lat},${lon}`;
-    const ptIndex = new Map(points.map((p, i) => [coordKey(p.lat, p.lon), i]));
-    for (const seg of track?.speed_segments || []) {
-      const kmh = seg.speed_kmh ?? 0;
-      if (seg.from_idx != null && seg.to_idx != null) {
-        for (let j = seg.from_idx; j <= seg.to_idx; j++) speedByIdx[j] = kmh;
-      } else if (seg.from && seg.to) {
-        const fromIdx = ptIndex.get(coordKey(seg.from[0], seg.from[1]));
-        const toIdx   = ptIndex.get(coordKey(seg.to[0],   seg.to[1]));
-        if (fromIdx != null && toIdx != null) {
-          for (let j = fromIdx; j <= toIdx; j++) speedByIdx[j] = kmh;
-        }
-      }
-    }
+    // speed_kmh lives on each point itself now (written during processing —
+    // see _build_segments in parser_factory.py) instead of a separate
+    // speed_segments array matched back to points by coordinate. Tracks
+    // processed before that change just have no speed_kmh yet (null here)
+    // until reprocessed/backfilled.
+    const speedByIdx = points.map((p) => (p.speed_kmh ?? null));
 
     let cumDist = 0;
     return points.map((pt, i) => {
@@ -159,6 +150,25 @@ export default forwardRef(function BottomIsland(_props, ref) {
       };
     });
   })();
+
+  // Gate which tabs are even clickable by whether the track actually has
+  // that kind of data — e.g. a track with no elevation readings shouldn't
+  // offer an Elevation/Slope tab that just renders "no data" every time.
+  const hasElevation = chartData.some((d) => d.elevation !== null && d.elevation !== undefined);
+  const hasSpeedData = chartData.some((d) => d.speed !== null && d.speed !== undefined);
+  const hasSlope = chartData.some((d) => d.slope !== null && d.slope !== undefined);
+  const tabAvailability = { Elevation: hasElevation, Speed: hasSpeedData, Slope: hasSlope };
+  const availableTabs = TABS.filter((tab) => tabAvailability[tab]);
+
+  // If the active tab has no data for this track (e.g. switched from a
+  // track that had speed to one that doesn't), fall back to the first tab
+  // that does instead of showing an empty chart on a highlighted tab.
+  useEffect(() => {
+    if (availableTabs.length && !tabAvailability[activeTab]) {
+      setActiveTab(availableTabs[0]);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedTrackId, hasElevation, hasSpeedData, hasSlope]);
 
   const hoverMarkerRef = useRef(null);
 
@@ -223,7 +233,7 @@ export default forwardRef(function BottomIsland(_props, ref) {
           {/* Tabs — only when a track is selected */}
           {selectedTrackId ? (
             <div style={{ display: 'flex', gap: 'var(--space-1)' }}>
-              {TABS.map((tab) => (
+              {availableTabs.map((tab) => (
                 <Button
                   key={tab}
                   variant="ghost"
@@ -290,7 +300,7 @@ export default forwardRef(function BottomIsland(_props, ref) {
               <div style={{ height: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-secondary)', fontSize: 13 }}>
                 {t('chart.loading')}
               </div>
-            ) : chartData.length > 0 ? (
+            ) : chartData.length > 0 && tabAvailability[activeTab] ? (
               <ResponsiveContainer width="100%" height={100} style={{ userSelect: 'none' }}>
                 <AreaChart
                   data={chartData}
