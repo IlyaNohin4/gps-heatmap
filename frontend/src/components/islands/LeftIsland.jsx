@@ -38,7 +38,7 @@ function LeftIslandContent({ onUploadClick, loading, allTracksVisible, onToggleV
   const {
     showTrackCreator, toggleTrackCreator, mapInstance,
     trackCreatorState, setTrackCreatorState, undoWaypoint, redoWaypoint, clearTrackCreatorState, clearTrackCreatorPoints,
-    mapBounds, filterByMapBounds,
+    mapBounds, filterByMapBounds, showPOI, togglePOI,
   } = useMapStore();
   const { isAuthenticated } = useAuthStore();
   const [showSaveModal, setShowSaveModal] = useState(false);
@@ -198,6 +198,17 @@ function LeftIslandContent({ onUploadClick, loading, allTracksVisible, onToggleV
               title={allTracksVisible ? 'Hide all tracks' : 'Show all tracks'}
             >
               {allTracksVisible ? <Eye size={15} /> : <EyeOff size={15} />}
+            </Button>
+          )}
+          {currentTab === 'poi' && (
+            <Button
+              iconOnly
+              variant="ghost"
+              active={showPOI}
+              onClick={togglePOI}
+              title={showPOI ? 'Hide all POI' : 'Show all POI'}
+            >
+              {showPOI ? <Eye size={15} /> : <EyeOff size={15} />}
             </Button>
           )}
         </div>
@@ -434,7 +445,7 @@ function LeftIslandContent({ onUploadClick, loading, allTracksVisible, onToggleV
 
         {/* POI Tab — always mounted, toggled via display (see POLISH.md) */}
         <div style={{ display: currentTab === 'poi' ? 'flex' : 'none', flexDirection: 'column', flex: 1, minHeight: 0 }}>
-          <POITab />
+          <POITab setSidebarOpen={setSidebarOpen} />
         </div>
       </Panel>
     </div>

@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback, Suspense, lazy } from 'react';
-import { Plus, Upload, X as XIcon, Loader, Search, Filter, Eye, EyeOff, FolderCog, Edit2, Download, Trash2 } from 'lucide-react';
+import { Plus, Upload, X as XIcon, Loader, Search, Filter, ChevronLeft, FolderCog, Edit2, Download, Trash2, Eye, EyeOff } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { useTranslation } from 'react-i18next';
 import useAppStore from '../../store/appStore.js';
@@ -17,9 +17,9 @@ import '../../styles/poi.css';
 const POIRenameModal = lazy(() => import('../modals/POIRenameModal.jsx'));
 const POIDeleteModal = lazy(() => import('../modals/POIDeleteModal.jsx'));
 
-export default React.memo(function POITab() {
+export default React.memo(function POITab({ setSidebarOpen }) {
   const { t } = useTranslation();
-  const { pois, setPOIs, setPoiCreationMode, poiCreationMode, mapInstance, showPOI, togglePOI, imports, setImports, hiddenImports, toggleImportVisibility } = useMapStore();
+  const { pois, setPOIs, setPoiCreationMode, poiCreationMode, mapInstance, imports, setImports, hiddenImports, toggleImportVisibility } = useMapStore();
   const { isAuthenticated } = useAuthStore();
   const { activePanel, setActivePanel, poiListVersion, bumpPOIListVersion } = useAppStore();
   const filterOpen = activePanel === 'left:poi-filter';
@@ -276,31 +276,36 @@ export default React.memo(function POITab() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search POI..."
-            style={{ borderRadius: 'var(--radius-search)', height: '34px', paddingRight: search ? 30 : undefined }}
+            style={{ borderRadius: 'var(--radius-search)', height: '34px', paddingRight: search ? 56 : 30 }}
           />
           {search && (
-            <button onClick={() => setSearch('')} style={{ position: 'absolute', right: 'var(--space-2)', background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', display: 'flex' }}>
+            <button onClick={() => setSearch('')} style={{ position: 'absolute', right: 30, background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', display: 'flex' }}>
               <XIcon size={13} />
             </button>
           )}
+          <button
+            onClick={() => setActivePanel(filterOpen ? null : 'left:poi-filter')}
+            title="Filters"
+            style={{
+              position: 'absolute',
+              right: 'var(--space-2)',
+              background: 'none',
+              border: 'none',
+              color: filterOpen ? 'var(--accent)' : 'var(--text-secondary)',
+              cursor: 'pointer',
+              display: 'flex',
+            }}
+          >
+            <Filter size={14} />
+          </button>
         </div>
         <Button
-          variant="ghost"
           iconOnly
-          active={showPOI}
-          onClick={togglePOI}
-          title={showPOI ? 'Hide all POI' : 'Show all POI'}
-        >
-          {showPOI ? <Eye size={15} /> : <EyeOff size={15} />}
-        </Button>
-        <Button
           variant="ghost"
-          iconOnly
-          active={filterOpen}
-          onClick={() => setActivePanel(filterOpen ? null : 'left:poi-filter')}
-          title="Filters"
+          onClick={() => setSidebarOpen?.(false)}
+          title="Collapse"
         >
-          <Filter size={15} />
+          <ChevronLeft size={15} />
         </Button>
       </div>
 
