@@ -1,6 +1,6 @@
 import React, { useRef } from 'react';
 import {
-  Plus, Minus, Search, Navigation, Layers, Info, X,
+  Plus, Minus, Search, Locate, LocateFixed, Layers, Info, X,
   Flame, Gauge, ChevronRight,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
@@ -48,10 +48,15 @@ export default function RightIsland() {
   function zoomIn() { mapInstance?.zoomIn(); }
   function zoomOut() { mapInstance?.zoomOut(); }
 
+  const [located, setLocated] = React.useState(false);
+
   function geolocate() {
     if (!navigator.geolocation) return;
     navigator.geolocation.getCurrentPosition(
-      (pos) => mapInstance?.flyTo([pos.coords.latitude, pos.coords.longitude], 14, MAP_ANIMATIONS.geolocation),
+      (pos) => {
+        mapInstance?.flyTo([pos.coords.latitude, pos.coords.longitude], 14, MAP_ANIMATIONS.geolocation);
+        setLocated(true);
+      },
       () => import('react-toastify').then((m) => m.toast.error(i18n.t('errors.geolocation_denied')))
     );
   }
@@ -102,7 +107,9 @@ export default function RightIsland() {
         <Button variant="ghost" iconOnly active={cityOpen} onClick={() => togglePanel('right:city')} title={t('map.city_search')}>
           <Search size={16} />
         </Button>
-        <Button variant="ghost" iconOnly onClick={geolocate} title={t('map.my_location')}><Navigation size={16} /></Button>
+        <Button variant="ghost" iconOnly onClick={geolocate} title={t('map.my_location')}>
+          {located ? <LocateFixed size={16} /> : <Locate size={16} />}
+        </Button>
         {divider}
         <Button variant="ghost" iconOnly active={layersOpen} onClick={() => togglePanel('right:layers')} title={t('map.map_layers')}>
           <Layers size={16} />

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, forwardRef } from 'react';
-import { TrendingUp, Gauge, Route, Clock, Mountain, ChevronDown, ChevronUp, ZoomIn, X } from 'lucide-react';
+import { TrendingUp, Gauge, Route, Clock, ChevronDown, ChevronUp, ZoomIn, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -370,7 +370,7 @@ export default forwardRef(function BottomIsland(_props, ref) {
                 {stat(t('chart.duration'), fmtDuration(track.duration_sec), <Clock size={11} />)}
                 {stat(t('chart.avg_speed'), fmtSpeed(track.speed_avg, unitSystem), <Gauge size={11} />)}
                 {stat(t('chart.max_speed'), fmtSpeed(track.speed_max, unitSystem), <TrendingUp size={11} />)}
-                {stat(t('chart.elev_gain'), fmtElevation(track.elevation_gain, unitSystem), <Mountain size={11} />)}
+                {stat(t('chart.elev_gain'), fmtElevation(track.elevation_gain, unitSystem), <ChevronUp size={11} />)}
                 {stat(t('chart.elev_loss'), fmtElevation(track.elevation_loss, unitSystem), <ChevronDown size={11} />)}
               </div>
             )}
