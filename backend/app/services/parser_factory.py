@@ -513,13 +513,25 @@ def _elevation_gain_loss(points: list[dict]) -> tuple[float, float]:
     return gain, loss
 
 
-def _build_segments(points: list[dict]) -> tuple[list[dict], float, float, float, float, Optional[int], dict]:
+def _build_segments(
+    points: list[dict], attach_speed: bool = True
+) -> tuple[list[dict], float, float, float, float, Optional[int], dict]:
     """Compute speed_segments, distance_km, speed stats, duration, grade stats, and elevation gain/loss.
 
     Uses osmand_speed_kmh from each point when available; falls back to Haversine
     for points that carry no recorded speed.
 
     Also calculates grade and classifies each segment.
+
+    attach_speed: write speed_kmh onto each point dict in place (see below).
+    Every caller here runs this twice — once on normalized_points (for the
+    segments actually returned/rendered) and once on cleaned_points (fuller,
+    pre-simplification, for accurate stats). _simplify_trajectory returns a
+    *subset of the same dict objects* as cleaned_points, not copies, so
+    mutating points in both calls would have the cleaned_points call (whose
+    neighbor pairing differs) silently overwrite the normalized_points-based
+    values. Callers must pass attach_speed=False for the cleaned_points/
+    stats-only call.
     """
     segments: list[dict] = []
     total_km = 0.0
@@ -590,6 +602,20 @@ def _build_segments(points: list[dict]) -> tuple[list[dict], float, float, float
             "distance_km": round(dist_km, 3),
         }
         segments.append(segment)
+
+        # Mutates `points` in place (same list/dicts the caller holds as
+        # normalized_points) so speed travels with each point instead of a
+        # separate speed_segments array that duplicates every from/to
+        # coordinate already in normalized_points. p1 is "arrival" speed —
+        # matches the existing preference for the destination point's
+        # recorded speed above. p0 (the very first point) has no incoming
+        # segment, so it borrows this one's speed for continuity. See the
+        # attach_speed docstring above for why this must not run for the
+        # cleaned_points/stats-only call.
+        if attach_speed:
+            p1["speed_kmh"] = segment["speed_kmh"]
+            if i == 1:
+                p0["speed_kmh"] = segment["speed_kmh"]
 
     moving_time_sec_int = int(moving_time_sec) if moving_time_sec > 0 else None
     speed_avg = (
@@ -726,7 +752,7 @@ def _parse_gpx(data: bytes) -> dict:
 
     recorded_at = points[0]["time"] if points[0]["time"] else None
     segs, *_ = _build_segments(normalized_points)
-    _, dist, s_avg, s_max, s_min, dur, stats = _build_segments(cleaned_points)
+    _, dist, s_avg, s_max, s_min, dur, stats = _build_segments(cleaned_points, attach_speed=False)
     return {
         "points": raw_points,
         "normalized_points": normalized_points,
@@ -768,7 +794,7 @@ def _parse_kml(data: bytes) -> dict:
     normalized_points = _simplify_trajectory(cleaned_points, tolerance_m=15.0) if cleaned_points else []
 
     segs, *_ = _build_segments(normalized_points)
-    _, dist, s_avg, s_max, s_min, dur, stats = _build_segments(cleaned_points)
+    _, dist, s_avg, s_max, s_min, dur, stats = _build_segments(cleaned_points, attach_speed=False)
     return {
         "points": raw_points,
         "normalized_points": normalized_points,
@@ -821,7 +847,7 @@ def _parse_tcx(data: bytes) -> dict:
 
     recorded_at = points[0]["time"] if points and points[0]["time"] else None
     segs, *_ = _build_segments(normalized_points)
-    _, dist, s_avg, s_max, s_min, dur, stats = _build_segments(cleaned_points)
+    _, dist, s_avg, s_max, s_min, dur, stats = _build_segments(cleaned_points, attach_speed=False)
     return {
         "points": raw_points,
         "normalized_points": normalized_points,
@@ -869,7 +895,7 @@ def _parse_fit(data: bytes) -> dict:
 
     recorded_at = points[0]["time"] if points and points[0]["time"] else None
     segs, *_ = _build_segments(normalized_points)
-    _, dist, s_avg, s_max, s_min, dur, stats = _build_segments(cleaned_points)
+    _, dist, s_avg, s_max, s_min, dur, stats = _build_segments(cleaned_points, attach_speed=False)
     return {
         "points": raw_points,
         "normalized_points": normalized_points,
@@ -930,7 +956,7 @@ def _parse_geojson(data: bytes) -> dict:
     normalized_points = _simplify_trajectory(cleaned_points, tolerance_m=15.0) if cleaned_points else []
 
     segs, *_ = _build_segments(normalized_points)
-    _, dist, s_avg, s_max, s_min, dur, stats = _build_segments(cleaned_points)
+    _, dist, s_avg, s_max, s_min, dur, stats = _build_segments(cleaned_points, attach_speed=False)
     return {
         "points": raw_points,
         "normalized_points": normalized_points,

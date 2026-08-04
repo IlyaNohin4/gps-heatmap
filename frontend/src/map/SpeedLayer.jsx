@@ -44,31 +44,38 @@ const SpeedLayer = memo(function SpeedLayer({ tracks }) {
     group.clearLayers();
 
     tracks.forEach((track) => {
-      const segments = track.speed_segments || [];
-      if (!segments.length) {
-        // Fallback: draw normalized_points with a single color
-        const pts = track.normalized_points || track.raw_points || [];
-        if (pts.length) {
-          L.polyline(pts.map((p) => [p.lat, p.lon]), {
-            color: speedToColor(track.speed_avg ? track.speed_avg * 3.6 : 0),
-            weight: 4,
-            opacity: 0.85,
-          }).addTo(group);
-        }
+      const points = track.normalized_points || [];
+      if (points.length < 2) return;
+
+      // speed_kmh is written onto each point during processing (see
+      // _build_segments in parser_factory.py) instead of shipped as a
+      // separate speed_segments array — no need to duplicate every
+      // from/to coordinate that's already in normalized_points. Tracks
+      // processed before that change simply have no speed_kmh on their
+      // points yet; fall back to a single average-speed color for those
+      // until they're reprocessed/backfilled.
+      const hasPointSpeed = points.some((p) => p.speed_kmh !== undefined && p.speed_kmh !== null);
+      if (!hasPointSpeed) {
+        L.polyline(points.map((p) => [p.lat, p.lon]), {
+          color: speedToColor(track.speed_avg ? track.speed_avg * 3.6 : 0),
+          weight: 4,
+          opacity: 0.85,
+        }).addTo(group);
         return;
       }
 
-      segments.forEach((seg) => {
-        if (!seg.from || !seg.to) return;
-        const color = speedToColor(seg.speed_kmh ?? 0);
-        L.polyline([seg.from, seg.to], {
-          color,
+      for (let i = 1; i < points.length; i++) {
+        const p0 = points[i - 1];
+        const p1 = points[i];
+        const speed = p1.speed_kmh ?? 0;
+        L.polyline([[p0.lat, p0.lon], [p1.lat, p1.lon]], {
+          color: speedToColor(speed),
           weight: 4,
           opacity: 0.85,
         })
-          .bindTooltip(`${(seg.speed_kmh ?? 0).toFixed(1)} km/h`, { sticky: true })
+          .bindTooltip(`${speed.toFixed(1)} km/h`, { sticky: true })
           .addTo(group);
-      });
+      }
     });
   }, [tracks]);
 

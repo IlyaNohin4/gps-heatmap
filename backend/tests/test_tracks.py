@@ -283,7 +283,12 @@ class TestGetTrack:
         assert r.status_code == 200
         data = r.json()
         assert data["id"] == 42
-        assert "speed_segments" in data
+        assert "normalized_points" in data
+        # speed_segments (now written per-point onto normalized_points as
+        # speed_kmh instead) and raw_points (unused once processed) are
+        # intentionally not sent — see TrackDetail in app/api/tracks.py.
+        assert "speed_segments" not in data
+        assert "raw_points" not in data
 
     def test_not_found_is_404(self, client, auth_headers, mock_db):
         from app.main import app

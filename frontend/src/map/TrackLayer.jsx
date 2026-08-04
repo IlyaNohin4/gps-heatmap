@@ -29,7 +29,7 @@ const TrackLayer = memo(function TrackLayer({ tracks, selectedTrackId, showHeatm
     group.clearLayers();
 
     tracks.forEach((track, idx) => {
-      const pts = track.normalized_points || track.raw_points || [];
+      const pts = track.normalized_points || [];
       if (!pts.length) return;
 
       const latlngs = pts.map((p) => [p.lat, p.lon]);

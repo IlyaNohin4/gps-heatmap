@@ -264,18 +264,27 @@ class TrackListResponse(BaseModel):
 
 
 class TrackDetail(TrackOut):
-    raw_points: Optional[object] = None
+    # raw_points (pre-processing, unsimplified GPS data) is never read by the
+    # frontend once a track has processed successfully — normalized_points is
+    # always populated by then, so it was pure dead weight (tens of MB per
+    # account) on every track-detail fetch. Omitted entirely rather than
+    # left nullable, so nothing can regress back to sending it silently.
+    #
+    # speed_segments (a separate array of {from, to, speed_kmh} per pair of
+    # points) is likewise omitted: _build_segments now writes speed_kmh onto
+    # each point of normalized_points directly (see parser_factory.py), so
+    # the frontend already gets per-point speed without a second, redundant
+    # copy of every from/to coordinate that's already in normalized_points.
+    # Only applies to tracks processed after that change — older tracks
+    # simply have no speed_kmh on their points until reprocessed/backfilled.
     normalized_points: Optional[object] = None
-    speed_segments: Optional[object] = None
 
     @classmethod
     def from_orm_dt(cls, t: Track) -> "TrackDetail":  # type: ignore[override]
         base = TrackOut.from_orm_dt(t)
         return cls(
             **base.model_dump(),
-            raw_points=t.raw_points,
             normalized_points=t.normalized_points,
-            speed_segments=t.speed_segments,
         )
 
 

@@ -37,7 +37,7 @@ export default function PublicTrackPage() {
   }, [token]);
 
   const positions = track
-    ? (track.normalized_points || track.raw_points || []).map((p) => [p.lat, p.lon])
+    ? (track.normalized_points || []).map((p) => [p.lat, p.lon])
     : [];
 
   const apiBase = import.meta.env.VITE_API_URL || '';

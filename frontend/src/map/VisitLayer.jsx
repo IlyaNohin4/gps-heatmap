@@ -21,7 +21,7 @@ const VisitLayer = memo(function VisitLayer({ tracks }) {
     // Collect all points from all tracks with equal intensity
     const points = [];
     tracks.forEach((track) => {
-      const pts = track.normalized_points || track.raw_points || [];
+      const pts = track.normalized_points || [];
       pts.forEach((pt) => {
         if (pt.lat !== undefined && pt.lon !== undefined) {
           points.push([pt.lat, pt.lon, 1]);

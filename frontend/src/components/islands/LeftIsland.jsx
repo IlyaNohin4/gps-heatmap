@@ -272,7 +272,7 @@ function LeftIslandContent({ onUploadClick, loading, allTracksVisible, onToggleV
 
                   // Auto-zoom to track when selected
                   if (!isDeselecting && mapInstance) {
-                    const pts = track.normalized_points || track.raw_points || [];
+                    const pts = track.normalized_points || [];
                     if (pts.length > 0) {
                       const bounds = pts.reduce((acc, p) => {
                         if (!acc) return [[p.lat, p.lon], [p.lat, p.lon]];
@@ -288,7 +288,7 @@ function LeftIslandContent({ onUploadClick, loading, allTracksVisible, onToggleV
                       // Load track details if points not available
                       getTrack(track.id)
                         .then((data) => {
-                          const pts = data.normalized_points || data.raw_points || [];
+                          const pts = data.normalized_points || [];
                           if (pts.length > 0) {
                             const bounds = pts.reduce((acc, p) => {
                               if (!acc) return [[p.lat, p.lon], [p.lat, p.lon]];
