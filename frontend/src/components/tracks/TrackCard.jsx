@@ -130,12 +130,23 @@ export default React.memo(function TrackCard({ track, isSelected, onClick }) {
     ));
   }
 
+  async function copyShareLink(publicToken) {
+    const url = `${window.location.origin}/track/${publicToken}`;
+    try {
+      await navigator.clipboard.writeText(url);
+      toast.success(t('toast.link_copied'));
+    } catch {
+      toast.info(url, { autoClose: false });
+    }
+  }
+
   async function handlePublish(e) {
     e.stopPropagation();
     try {
       const result = await togglePublish(track.id);
       setPublished(result.is_public);
       toast.success(result.is_public ? t('toast.published') : t('toast.unpublished'));
+      if (result.is_public) await copyShareLink(result.public_token);
     } catch {
       toast.error(t('toast.publish_failed'));
     }
@@ -144,8 +155,9 @@ export default React.memo(function TrackCard({ track, isSelected, onClick }) {
   async function handleRotateLink(e) {
     e.stopPropagation();
     try {
-      await rotatePublicLink(track.id);
+      const result = await rotatePublicLink(track.id);
       toast.success(t('toast.link_rotated'));
+      await copyShareLink(result.public_token);
     } catch {
       toast.error(t('toast.link_rotate_failed'));
     }

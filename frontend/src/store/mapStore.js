@@ -14,6 +14,13 @@ const useMapStore = create((set, get) => ({
   pois: [],
   showTrackCreator: false,
   visibleTrackIds: new Set(),
+  // "Show tracks on map" filter — a one-shot snapshot of the map bounds
+  // taken when "Find in this area" is clicked, not live-tracked on every
+  // pan (that caused the list to keep re-filtering itself as you moved
+  // the map, which was surprising). filterByMapBounds gates whether the
+  // list actually applies mapBounds.
+  mapBounds: null,
+  filterByMapBounds: false,
   // Cache of full track details keyed by track id (includes normalized_points, speed_segments)
   trackDetailCache: {},
   // User-uploaded POI imports. hiddenImports is opt-out (starts empty, i.e.
@@ -34,6 +41,8 @@ const useMapStore = create((set, get) => ({
   },
 
   setMapInstance: (mapInstance) => set({ mapInstance }),
+  setMapBounds: (mapBounds) => set({ mapBounds }),
+  setFilterByMapBounds: (filterByMapBounds) => set({ filterByMapBounds }),
   setActiveLayer: (activeLayer) => set({ activeLayer }),
   toggleHeatmap: () => set((s) => ({ showHeatmap: !s.showHeatmap, showSpeed: false })),
   toggleSpeed: () => set((s) => ({ showSpeed: !s.showSpeed, showHeatmap: false })),

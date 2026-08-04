@@ -34,16 +34,18 @@ const TrackLayer = memo(function TrackLayer({ tracks, selectedTrackId, showHeatm
 
       const latlngs = pts.map((p) => [p.lat, p.lon]);
       const isSelected = track.id === selectedTrackId;
-      const color = showHeatmap ? '#007aff' : (isSelected ? '#007aff' : colorForIndex(idx));
 
-      const line = L.polyline(latlngs, {
-        color,
-        weight: isSelected ? 6 : 4,
-        opacity: isSelected ? 1 : 0.7,
-      });
+      const line = showHeatmap
+        ? L.polyline(latlngs, { color: '#007aff', weight: 3, opacity: 0.15 })
+        : L.polyline(latlngs, {
+            color: isSelected ? '#007aff' : colorForIndex(idx),
+            weight: isSelected ? 6 : 4,
+            opacity: isSelected ? 1 : 0.7,
+          });
 
       line.bindTooltip(escapeHtml(track.name || 'Track'), { sticky: true, offset: [0, -4] });
       line.addTo(group);
+      if (isSelected) line.bringToFront();
 
       // Start marker (green circle with play icon)
       if (showStartEndMarkers && pts.length > 0) {

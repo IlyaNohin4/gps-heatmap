@@ -19,7 +19,6 @@ import { TILE_LAYERS } from '../map/MapLayers.js';
 import { MAP_ANIMATIONS } from '../config/mapAnimations.js';
 import TrackLayer from '../map/TrackLayer.jsx';
 import SpeedLayer from '../map/SpeedLayer.jsx';
-import VisitLayer from '../map/VisitLayer.jsx';
 import POILayer from '../map/POILayer.jsx';
 import TrackCreator from '../map/TrackCreator.jsx';
 import POIContextMenu from '../components/poi/POIContextMenu.jsx';
@@ -126,8 +125,6 @@ function MapLayers({ onPOIClick }) {
     clearTrackCreatorState,
   } = useMapStore();
   const { visibleTracks, selectedTrackId } = useVisibleTracks();
-  const visibleTrackIds = useMapStore((s) => s.visibleTrackIds);
-  const hasVisibleTracks = visibleTrackIds.size > 0 || !!selectedTrackId;
 
 
   return (
@@ -144,11 +141,6 @@ function MapLayers({ onPOIClick }) {
       {/* Speed gradient segments */}
       {showSpeed && (
         <SpeedLayer tracks={visibleTracks} />
-      )}
-
-      {/* Heatmap across the currently visible/selected tracks only */}
-      {showHeatmap && hasVisibleTracks && (
-        <VisitLayer tracks={visibleTracks} />
       )}
 
       {/* POI markers */}

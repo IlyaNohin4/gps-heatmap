@@ -25,7 +25,7 @@ import LoadingIndicator from './components/LoadingIndicator.jsx';
 import { fetchTracks, uploadTrack } from './api/tracks.js';
 import { uploadPOI, fetchPOI } from './api/poi.js';
 import { getMe } from './api/auth.js';
-import { Search, RotateCcw } from 'lucide-react';
+import { MapPinSearch, RotateCcw } from 'lucide-react';
 
 // Lazy-load the public track page so it doesn't pull leaflet into the main bundle
 const PublicTrackPage = lazy(() => import('./pages/PublicTrackPage.jsx'));
@@ -204,12 +204,14 @@ function MainPage() {
   async function handleFindInArea() {
     if (!mapInstance) return;
     const bounds = mapInstance.getBounds();
-    const params = {
-      bbox: `${bounds.getWest()},${bounds.getSouth()},${bounds.getEast()},${bounds.getNorth()}`,
-      limit: TRACKS_FETCH_LIMIT,
-    };
+    const bbox = `${bounds.getWest()},${bounds.getSouth()},${bounds.getEast()},${bounds.getNorth()}`;
+    // Also drives the sidebar list (LeftIsland reads mapStore.filterByMapBounds/
+    // mapBounds) so "Find in this area" actually filters what's shown, not
+    // just the heatmap/map-render pool below.
+    useMapStore.getState().setMapBounds(bbox);
+    useMapStore.getState().setFilterByMapBounds(true);
     try {
-      const data = await fetchTracks(params);
+      const data = await fetchTracks({ bbox, limit: TRACKS_FETCH_LIMIT });
       setTracks(data);
     } catch (err) {
       console.error(err);
@@ -219,6 +221,7 @@ function MainPage() {
 
   async function handleShowAll() {
     setSelectedTrack(null);
+    useMapStore.getState().setFilterByMapBounds(false);
     try {
       const data = await fetchTracks({ limit: TRACKS_FETCH_LIMIT });
       setTracks(data);
@@ -249,7 +252,7 @@ function MainPage() {
   return (
     <>
       <MapContainer />
-      <div ref={topIslandRef} style={{ position: 'fixed', top: 16, left: '50%', transform: 'translateX(-50%)', zIndex: 1000 }}>
+      <div ref={topIslandRef} style={{ position: 'fixed', top: 16, left: '50%', transform: 'translateX(-50%)', zIndex: 1000, animation: 'fadeIn 0.3s ease-out' }}>
         <TopIsland />
       </div>
       <div style={{
@@ -269,7 +272,7 @@ function MainPage() {
           title={t('tracks.find_in_area')}
           style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 32, height: 32, padding: 0 }}
         >
-          <Search size={14} />
+          <MapPinSearch size={14} />
         </button>
         <button
           className="btn-glass"
