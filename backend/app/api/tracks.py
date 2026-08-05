@@ -545,6 +545,124 @@ def list_track_geometries(
     return [{"id": t.id, "normalized_points": t.normalized_points} for t in tracks]
 
 
+class RoadUsageChain(BaseModel):
+    points: List[List[float]]
+    count: int
+
+
+class RoadUsageResponse(BaseModel):
+    chains: List[RoadUsageChain]
+
+
+# Grid size (degrees) used to snap track points onto shared "road" segments —
+# ~5 decimal places is roughly 1m at the equator. Coarse enough that GPS noise
+# on repeated passes of the same road collapses onto the same segment key,
+# fine enough not to merge genuinely different streets.
+_ROAD_USAGE_GRID = 5
+
+
+@router.get("/road-usage", response_model=RoadUsageResponse)
+def get_road_usage(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Aggregate every track's points into shared road chains with a visit
+    count — how many distinct tracks passed over each chain. Powers the
+    line-based "Heatmap" layer: same road drawn once, opacity scales with
+    count (see HeatmapLayer.jsx), instead of blurred density blobs.
+
+    Segments are merged into multi-point chains (not left as one polyline
+    per grid pair) so a road renders as one continuous line — chains only
+    break at real intersections (a node touched by more than 2 segments) or
+    where the count itself changes, not at every grid-snapped point.
+    """
+    tracks = (
+        db.query(Track.id, Track.normalized_points)
+        .filter(Track.user_id == current_user.id)
+        .limit(5000)
+        .all()
+    )
+
+    # key -> count — key is unordered (A,B) so A->B and B->A merge
+    segments: dict = {}
+    for track in tracks:
+        points = track.normalized_points or []
+        seen_keys = set()
+        for i in range(len(points) - 1):
+            p1, p2 = points[i], points[i + 1]
+            if p1.get("lat") is None or p1.get("lon") is None:
+                continue
+            if p2.get("lat") is None or p2.get("lon") is None:
+                continue
+            k1 = (round(p1["lat"], _ROAD_USAGE_GRID), round(p1["lon"], _ROAD_USAGE_GRID))
+            k2 = (round(p2["lat"], _ROAD_USAGE_GRID), round(p2["lon"], _ROAD_USAGE_GRID))
+            if k1 == k2:
+                continue
+            key = (k1, k2) if k1 < k2 else (k2, k1)
+            # count each track at most once per segment (repeated back-and-forth
+            # within one track shouldn't inflate the count on its own)
+            if key in seen_keys:
+                continue
+            seen_keys.add(key)
+            segments[key] = segments.get(key, 0) + 1
+
+    return {"chains": _merge_segments_into_chains(segments)}
+
+
+def _merge_segments_into_chains(segments: dict) -> list:
+    """Walk the segment graph, fusing consecutive same-count edges through a
+    degree-2 node (a pass-through point, not an intersection) into a single
+    multi-point chain.
+    """
+    adjacency: dict = {}
+    for (a, b) in segments:
+        adjacency.setdefault(a, []).append((b, (a, b)))
+        adjacency.setdefault(b, []).append((a, (a, b)))
+
+    def continuation(node, incoming_key, count):
+        """The one other same-count, unvisited edge at `node`, if `node` is
+        a plain pass-through (exactly 2 segments touch it) — else None."""
+        if len(adjacency[node]) != 2:
+            return None
+        for neighbor, key in adjacency[node]:
+            if key != incoming_key and key not in visited and segments[key] == count:
+                return neighbor, key
+        return None
+
+    visited: set = set()
+    chains = []
+    for key, count in segments.items():
+        if key in visited:
+            continue
+        visited.add(key)
+        a, b = key
+        chain = [a, b]
+
+        cur, incoming = b, key
+        while True:
+            nxt = continuation(cur, incoming, count)
+            if nxt is None:
+                break
+            neighbor, nxt_key = nxt
+            visited.add(nxt_key)
+            chain.append(neighbor)
+            cur, incoming = neighbor, nxt_key
+
+        cur, incoming = a, key
+        while True:
+            nxt = continuation(cur, incoming, count)
+            if nxt is None:
+                break
+            neighbor, nxt_key = nxt
+            visited.add(nxt_key)
+            chain.insert(0, neighbor)
+            cur, incoming = neighbor, nxt_key
+
+        chains.append({"points": [list(p) for p in chain], "count": count})
+
+    return chains
+
+
 @router.get("/public/{public_token}", response_model=TrackDetail)
 def get_public_track(public_token: str, db: Session = Depends(get_db)):
     track = db.query(Track).filter(Track.public_token == public_token, Track.is_public == True).first()

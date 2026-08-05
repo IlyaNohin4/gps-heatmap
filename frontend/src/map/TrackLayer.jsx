@@ -37,7 +37,7 @@ const TrackLayer = memo(function TrackLayer({ tracks, selectedTrackId, showStart
 
       const line = L.polyline(latlngs, {
         color: isSelected ? '#007aff' : colorForIndex(idx),
-        weight: isSelected ? 6 : 4,
+        weight: isSelected ? 8 : 6,
         opacity: isSelected ? 1 : 0.7,
       });
 

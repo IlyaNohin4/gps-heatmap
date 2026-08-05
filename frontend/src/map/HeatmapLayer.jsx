@@ -1,43 +1,56 @@
 import { useEffect, useRef, memo } from 'react';
 import { useMap } from 'react-leaflet';
 import L from 'leaflet';
-import 'leaflet.heat';
+import { fetchRoadUsage } from '../api/tracks.js';
 
-// Density-based heatmap (uMap-style): every point of every visible track
-// feeds a single L.heatLayer instead of drawing faint overlapping polylines
-// — the more tracks passed through an area, the "hotter" it reads.
+// Line-based road usage: same road drawn once as a normal-width polyline,
+// with opacity growing by how many distinct tracks passed over it — busy
+// roads read as a solid accent color, rarely-used ones fade almost away.
+// Chains come pre-aggregated from GET /api/tracks/road-usage (grid-keyed and
+// merged into continuous multi-point paths on the backend) so a road reads
+// as one line instead of a string of visibly-jointed short segments, and
+// stays cheap to render even with many tracks.
+const MIN_OPACITY = 0.35;
+const OPACITY_STEP = 0.2;
+const LINE_WEIGHT = 4;
+
+function opacityForCount(count) {
+  return Math.min(MIN_OPACITY + count * OPACITY_STEP, 1);
+}
+
 const HeatmapLayer = memo(function HeatmapLayer({ tracks }) {
   const map = useMap();
   const layerRef = useRef(null);
 
   useEffect(() => {
-    const points = [];
-    tracks.forEach((track) => {
-      (track.normalized_points || []).forEach((p) => {
-        points.push([p.lat, p.lon, 0.5]);
+    let cancelled = false;
+
+    const group = L.layerGroup();
+    // Chains are now merged into continuous multi-point paths (few dozen
+    // objects, not thousands of grid segments), so the default SVG renderer
+    // is affordable again — its vector strokes render crisper than
+    // L.canvas()'s rasterized, more anti-aliased edges, and it resolves
+    // CSS custom properties like 'var(--accent)' directly.
+    fetchRoadUsage().then((data) => {
+      if (cancelled) return;
+      const chains = [...(data.chains || [])].sort((a, b) => a.count - b.count);
+      chains.forEach((chain) => {
+        L.polyline(chain.points, {
+          weight: LINE_WEIGHT,
+          color: 'var(--accent)',
+          opacity: opacityForCount(chain.count),
+          interactive: false,
+        }).addTo(group);
       });
     });
 
-    const layer = L.heatLayer(points, {
-      radius: 18,
-      blur: 22,
-      maxZoom: 17,
-      minOpacity: 0.35,
-      gradient: {
-        0.2: '#3b82f6',
-        0.4: '#22d3ee',
-        0.6: '#facc15',
-        0.8: '#fb923c',
-        1.0: '#ef4444',
-      },
-    }).addTo(map);
-    layerRef.current = layer;
-    // leaflet.heat's canvas defaults to pointer-events: auto, which silently
-    // eats clicks/drags meant for the map underneath (pan, zoom, right-click
-    // menu) — the heatmap is purely visual, so let events pass through it.
-    if (layer._canvas) layer._canvas.style.pointerEvents = 'none';
+    group.addTo(map);
+    layerRef.current = group;
 
-    return () => layer.remove();
+    return () => {
+      cancelled = true;
+      group.remove();
+    };
   }, [tracks, map]);
 
   return null;
