@@ -23,7 +23,7 @@ import POILayer from '../map/POILayer.jsx';
 import TrackCreator from '../map/TrackCreator.jsx';
 import POICreationModal from '../components/modals/POICreationModal.jsx';
 import POIRenameModal from '../components/modals/POIRenameModal.jsx';
-import CoordinatesContextMenu from '../components/map/CoordinatesContextMenu.jsx';
+import POIContextMenu from '../components/poi/POIContextMenu.jsx';
 import TrackDetailsPopover from '../components/tracks/TrackDetailsPopover.jsx';
 
 delete L.Icon.Default.prototype._getIconUrl;
@@ -51,14 +51,18 @@ function MapClickHandler() {
   return null;
 }
 
-// Right-click anywhere on the map opens CoordinatesContextMenu (copy coords /
-// create POI here) — the single entry point for POI creation from the map.
-// A separate left-click-driven menu used to exist for when poiCreationMode
-// was toggled on; removed so there's one menu, not two doing the same thing.
-function POIContextMenuHandler({ onCoordinatesMenu }) {
+// POIContextMenu (copy coords / create POI here / cancel) opens from two
+// entry points that both land on the same menu: a plain right-click
+// anywhere on the map, and a left-click while POI creation mode is on
+// (POITab's "+ Create" toggle).
+function POIContextMenuHandler({ onCoordinatesMenu, poiCreationMode }) {
   useMapEvents({
     contextmenu: (e) => {
       e.originalEvent.preventDefault();
+      onCoordinatesMenu(e.latlng.lat, e.latlng.lng, e.originalEvent.clientX, e.originalEvent.clientY);
+    },
+    click: (e) => {
+      if (!poiCreationMode) return;
       onCoordinatesMenu(e.latlng.lat, e.latlng.lng, e.originalEvent.clientX, e.originalEvent.clientY);
     },
   });
@@ -170,6 +174,7 @@ function MapLayers({ onPOIClick }) {
 }
 
 export default function MapContainer() {
+  const poiCreationMode = useMapStore((s) => s.poiCreationMode);
   const [coordsMenu, setCoordsMenu] = useState(null);
   const [creatingPOI, setCreatingPOI] = useState(null);
   const [detailsPOI, setDetailsPOI] = useState(null);
@@ -202,6 +207,7 @@ export default function MapContainer() {
         <MapLayers onPOIClick={setDetailsPOI} />
         <POIContextMenuHandler
           onCoordinatesMenu={(lat, lon, x, y) => setCoordsMenu({ lat, lon, x, y })}
+          poiCreationMode={poiCreationMode}
         />
       </LeafletMap>
 
@@ -236,13 +242,13 @@ export default function MapContainer() {
             }}
             onClick={() => setCoordsMenu(null)}
           />
-          <CoordinatesContextMenu
+          <POIContextMenu
             lat={coordsMenu.lat}
             lon={coordsMenu.lon}
             x={coordsMenu.x}
             y={coordsMenu.y}
-            onClose={() => setCoordsMenu(null)}
-            onCreatePOI={() => {
+            onCancel={() => setCoordsMenu(null)}
+            onCreateClick={() => {
               setCreatingPOI({ lat: coordsMenu.lat, lon: coordsMenu.lon });
               setCoordsMenu(null);
             }}
