@@ -130,13 +130,17 @@ export default React.memo(function TrackCard({ track, isSelected, onClick }) {
     ));
   }
 
+  // Copies the link and returns whether the copy actually succeeded, so
+  // callers can fold it into a single toast instead of showing their own
+  // "done" toast plus a separate "link copied" one.
   async function copyShareLink(publicToken) {
     const url = `${window.location.origin}/track/${publicToken}`;
     try {
       await navigator.clipboard.writeText(url);
-      toast.success(t('toast.link_copied'));
+      return true;
     } catch {
       toast.info(url, { autoClose: false });
+      return false;
     }
   }
 
@@ -145,8 +149,12 @@ export default React.memo(function TrackCard({ track, isSelected, onClick }) {
     try {
       const result = await togglePublish(track.id);
       setPublished(result.is_public);
-      toast.success(result.is_public ? t('toast.published') : t('toast.unpublished'));
-      if (result.is_public) await copyShareLink(result.public_token);
+      if (result.is_public) {
+        const copied = await copyShareLink(result.public_token);
+        toast.success(copied ? t('toast.published_and_copied') : t('toast.published'));
+      } else {
+        toast.success(t('toast.unpublished'));
+      }
     } catch {
       toast.error(t('toast.publish_failed'));
     }
@@ -156,8 +164,8 @@ export default React.memo(function TrackCard({ track, isSelected, onClick }) {
     e.stopPropagation();
     try {
       const result = await rotatePublicLink(track.id);
-      toast.success(t('toast.link_rotated'));
-      await copyShareLink(result.public_token);
+      const copied = await copyShareLink(result.public_token);
+      toast.success(copied ? t('toast.link_rotated_and_copied') : t('toast.link_rotated'));
     } catch {
       toast.error(t('toast.link_rotate_failed'));
     }

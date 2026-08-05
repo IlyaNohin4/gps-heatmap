@@ -18,10 +18,10 @@ import useAppStore from '../store/appStore.js';
 import { TILE_LAYERS } from '../map/MapLayers.js';
 import { MAP_ANIMATIONS } from '../config/mapAnimations.js';
 import TrackLayer from '../map/TrackLayer.jsx';
+import HeatmapLayer from '../map/HeatmapLayer.jsx';
 import SpeedLayer from '../map/SpeedLayer.jsx';
 import POILayer from '../map/POILayer.jsx';
 import TrackCreator from '../map/TrackCreator.jsx';
-import POIContextMenu from '../components/poi/POIContextMenu.jsx';
 import POICreationModal from '../components/modals/POICreationModal.jsx';
 import POIRenameModal from '../components/modals/POIRenameModal.jsx';
 import CoordinatesContextMenu from '../components/map/CoordinatesContextMenu.jsx';
@@ -52,14 +52,12 @@ function MapClickHandler() {
   return null;
 }
 
-// Handles left-click on map for POI creation (when mode is active) and right-click for coordinates
-function POIContextMenuHandler({ poiCreationMode, onContextMenu, onCoordinatesMenu }) {
+// Right-click anywhere on the map opens CoordinatesContextMenu (copy coords /
+// create POI here) — the single entry point for POI creation from the map.
+// A separate left-click-driven menu used to exist for when poiCreationMode
+// was toggled on; removed so there's one menu, not two doing the same thing.
+function POIContextMenuHandler({ onCoordinatesMenu }) {
   useMapEvents({
-    click: (e) => {
-      if (poiCreationMode) {
-        onContextMenu(e.latlng.lat, e.latlng.lng, e.originalEvent.clientX, e.originalEvent.clientY);
-      }
-    },
     contextmenu: (e) => {
       e.originalEvent.preventDefault();
       onCoordinatesMenu(e.latlng.lat, e.latlng.lng, e.originalEvent.clientX, e.originalEvent.clientY);
@@ -135,11 +133,10 @@ function MapLayers({ onPOIClick }) {
       <MapClickHandler />
 
       {/* Plain coloured polylines (default) */}
-      {!showSpeed && (
+      {!showSpeed && !showHeatmap && (
         <TrackLayer
           tracks={visibleTracks}
           selectedTrackId={selectedTrackId}
-          showHeatmap={showHeatmap}
           showStartEndMarkers={showStartEndMarkers}
           onTrackClick={(id, originalEvent) => {
             useAppStore.getState().setDetailsTrackId(id);
@@ -148,6 +145,11 @@ function MapLayers({ onPOIClick }) {
             );
           }}
         />
+      )}
+
+      {/* Density heatmap (uMap-style) */}
+      {showHeatmap && (
+        <HeatmapLayer tracks={visibleTracks} />
       )}
 
       {/* Speed gradient segments */}
@@ -169,32 +171,15 @@ function MapLayers({ onPOIClick }) {
 }
 
 export default function MapContainer() {
-  const [contextMenu, setContextMenu] = useState(null);
   const [coordsMenu, setCoordsMenu] = useState(null);
   const [creatingPOI, setCreatingPOI] = useState(null);
   const [detailsPOI, setDetailsPOI] = useState(null);
-  const poiCreationMode = useMapStore((s) => s.poiCreationMode);
 
   const handlePOIRenamed = (updatedPOI) => {
     useMapStore.getState().setPOIs(
       useMapStore.getState().pois.map((p) => (p.id === updatedPOI.id ? updatedPOI : p))
     );
     useAppStore.getState().bumpPOIListVersion();
-  };
-
-  const handleContextMenu = (lat, lon, x, y) => {
-    setContextMenu({ lat, lon, x, y });
-  };
-
-  const handleCreatePOI = () => {
-    if (contextMenu) {
-      setCreatingPOI({ lat: contextMenu.lat, lon: contextMenu.lon });
-      setContextMenu(null);
-    }
-  };
-
-  const handleCloseMenu = () => {
-    setContextMenu(null);
   };
 
   const handleSuccessPOI = (poi) => {
@@ -217,24 +202,11 @@ export default function MapContainer() {
       >
         <MapLayers onPOIClick={setDetailsPOI} />
         <POIContextMenuHandler
-          poiCreationMode={poiCreationMode}
-          onContextMenu={handleContextMenu}
           onCoordinatesMenu={(lat, lon, x, y) => setCoordsMenu({ lat, lon, x, y })}
         />
       </LeafletMap>
 
       <TrackDetailsPopover />
-
-      {contextMenu && (
-        <POIContextMenu
-          lat={contextMenu.lat}
-          lon={contextMenu.lon}
-          x={contextMenu.x}
-          y={contextMenu.y}
-          onCreateClick={handleCreatePOI}
-          onCancel={handleCloseMenu}
-        />
-      )}
 
       {creatingPOI && (
         <POICreationModal

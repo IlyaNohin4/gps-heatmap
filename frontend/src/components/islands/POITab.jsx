@@ -523,7 +523,8 @@ export default React.memo(function POITab({ setSidebarOpen }) {
           style={{ display: 'none' }}
         />
         <Button
-          variant={poiCreationMode ? 'primary' : 'secondary'}
+          variant="secondary"
+          active={poiCreationMode}
           onClick={handleToggleCreation}
           style={{ flex: 1, minWidth: 0, border: 'none' }}
           title="Create POI"
@@ -535,7 +536,7 @@ export default React.memo(function POITab({ setSidebarOpen }) {
       {/* Status indicator */}
       {poiCreationMode && (
         <div className="poi-status">
-          ✓ Left-click on map to create
+          ✓ Right-click on map to create
         </div>
       )}
 
