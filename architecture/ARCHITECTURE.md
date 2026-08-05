@@ -193,6 +193,17 @@ GET    /api/tracks/geometries          — bulk: [{id, normalized_points}] дл�
        юзера, одним запросом (T04). Должен быть объявлен ВЫШЕ /{id}, иначе
        FastAPI матчит "geometries" как track_id. raw_points/speed_segments не
        включены — тяжёлые, нужны только выбранному треку через GET /{id}.
+GET    /api/tracks/road-usage          — агрегация точек ВСЕХ треков юзера в общие
+       "дорожные" сегменты с visit count (2026-08-05). Точки соседних пар
+       квантуются в grid-ключ (~5 знаков после запятой, ~1м), считается, сколько
+       разных треков прошло через каждый ключ (max 1 раз на трек — свой же
+       back-and-forth не инфлейтит count). Сегменты одного count, идущие через
+       узел со степенью 2 (не развилка), склеиваются в цепочки
+       (`_merge_segments_into_chains`) — дорога рисуется одной линией, а не
+       россыпью визуально стыкующихся коротких отрезков. Response:
+       `{chains: [{points: [[lat,lon],...], count}]}`. Питает HeatmapLayer
+       (см. § Visualization) — считается на лету из `normalized_points`, без
+       новых колонок/миграций.
 GET    /api/tracks/{id}                — детали трека
 DELETE /api/tracks/{id}
 PATCH  /api/tracks/{id}/rename         — переименование
@@ -311,8 +322,8 @@ POST   /api/routing/directions         — прокси к OpenRouteService дл
   `appStore.tracks` НЕ используется и не перезаписывается этим потоком — он
   питает карту (список треков, доступных для показа/выбора; геометрия грузится
   массово через `/api/tracks/geometries`, `limit=5000`, см. T04) и должен
-  оставаться независимым от фильтров списка. Heatmap теперь рисует только
-  видимые/выбранные треки, не весь `appStore.tracks` целиком — см. § VisitLayer ниже.
+  оставаться независимым от фильтров списка. Heatmap не завязан на списке
+  вообще — фетчит агрегат по всем трекам юзера напрямую с бэкенда, см. § Modes.
 - **Infinite scroll (T06):** оба таба (Tracks и POI) подгружают следующие 50
   элементов через общий хук `frontend/src/hooks/useInfiniteScroll.js`
   (IntersectionObserver над sentinel-элементом в конце списка, отключается
@@ -534,8 +545,16 @@ dev (`import.meta.env.DEV` ветвление вырезает роут и ле�
 
 ### Modes
 - **Speed:** Polyline с градиентом по speed_segments (цветовая шкала выше)
-- **Heatmap (Visit):** react-leaflet-heatmap-layer-v3 по кол-во треков
-  - 1 трек → синий, 2-3 зелёный, 4-5 оранжевый, 5+ красный
+- **Heatmap:** line-based (2026-08-05, `frontend/src/map/HeatmapLayer.jsx`) — не
+  blur-density (leaflet.heat удалён из зависимостей), а сами дороги: одна
+  цепочка-полилиния на дорогу, единая толщина (`weight: 4`), цвет
+  `var(--accent)`, растёт только `opacity` (`0.35 + count * 0.2`, capped 1) —
+  чем больше треков прошло по участку, тем он заметнее. Данные — единый
+  `GET /api/tracks/road-usage` (см. § API Endpoints), не завязан на
+  `visibleTracks`/`selectedTrackId` — показывает агрегат по ВСЕМ трекам юзера
+  всегда, в отличие от старого `VisitLayer` (удалён, был мёртвым кодом —
+  нигде не рендerился после T04). SVG-рендерер (не `L.canvas()` — canvas даёт
+  более мягкие/смазанные края на тонких полупрозрачных линиях).
 
 ### Поток геометрий карты (T04)
 - `App.jsx` после `fetchTracks({ limit: 500 })` (max API-лимит, T01) один раз
@@ -548,20 +567,17 @@ dev (`import.meta.env.DEV` ветвление вырезает роут и ле�
   (со `speed_segments`) через `GET /api/tracks/{id}`.
 - `TrackLayer`/`SpeedLayer` рисуют треки из `mapStore.visibleTrackIds`
   (ручной toggle) ∪ выбранный трек — как и раньше, не затронуто T04.
-- `VisitLayer` (heatmap) — **изменено 2026-07-21** (по фидбеку пользователя: было
-  странно, что при выборе одного трека heatmap всё равно показывала посещения по
-  всем трекам). Теперь `VisitLayer` получает тот же `visibleTracks`, что и
-  `TrackLayer`/`SpeedLayer` (объединение `mapStore.visibleTrackIds` ∪ выбранный
-  трек) — heatmap показывает посещения только по видимым/выбранным трекам, не по
-  всем сразу. `useAllTracksWithGeometry()` удалена как более не используемая.
-  Гейтится через `hasVisibleTracks` (`visibleTrackIds.size > 0 || !!selectedTrackId`)
-  — при полностью скрытых треках heatmap не рендерится вовсе, а не показывает 0 точек.
+- `HeatmapLayer` — **переписан 2026-08-05** (см. § Modes выше): раньше был
+  `VisitLayer`, гейтился видимыми треками фронтенда; теперь единственный
+  Heatmap-слой fetch'ит `/api/tracks/road-usage` сам, агрегация по ВСЕМ трекам
+  юзера считается на бэкенде — `visibleTracks`/`selectedTrackId` эту логику
+  больше не гейтят (`tracks` проп остался только как effect-триггер на рефетч).
 - **Find in area / Show all** — не переведены на mapStore: `handleFindInArea`/
   `handleShowAll` в `App.jsx` по-прежнему просто перезаписывают `appStore.tracks`
-  через `fetchTracks({bbox})`. `TrackLayer`/`SpeedLayer`/`VisitLayer` рисуют только
+  через `fetchTracks({bbox})`. `TrackLayer`/`SpeedLayer` рисуют только
   из `mapStore.visibleTrackIds` ∪ выбранный трек, поэтому bbox-фильтр в `appStore.tracks`
   сам по себе не влияет на то, что нарисовано на карте — не regression, поведение
-  ожидаемое.
+  ожидаемое. (Heatmap теперь не участвует в этой логике вообще — см. выше.)
 
 ### POI
 - Overpass API, категории: Food, Amenities, Medical, Tourism, Bicycle, Public Transport
@@ -571,6 +587,16 @@ dev (`import.meta.env.DEV` ветвление вырезает роут и ле�
   disableClusteringAtZoom: 16, showCoverageOnHover: false, maxClusterRadius: 50 })`
   вместо простого `L.layerGroup()`. На зуме ≥16 маркеры показываются
   индивидуально (совпадает с зумом `flyTo` из POITab при выборе POI из списка).
+- **Создание POI с карты (`POIContextMenu.jsx`, восстановлен 2026-08-05)** —
+  компактное меню (Lat/Lon + Copy coordinates + Create POI here + Cancel),
+  единая точка входа для двух триггеров: обычный правый клик по карте
+  (всегда) и левый клик при активном `mapStore.poiCreationMode` (тумблер
+  "+ Create" в POITab). Оба обработаны в одном `POIContextMenuHandler`
+  (`MapContainer.jsx`, `useMapEvents({ contextmenu, click })`). До этого
+  меню называлось `CoordinatesContextMenu.jsx` (без кнопки Copy) и
+  левый-клик-вход был выпилен как "дублирующий" — оказалось, что кнопка
+  "+ Create"/подсказка "left-click on map" в POITab при этом молча переставали
+  что-либо делать; теперь оба входа снова рабочие и ведут на одно меню.
 
 ---
 
