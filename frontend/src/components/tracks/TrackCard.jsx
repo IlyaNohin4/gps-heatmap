@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { toast } from 'react-toastify';
+import { notify as toast } from '../../utils/notify.js';
 import { useTranslation } from 'react-i18next';
 import Slider from 'rc-slider';
 import 'rc-slider/assets/index.css';
@@ -132,14 +132,31 @@ export default React.memo(function TrackCard({ track, isSelected, onClick }) {
 
   // Copies the link and returns whether the copy actually succeeded, so
   // callers can fold it into a single toast instead of showing their own
-  // "done" toast plus a separate "link copied" one.
+  // "done" toast plus a separate "link copied" one. On failure (clipboard
+  // API blocked — no permission, insecure context), a persistent toast with
+  // a "Copy" action button lets the user retry manually instead of just
+  // dumping the raw URL as unclickable toast text.
   async function copyShareLink(publicToken) {
     const url = `${window.location.origin}/track/${publicToken}`;
     try {
       await navigator.clipboard.writeText(url);
       return true;
     } catch {
-      toast.info(url, { autoClose: false });
+      const toastId = toast.info(t('toast.copy_manually'), {
+        persist: true,
+        action: {
+          label: t('toast.copy_action'),
+          onClick: async () => {
+            try {
+              await navigator.clipboard.writeText(url);
+              toast.dismiss(toastId);
+              toast.success(t('toast.link_copied'));
+            } catch {
+              // Still blocked — leave the persistent toast up for another try.
+            }
+          },
+        },
+      });
       return false;
     }
   }

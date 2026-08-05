@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { toast } from 'react-toastify';
+import { notify as toast } from '../../utils/notify.js';
 import { useTranslation } from 'react-i18next';
 import { updatePOI } from '../../api/poi.js';
 import { apiErrorMessage } from '../../utils/apiError.js';

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef, useTransition } from 'react';
 import { Search, Filter, Plus, X, ChevronLeft, ChevronRight, MapPin, Route, Eye, EyeOff, Upload } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { toast } from 'react-toastify';
+import { notify as toast } from '../../utils/notify.js';
 import Slider from 'rc-slider';
 import 'rc-slider/assets/index.css';
 import TrackCard from '../tracks/TrackCard.jsx';
@@ -450,7 +450,7 @@ function LeftIslandContent({ onUploadClick, loading, allTracksVisible, onToggleV
               toggleTrackCreator();
               setShowSaveModal(false);
 
-              toast.success(t('tracks.saved_success', { name: trackName }));
+              toast.success(t('tracks.saved_success'));
             } catch (err) {
               toast.error(t('tracks.save_failed'));
               console.error(err);

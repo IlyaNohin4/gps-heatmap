@@ -1,7 +1,7 @@
 import React, { lazy, Suspense, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
-import { ToastContainer, toast } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css';
+import { notify as toast } from './utils/notify.js';
+import ToastContainer from './components/notifications/ToastContainer.jsx';
 import { useTranslation } from 'react-i18next';
 
 import './styles/globals.css';
@@ -53,7 +53,7 @@ const SPEED_LEGEND = [
 // ---- Main App Page ----
 function MainPage() {
   const { isAuthenticated, setUser } = useAuthStore();
-  const { theme, setTracks, setTheme, setUnitSystem, setLanguage, selectedTrackId, setSelectedTrackId, setSelectedTrack, unitSystem, tracks, bumpTracksListVersion } = useAppStore();
+  const { setTracks, setTheme, setUnitSystem, setLanguage, selectedTrackId, setSelectedTrackId, setSelectedTrack, unitSystem, tracks, bumpTracksListVersion } = useAppStore();
   const {
     mapInstance, showSpeed,
     visibleTrackIds, toggleTrackVisibility
@@ -166,38 +166,57 @@ function MainPage() {
   }
 
   async function handleTrackFilesFromOverlay(files) {
-    const { toast } = await import('react-toastify');
+    // One summary toast for the whole batch instead of one per file — see
+    // notification-reduction pass: "on one or several tracks, one
+    // notification, no specifics" (no filenames, no per-file counts).
+    let successCount = 0;
+    let failCount = 0;
     for (const file of files) {
       try {
         await uploadTrack(file, null);
-        const data = await fetchTracks({ limit: TRACKS_FETCH_LIMIT });
-        setTracks(data);
-        bumpTracksListVersion();
-        toast.success(i18n.t('tracks.upload_success', { name: file.name }));
+        successCount++;
       } catch (err) {
-        toast.error(i18n.t('tracks.upload_failed', { name: file.name }));
+        failCount++;
       }
+    }
+    if (successCount > 0) {
+      const data = await fetchTracks({ limit: TRACKS_FETCH_LIMIT });
+      setTracks(data);
+      bumpTracksListVersion();
+      toast.success(i18n.t(successCount === 1 ? 'tracks.upload_success' : 'tracks.upload_success_plural'));
+    }
+    if (failCount > 0) {
+      toast.error(i18n.t('tracks.upload_failed'));
     }
   }
 
   async function handlePOIFilesFromOverlay(files) {
-    const { toast } = await import('react-toastify');
+    let successCount = 0;
+    let failCount = 0;
     for (const file of files) {
       if (isKml(file.name)) {
         const kind = await sniffKmlKind(file).catch(() => 'unknown');
         if (kind === 'track') {
+          // Kept per-file: this is guidance about a specific wrong file,
+          // not an upload-result summary — see notification-reduction pass.
           toast.error(i18n.t('validation.kml_looks_like_track', { name: file.name }));
           continue;
         }
       }
       try {
         await uploadPOI(file);
-        const pois = await fetchPOI();
-        useMapStore.getState().setPOIs(pois);
-        toast.success(i18n.t('poi.import_from_file', { name: file.name }));
+        successCount++;
       } catch (err) {
-        toast.error(i18n.t('poi.import_from_file_failed', { name: file.name }));
+        failCount++;
       }
+    }
+    if (successCount > 0) {
+      const pois = await fetchPOI();
+      useMapStore.getState().setPOIs(pois);
+      toast.success(i18n.t('poi.import_from_file'));
+    }
+    if (failCount > 0) {
+      toast.error(i18n.t('poi.import_from_file_failed'));
     }
   }
 
@@ -309,16 +328,7 @@ function MainPage() {
 
       <AuthModal />
       <UploadZone inputRef={uploadInputRef} onTrackFiles={handleTrackFilesFromOverlay} onPOIFiles={handlePOIFilesFromOverlay} />
-      <ToastContainer
-        position="bottom-right"
-        autoClose={3500}
-        hideProgressBar={false}
-        newestOnTop
-        closeOnClick
-        pauseOnHover
-        theme={theme === 'dark' ? 'dark' : 'light'}
-        style={{ zIndex: 20000 }}
-      />
+      <ToastContainer />
     </>
   );
 }

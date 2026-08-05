@@ -3,7 +3,7 @@ import {
   ChevronDown, ChevronUp, Sun, Moon,
   LogOut, User, Key, AlertTriangle, Map, Mail, Tags,
 } from 'lucide-react';
-import { toast } from 'react-toastify';
+import { notify as toast } from '../../utils/notify.js';
 import { useTranslation } from 'react-i18next';
 import useAppStore from '../../store/appStore.js';
 import useAuthStore from '../../store/authStore.js';
@@ -26,7 +26,7 @@ const LANGUAGES = [
 ];
 
 export default function TopIsland() {
-  const { theme, unitSystem, language, expandedTrackInfo, setTheme, setUnitSystem, setLanguage, setExpandedTrackInfo, activePanel, setActivePanel } = useAppStore();
+  const { theme, unitSystem, language, expandedTrackInfo, toastPosition, setTheme, setUnitSystem, setLanguage, setExpandedTrackInfo, setToastPosition, activePanel, setActivePanel } = useAppStore();
   const { showStartEndMarkers, toggleStartEndMarkers } = useMapStore();
   const { isAuthenticated, user, logout, setUser } = useAuthStore();
   const { t, i18n } = useTranslation();
@@ -236,6 +236,24 @@ export default function TopIsland() {
                 </Chip>
                 <Chip active={!showStartEndMarkers} onClick={() => showStartEndMarkers && toggleStartEndMarkers()}>
                   {t('settings.off')}
+                </Chip>
+              </div>
+            </div>
+
+            <div style={row}>
+              <span style={{ fontSize: 'var(--text-sm)', color: 'var(--text)' }}>{t('settings.notifications')}</span>
+              <div style={chipGroup}>
+                <Chip active={toastPosition === 'top-left'} onClick={() => setToastPosition('top-left')} title={t('settings.notif_top_left')}>
+                  ↖
+                </Chip>
+                <Chip active={toastPosition === 'top-right'} onClick={() => setToastPosition('top-right')} title={t('settings.notif_top_right')}>
+                  ↗
+                </Chip>
+                <Chip active={toastPosition === 'bottom-left'} onClick={() => setToastPosition('bottom-left')} title={t('settings.notif_bottom_left')}>
+                  ↙
+                </Chip>
+                <Chip active={toastPosition === 'bottom-right'} onClick={() => setToastPosition('bottom-right')} title={t('settings.notif_bottom_right')}>
+                  ↘
                 </Chip>
               </div>
             </div>

@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback, Suspense, lazy } from 'react';
 import { Plus, Upload, X as XIcon, Loader, Search, Filter, ChevronLeft, FolderCog, Edit2, Download, Trash2, Eye, EyeOff } from 'lucide-react';
-import { toast } from 'react-toastify';
+import { notify as toast } from '../../utils/notify.js';
 import { useTranslation } from 'react-i18next';
 import useAppStore from '../../store/appStore.js';
 import useAuthStore from '../../store/authStore.js';

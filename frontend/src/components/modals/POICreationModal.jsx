@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Loader } from 'lucide-react';
-import { toast } from 'react-toastify';
+import { notify as toast } from '../../utils/notify.js';
 import { useTranslation } from 'react-i18next';
 import { createPOI, createList, getLists } from '../../api/poi.js';
 import { apiErrorMessage } from '../../utils/apiError.js';

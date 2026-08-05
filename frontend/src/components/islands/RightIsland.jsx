@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import i18n from '../../i18n/index.js';
+import { notify } from '../../utils/notify.js';
 import useMapStore from '../../store/mapStore.js';
 import useAppStore from '../../store/appStore.js';
 import { LAYER_OPTIONS } from '../../map/MapLayers.js';
@@ -65,7 +66,7 @@ export default function RightIsland() {
         locatedPosRef.current = latlng;
         setLocated(true);
       },
-      () => import('react-toastify').then((m) => m.toast.error(i18n.t('errors.geolocation_denied')))
+      () => notify.error(i18n.t('errors.geolocation_denied'))
     );
   }
 

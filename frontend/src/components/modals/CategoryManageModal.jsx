@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Edit2, Loader, Plus, Trash2, X as XIcon } from 'lucide-react';
-import { toast } from 'react-toastify';
+import { notify as toast } from '../../utils/notify.js';
 import { useTranslation } from 'react-i18next';
 import { fetchPOICategories, createCategory, renameCategory, deleteCategory } from '../../api/poi.js';
 import { apiErrorMessage } from '../../utils/apiError.js';

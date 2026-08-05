@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { toast } from 'react-toastify';
+import { notify as toast } from '../../utils/notify.js';
 import { useTranslation } from 'react-i18next';
 import { renameTrack } from '../../api/tracks.js';
 import { apiErrorMessage } from '../../utils/apiError.js';
@@ -20,7 +20,7 @@ export default function TrackRenameModal({ track, isOpen, onClose, onRenamed }) 
 
   async function handleRename() {
     if (!nameValue.trim()) {
-      toast.error(t('validation.track_name_empty'));
+      toast.error(t('validation.track_name_required'));
       return;
     }
     if (nameValue === track.name) {

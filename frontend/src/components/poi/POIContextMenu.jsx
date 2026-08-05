@@ -1,6 +1,6 @@
 import React from 'react';
 import { Copy, MapPin, X } from 'lucide-react';
-import { toast } from 'react-toastify';
+import { notify as toast } from '../../utils/notify.js';
 import { useTranslation } from 'react-i18next';
 
 // Small map-click menu — the single entry point for POI creation from the
