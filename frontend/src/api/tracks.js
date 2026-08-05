@@ -50,6 +50,11 @@ export async function fetchTrackGeometries() {
   return data;
 }
 
+export async function fetchRoadUsage() {
+  const { data } = await client.get('/api/tracks/road-usage');
+  return data;
+}
+
 export async function deleteTrack(id) {
   const { data } = await client.delete(`/api/tracks/${id}`);
   return data;

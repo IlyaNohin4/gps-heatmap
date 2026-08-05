@@ -15,7 +15,6 @@
     "axios": "^1.7.2",
     "i18next": "^26.3.4",
     "leaflet": "^1.9.4",
-    "leaflet.heat": "^0.2.0",
     "leaflet.markercluster": "^1.5.3",
     "lucide-react": "^1.28.0",
     "rc-slider": "^10.5.0",

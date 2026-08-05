@@ -35,7 +35,7 @@ const ResetPasswordPage = lazy(() => import('./pages/ResetPasswordPage.jsx'));
 // dead-code-eliminate the dynamic import entirely from the production bundle.
 const UiDemoPage = import.meta.env.DEV ? lazy(() => import('./pages/UiDemoPage.jsx')) : null;
 
-// appStore.tracks feeds the heatmap (VisitLayer) directly, so every refetch
+// appStore.tracks feeds the heatmap (HeatmapLayer) directly, so every refetch
 // must hold every track the user has — the API's default page size (50)
 // would silently drop tracks 51+ from the heatmap and the list.
 const TRACKS_FETCH_LIMIT = 500;
