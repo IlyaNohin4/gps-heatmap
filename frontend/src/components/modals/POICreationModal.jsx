@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Loader } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { useTranslation } from 'react-i18next';
-import { createPOI, createImport, getImports } from '../../api/poi.js';
+import { createPOI, createList, getLists } from '../../api/poi.js';
 import { apiErrorMessage } from '../../utils/apiError.js';
 import useMapStore from '../../store/mapStore.js';
 import Modal from '../../ui/Modal.jsx';
@@ -16,7 +16,7 @@ const NEW_LIST_VALUE = '__new__';
 
 export default function POICreationModal({ lat, lon, onClose, onSuccess }) {
   const { t } = useTranslation();
-  const { imports, setImports } = useMapStore();
+  const { lists, setLists } = useMapStore();
   const [name, setName] = useState('');
   const [category, setCategory] = useState('Food');
   const [description, setDescription] = useState('');
@@ -24,21 +24,21 @@ export default function POICreationModal({ lat, lon, onClose, onSuccess }) {
   const [color, setColor] = useState(null);
   const [visited, setVisited] = useState(false);
   const [saving, setSaving] = useState(false);
-  // '' = not decided yet (still loading imports); NEW_LIST_VALUE = show the
-  // "new list name" field; otherwise an existing import name. A POI always
+  // '' = not decided yet (still loading lists); NEW_LIST_VALUE = show the
+  // "new list name" field; otherwise an existing list name. A POI always
   // belongs to a list — there is no "no list" option.
-  const [importChoice, setImportChoice] = useState('');
+  const [listChoice, setListChoice] = useState('');
   const [newListName, setNewListName] = useState('');
-  const [importsLoaded, setImportsLoaded] = useState(false);
+  const [listsLoaded, setListsLoaded] = useState(false);
 
   useEffect(() => {
-    getImports()
+    getLists()
       .then((data) => {
-        setImports(data);
+        setLists(data);
         // No list is pre-selected — the user must actively pick one (or
         // "+ New list...") each time, except when there's nothing to pick
         // from at all, where the new-list field is the only option anyway.
-        setImportChoice((current) => {
+        setListChoice((current) => {
           if (current) return current;
           if (data.length === 0) {
             setNewListName((name) => name || 'My Points');
@@ -47,9 +47,9 @@ export default function POICreationModal({ lat, lon, onClose, onSuccess }) {
           return '';
         });
       })
-      .catch((err) => console.error('Failed to load imports:', err))
-      .finally(() => setImportsLoaded(true));
-  }, [setImports]);
+      .catch((err) => console.error('Failed to load lists:', err))
+      .finally(() => setListsLoaded(true));
+  }, [setLists]);
 
   async function handleCreate(e) {
     e.preventDefault();
@@ -58,22 +58,22 @@ export default function POICreationModal({ lat, lon, onClose, onSuccess }) {
       toast.error(t('validation.name_required'));
       return;
     }
-    if (importChoice === NEW_LIST_VALUE && !newListName.trim()) {
+    if (listChoice === NEW_LIST_VALUE && !newListName.trim()) {
       toast.error(t('validation.name_required'));
       return;
     }
-    if (!importChoice) {
+    if (!listChoice) {
       toast.error('Please select a list');
       return;
     }
 
     setSaving(true);
     try {
-      let targetImport = importChoice === NEW_LIST_VALUE ? newListName.trim() : importChoice;
-      if (importChoice === NEW_LIST_VALUE) {
-        await createImport(targetImport);
+      let targetList = listChoice === NEW_LIST_VALUE ? newListName.trim() : listChoice;
+      if (listChoice === NEW_LIST_VALUE) {
+        await createList(targetList);
       }
-      const poi = await createPOI(name, lat, lon, category, description || null, icon, color, visited, targetImport);
+      const poi = await createPOI(name, lat, lon, category, description || null, icon, color, visited, targetList);
       toast.success(t('poi.created_success'));
       onSuccess?.(poi);
       onClose();
@@ -126,8 +126,8 @@ export default function POICreationModal({ lat, lon, onClose, onSuccess }) {
             List
           </label>
           <select
-            value={importChoice}
-            onChange={(e) => setImportChoice(e.target.value)}
+            value={listChoice}
+            onChange={(e) => setListChoice(e.target.value)}
             style={{
               width: '100%',
               padding: 'var(--space-2) var(--space-3)',
@@ -138,17 +138,17 @@ export default function POICreationModal({ lat, lon, onClose, onSuccess }) {
               color: 'var(--text)',
               boxSizing: 'border-box',
             }}
-            disabled={saving || !importsLoaded}
+            disabled={saving || !listsLoaded}
           >
-            {!importChoice && (
-              <option value="" disabled>{importsLoaded ? 'Select a list…' : 'Loading…'}</option>
+            {!listChoice && (
+              <option value="" disabled>{listsLoaded ? 'Select a list…' : 'Loading…'}</option>
             )}
-            {imports.map((imp) => (
-              <option key={imp.name} value={imp.name}>{imp.name} ({imp.count})</option>
+            {lists.map((list) => (
+              <option key={list.name} value={list.name}>{list.name} ({list.count})</option>
             ))}
             <option value={NEW_LIST_VALUE}>+ New list…</option>
           </select>
-          {importChoice === NEW_LIST_VALUE && (
+          {listChoice === NEW_LIST_VALUE && (
             <Input
               type="text"
               value={newListName}
@@ -216,7 +216,7 @@ export default function POICreationModal({ lat, lon, onClose, onSuccess }) {
           <Button type="button" variant="secondary" onClick={onClose} disabled={saving} style={{ flex: 1 }}>
             Cancel
           </Button>
-          <Button type="submit" disabled={saving || !importsLoaded} style={{ flex: 1 }}>
+          <Button type="submit" disabled={saving || !listsLoaded} style={{ flex: 1 }}>
             {saving && <Loader size={14} style={{ animation: 'spin 1s linear infinite' }} />}
             {saving ? 'Creating...' : 'Create'}
           </Button>

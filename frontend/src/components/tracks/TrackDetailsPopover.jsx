@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { toast } from 'react-toastify';
 import { useTranslation } from 'react-i18next';
 import { X, MapPin, Pencil, Download, Trash2 } from 'lucide-react';
@@ -64,6 +64,21 @@ function PopoverBody({ track, unitSystem, position, onClose }) {
   const { t } = useTranslation();
   const [showRenameModal, setShowRenameModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const panelRef = useRef(null);
+
+  // Click-away auto-close — non-modal, so unlike a real Modal there's no
+  // overlay to catch outside clicks. Skipped while a real Modal (rename/
+  // delete) is open: those render via a portal outside panelRef, so a click
+  // inside them would otherwise register as "outside" and close this popup
+  // out from under the modal.
+  useEffect(() => {
+    if (showRenameModal || showDeleteModal) return;
+    function handlePointerDown(e) {
+      if (panelRef.current && !panelRef.current.contains(e.target)) onClose();
+    }
+    document.addEventListener('mousedown', handlePointerDown);
+    return () => document.removeEventListener('mousedown', handlePointerDown);
+  }, [showRenameModal, showDeleteModal, onClose]);
 
   async function handleDownload() {
     try {
@@ -104,6 +119,7 @@ function PopoverBody({ track, unitSystem, position, onClose }) {
 
   return (
     <Panel
+      ref={panelRef}
       className="panel-animate-in-right"
       style={{
         position: 'fixed',

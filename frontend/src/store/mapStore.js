@@ -23,11 +23,12 @@ const useMapStore = create((set, get) => ({
   filterByMapBounds: false,
   // Cache of full track details keyed by track id (includes normalized_points, speed_segments)
   trackDetailCache: {},
-  // User-uploaded POI imports. hiddenImports is opt-out (starts empty, i.e.
-  // everything visible by default) rather than opt-in, so POI stay visible
-  // even before/without the import list ever being fetched.
-  imports: [],
-  hiddenImports: new Set(),
+  // User-uploaded POI lists (backend/wire concept is still "import" —
+  // this is a frontend-only rename, see POITab.jsx). hiddenLists is opt-out
+  // (starts empty, i.e. everything visible by default) rather than opt-in,
+  // so POI stay visible even before/without the list ever being fetched.
+  lists: [],
+  hiddenLists: new Set(),
 
   // Track creator state
   trackCreatorState: {
@@ -62,17 +63,17 @@ const useMapStore = create((set, get) => ({
       return { poiCategories: next };
     }),
 
-  // User-uploaded POI imports
-  setImports: (imports) => set({ imports }),
-  toggleImportVisibility: (importName) =>
+  // User-uploaded POI lists
+  setLists: (lists) => set({ lists }),
+  toggleListVisibility: (listName) =>
     set((s) => {
-      const next = new Set(s.hiddenImports);
-      if (next.has(importName)) {
-        next.delete(importName);
+      const next = new Set(s.hiddenLists);
+      if (next.has(listName)) {
+        next.delete(listName);
       } else {
-        next.add(importName);
+        next.add(listName);
       }
-      return { hiddenImports: next };
+      return { hiddenLists: next };
     }),
 
   toggleTrackVisibility: (id) =>
@@ -193,8 +194,8 @@ const useMapStore = create((set, get) => ({
       pois: [],
       visibleTrackIds: new Set(),
       trackDetailCache: {},
-      imports: [],
-      hiddenImports: new Set(),
+      lists: [],
+      hiddenLists: new Set(),
       trackCreatorState: {
         waypoints: [],
         redoStack: [],
