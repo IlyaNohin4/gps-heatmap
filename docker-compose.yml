@@ -8,7 +8,10 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:
-      - "5432:5432"
+      # Bound to loopback only — this dev compose has no auth hardening
+      # (default password, no Redis auth) and must never be reachable from
+      # outside the host, including if it's ever brought up on a VDS.
+      - "127.0.0.1:5432:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-user} -d ${POSTGRES_DB:-gps_heatmap}"]
       interval: 10s
@@ -18,7 +21,7 @@ services:
   redis:
     image: redis:7-alpine
     ports:
-      - "6379:6379"
+      - "127.0.0.1:6379:6379"
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
@@ -37,6 +40,7 @@ services:
         condition: service_healthy
     volumes:
       - ./backend:/app
+      - uploads_data:/app/uploads
     command: sh -c "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"
 
   celery_worker:
@@ -49,6 +53,7 @@ services:
         condition: service_healthy
     volumes:
       - ./backend:/app
+      - uploads_data:/app/uploads
     # --concurrency=1 matches prod (docker-compose.prod.yml): without it,
     # prefork spawns one worker process per CPU, so multiple process_track
     # tasks can start concurrently and pile up blocking on `with
@@ -108,3 +113,8 @@ services:
 
 volumes:
   postgres_data:
+  # Shared between backend and celery_worker so uploaded files can be
+  # written to disk by one and read by the other (see Settings.UPLOAD_DIR) —
+  # kept separate from the ./backend bind mount so uploaded files never land
+  # in the git-tracked host directory.
+  uploads_data:

@@ -1,5 +1,7 @@
 import datetime
+import json
 import math
+import os
 import secrets
 from typing import List, Optional
 from xml.sax.saxutils import escape as xml_escape
@@ -8,7 +10,7 @@ from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, Res
 from fastapi.responses import StreamingResponse
 from geoalchemy2.functions import ST_Intersects, ST_MakeEnvelope
 from pydantic import BaseModel, Field
-from sqlalchemy import cast, func
+from sqlalchemy import and_, cast, func, or_
 from sqlalchemy.dialects.postgresql import ARRAY as PG_ARRAY
 from sqlalchemy.orm import Session
 
@@ -17,6 +19,7 @@ from app.core.database import get_db
 from app.core.deps import get_current_user
 from app.core.http_utils import safe_content_disposition
 from app.core.limiter import limiter
+from app.core.geometry_cache import GEOMETRY_CACHE_TTL, geometry_cache_key, invalidate_geometry_cache, road_usage_cache_key
 from app.core.redis_client import redis_client
 from app.models.poi import POI
 from app.models.track import Track
@@ -33,7 +36,17 @@ UPLOAD_CHUNK_SIZE = 1024 * 1024  # 1 MB — read in chunks so the size limit abo
 # TTL matches how long a client might reasonably still be polling.
 TASK_OWNER_TTL_SECONDS = 24 * 3600
 
-STUCK_PROCESSING_TIMEOUT = datetime.timedelta(hours=2)
+# Two different timeouts, because "processing" covers two very different
+# states (see Track.processing_started_at): a track still waiting behind
+# other sequential uploads (processing_started_at is NULL — could
+# legitimately sit for a while behind a long queue of large files) vs. one
+# whose Celery task actually started and then the worker died mid-task
+# (processing_started_at is set — the task itself is hard-capped at 30min,
+# see process_track.py's time_limit, so any real in-flight task is done well
+# under an hour). A single 2h timeout measured from uploaded_at used to
+# falsely reap tracks still legitimately queued behind others.
+STUCK_QUEUED_TIMEOUT = datetime.timedelta(hours=2)
+STUCK_PROCESSING_TIMEOUT = datetime.timedelta(hours=1)
 
 
 def _register_task_owner(task_id: str, user_id: int) -> None:
@@ -306,25 +319,31 @@ def list_tracks(
     # Lazy reaper: a track can get stuck in "processing" forever if the
     # Celery worker is killed mid-task (OOM, SIGKILL, host reboot) — there's
     # no Celery beat/cron in this deployment, so sweep it here instead of a
-    # separate scheduled job. STUCK_PROCESSING_TIMEOUT gives real in-flight
-    # tracks (this deployment processes strictly sequentially, one at a time)
-    # plenty of room before being treated as abandoned.
+    # separate scheduled job. Two separate timeouts (see constants above):
+    # a track still queued (processing_started_at IS NULL) is only reaped
+    # after STUCK_QUEUED_TIMEOUT since upload; one whose task actually
+    # started (processing_started_at set) is reaped much sooner, after
+    # STUCK_PROCESSING_TIMEOUT — real processing is hard-capped at 30min, so
+    # anything still "processing" an hour after it started is abandoned, not
+    # just a long queue.
     # SELECT first — an UPDATE+COMMIT on every single track listing (the
     # overwhelming majority of which have nothing stuck) is wasted write
     # traffic; a stuck track is rare enough that the extra existence check
     # up front is cheaper overall.
-    _stuck_cutoff = datetime.datetime.now(datetime.timezone.utc) - STUCK_PROCESSING_TIMEOUT
-    _stuck_exists = db.query(Track.id).filter(
+    _now = datetime.datetime.now(datetime.timezone.utc)
+    _queued_cutoff = _now - STUCK_QUEUED_TIMEOUT
+    _processing_cutoff = _now - STUCK_PROCESSING_TIMEOUT
+    _stuck_filter = (
         Track.user_id == current_user.id,
         Track.status == "processing",
-        Track.uploaded_at < _stuck_cutoff,
-    ).first()
+        or_(
+            and_(Track.processing_started_at.is_(None), Track.uploaded_at < _queued_cutoff),
+            and_(Track.processing_started_at.isnot(None), Track.processing_started_at < _processing_cutoff),
+        ),
+    )
+    _stuck_exists = db.query(Track.id).filter(*_stuck_filter).first()
     if _stuck_exists:
-        db.query(Track).filter(
-            Track.user_id == current_user.id,
-            Track.status == "processing",
-            Track.uploaded_at < _stuck_cutoff,
-        ).update(
+        db.query(Track).filter(*_stuck_filter).update(
             {"status": "error", "error_detail": "Processing timed out or the worker crashed"},
             synchronize_session=False,
         )
@@ -412,13 +431,27 @@ async def upload_track(
 
     # rsplit(".", 1)[0] on a dotfile-style name like ".gpx" (no basename)
     # gives "", not the extension-stripped "track" fallback intended below.
-    name = (file.filename or "track").rsplit(".", 1)[0] or "track"
+    # Truncated to 255 for consistency with /create and /rename's explicit
+    # max_length=255 — Track.name itself is an unbounded Postgres varchar
+    # (no 500 risk), but an unbounded filename-derived name is still bad UX.
+    name = ((file.filename or "track").rsplit(".", 1)[0] or "track")[:255]
     track = Track(user_id=current_user.id, name=name, file_format=fmt, raw_points=None, status="processing")
     db.add(track)
     db.commit()
     db.refresh(track)
 
-    task = process_track.delay(track.id, content)
+    # Written to the uploads_data volume shared with celery_worker instead
+    # of passed as a task argument — a task argument goes through Redis (the
+    # broker), so up to MAX_FILE_SIZE_MB per queued upload would otherwise
+    # sit in Redis's memory for the whole time it's queued behind earlier
+    # uploads (this deployment processes strictly sequentially). Filename is
+    # track.id, not user input, so no path-traversal concern.
+    upload_path = os.path.join(settings.UPLOAD_DIR, f"{track.id}.upload")
+    os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
+    with open(upload_path, "wb") as f:
+        f.write(content)
+
+    task = process_track.delay(track.id, upload_path)
     _register_task_owner(task.id, current_user.id)
     return {"track_id": track.id, "task_id": task.id}
 
@@ -536,13 +569,20 @@ def list_track_geometries(
     heatmap/map layers need every track's geometry in one call — but capped
     to bound the worst-case response size for a single request.
     """
+    cache_key = geometry_cache_key(current_user.id)
+    cached = redis_client.get(cache_key)
+    if cached is not None:
+        return json.loads(cached)
+
     tracks = (
         db.query(Track.id, Track.normalized_points)
         .filter(Track.user_id == current_user.id)
         .limit(5000)
         .all()
     )
-    return [{"id": t.id, "normalized_points": t.normalized_points} for t in tracks]
+    result = [{"id": t.id, "normalized_points": t.normalized_points} for t in tracks]
+    redis_client.setex(cache_key, GEOMETRY_CACHE_TTL, json.dumps(result))
+    return result
 
 
 class RoadUsageChain(BaseModel):
@@ -576,6 +616,11 @@ def get_road_usage(
     break at real intersections (a node touched by more than 2 segments) or
     where the count itself changes, not at every grid-snapped point.
     """
+    cache_key = road_usage_cache_key(current_user.id)
+    cached = redis_client.get(cache_key)
+    if cached is not None:
+        return json.loads(cached)
+
     tracks = (
         db.query(Track.id, Track.normalized_points)
         .filter(Track.user_id == current_user.id)
@@ -606,7 +651,9 @@ def get_road_usage(
             seen_keys.add(key)
             segments[key] = segments.get(key, 0) + 1
 
-    return {"chains": _merge_segments_into_chains(segments)}
+    result = {"chains": _merge_segments_into_chains(segments)}
+    redis_client.setex(cache_key, GEOMETRY_CACHE_TTL, json.dumps(result))
+    return result
 
 
 def _merge_segments_into_chains(segments: dict) -> list:
@@ -694,6 +741,7 @@ def delete_track(
         raise HTTPException(status_code=404, detail="Track not found")
     db.delete(track)
     db.commit()
+    invalidate_geometry_cache(current_user.id)
 
 
 class RenameBody(BaseModel):
@@ -860,8 +908,16 @@ def _raw_points_to_geojson(points: List[dict], name: str, waypoints: Optional[Li
     return json.dumps(geojson)
 
 
+def _tcx_time(t: str) -> str:
+    # Stored timestamps come from datetime.isoformat() (see process_track.py),
+    # which renders UTC as "...+00:00" — Garmin Connect/Strava's TCX
+    # validators expect the "Z" suffix and reject (or silently mishandle)
+    # the offset form.
+    return t.replace("+00:00", "Z") if t.endswith("+00:00") else t
+
+
 def _raw_points_to_tcx(points: List[dict], name: str, waypoints: Optional[List[dict]] = None) -> str:
-    start_str = points[0]["time"] if points and points[0].get("time") else \
+    start_str = _tcx_time(points[0]["time"]) if points and points[0].get("time") else \
         datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     trackpoints = []
     for p in points:
@@ -870,7 +926,7 @@ def _raw_points_to_tcx(points: List[dict], name: str, waypoints: Optional[List[d
             f'<LongitudeDegrees>{xml_escape(str(p["lon"]))}</LongitudeDegrees></Position>'
         )
         if p.get("time"):
-            tp += f'<Time>{xml_escape(p["time"])}</Time>'
+            tp += f'<Time>{xml_escape(_tcx_time(p["time"]))}</Time>'
         if p.get("elevation") is not None:
             tp += f'<AltitudeMeters>{p["elevation"]}</AltitudeMeters>'
         tp += '</Trackpoint>'
@@ -880,7 +936,7 @@ def _raw_points_to_tcx(points: List[dict], name: str, waypoints: Optional[List[d
     if waypoints:
         cp_xml = []
         for w in waypoints:
-            time_str = w.get("time") or start_str
+            time_str = _tcx_time(w["time"]) if w.get("time") else start_str
             cp = (
                 f'<CoursePoint><Name>{xml_escape(w["name"])}</Name>'
                 f'<Time>{xml_escape(time_str)}</Time>'

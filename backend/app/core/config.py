@@ -14,6 +14,12 @@ class Settings(BaseSettings):
     RESEND_FROM_EMAIL: str = "onboarding@resend.dev"
     ORS_API_KEY: str = ""
     MAX_FILE_SIZE_MB: int = 20
+    # Shared between the backend and celery_worker containers via a named
+    # Docker volume (see docker-compose*.yml) — uploaded files are written
+    # here and the Celery task is given the path, not the raw bytes, so
+    # large uploads don't ride through Redis as a task argument (Redis
+    # holds the whole queue in memory; see security audit backlog item 5).
+    UPLOAD_DIR: str = "/app/uploads"
     NOMINATIM_USER_AGENT: str = "gps-heatmap/1.0 (change-me@example.com)"
     # Base URL used to build links in outgoing emails (e.g. password reset).
     FRONTEND_URL: str = "http://localhost:5173"

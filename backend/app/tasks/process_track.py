@@ -1,5 +1,6 @@
 """Celery task: parse → normalize → geocode → persist a GPS track."""
 
+import os
 from datetime import datetime, timezone
 
 import redis
@@ -11,6 +12,7 @@ from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.core.database import SessionLocal
+from app.core.geometry_cache import invalidate_geometry_cache
 from app.models.track import Track
 from app.tasks.celery_app import celery_app
 
@@ -46,14 +48,22 @@ def _points_to_linestring(points: list[dict]) -> str:
     soft_time_limit=1500,  # 25 min: raises SoftTimeLimitExceeded inside the task
     time_limit=1800,  # 30 min: worker hard-kills the task if that isn't enough
 )
-def process_track(self, track_id: int, file_bytes: bytes) -> dict:
+def process_track(self, track_id: int, file_path: str) -> dict:
     """Full processing pipeline for an uploaded GPS track file.
 
     Sequential processing: only 1 track at a time (controlled by Redis lock).
     Other Celery tasks can run in parallel.
+
+    `file_path` points into the uploads_data volume shared with the backend
+    container (see Settings.UPLOAD_DIR) — the upload endpoint writes the file
+    there instead of passing its bytes as a task argument, so a large queued
+    file doesn't sit in Redis (the broker) for as long as it's queued behind
+    other uploads. Removed in `finally` once this task is truly done with it
+    (not on a transient error that will be retried — see `will_retry` below).
     """
     db: Session = SessionLocal()
     track = None
+    will_retry = False
     try:
         # Notify: waiting in queue
         self.update_state(state="PROGRESS", meta={"step": "queued"})
@@ -64,10 +74,18 @@ def process_track(self, track_id: int, file_bytes: bytes) -> dict:
             if not track:
                 return {"status": "error", "detail": "track not found"}
 
+            # Mark processing as actually started now (post-queue-wait), so
+            # the stuck-processing reaper can distinguish "still queued" from
+            # "worker died mid-task" — see Track.processing_started_at.
+            track.processing_started_at = datetime.now(timezone.utc)
+            db.commit()
+
             self.update_state(state="PROGRESS", meta={"step": "parsing"})
 
             # 1. Parse (normalization happens inside parser)
             from app.services.parser_factory import parse
+            with open(file_path, "rb") as f:
+                file_bytes = f.read()
             result = parse(file_bytes, track.file_format)
             raw_points = result["points"]
             norm_points = result.get("normalized_points", raw_points)  # Fallback to raw if not present
@@ -134,17 +152,31 @@ def process_track(self, track_id: int, file_bytes: bytes) -> dict:
     except _TRANSIENT_EXCEPTIONS as exc:
         # Transient errors: DB/Redis unavailable. Let autoretry_for handle
         # the retry with backoff; only mark the track as failed once retries
-        # are exhausted.
+        # are exhausted. The uploaded file must survive to the next retry
+        # attempt, so it's not cleaned up here — see `will_retry` below.
         db.rollback()
         if self.request.retries >= self.max_retries:
             _set_error(db, track, str(exc))
+        else:
+            will_retry = True
         raise
     except Exception as exc:
         db.rollback()
         _set_error(db, track, str(exc))
         raise
     finally:
+        # normalized_points only actually changes here (done) or via
+        # _set_error's status flip — either way this is the one place every
+        # non-retrying outcome funnels through, so it's the single
+        # invalidation point for both /geometries and /road-usage's cache.
+        if track and not will_retry:
+            invalidate_geometry_cache(track.user_id)
         db.close()
+        if not will_retry:
+            try:
+                os.remove(file_path)
+            except OSError:
+                pass
 
 
 def _set_error(db: Session, track, detail: str) -> None:

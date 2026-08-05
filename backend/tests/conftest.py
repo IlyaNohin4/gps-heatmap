@@ -44,6 +44,19 @@ def _reset_rate_limiter():
     limiter.reset()
     yield
 
+
+@pytest.fixture(autouse=True)
+def _flush_test_redis():
+    """REDIS_URL above points at db 15, separate from dev's db 0, but that
+    alone doesn't isolate tests from *each other* — task_owner keys and the
+    geometries/road-usage cache (app.core.geometry_cache) are both keyed by
+    user id, and several test modules reuse the same fixed fake user id
+    across many tests, so a cache entry written by one test is visible to
+    the next. Flush before every test instead of tracking every key by hand."""
+    from app.core.redis_client import redis_client
+    redis_client.flushdb()
+    yield
+
 # ── SQLite in-memory engine (StaticPool = single shared connection) ────────────
 #
 # Without StaticPool, sqlite:///:memory: gives every new connection its own

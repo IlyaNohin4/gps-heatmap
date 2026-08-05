@@ -31,6 +31,12 @@ class Track(Base):
     moving_time_sec = Column(Integer, nullable=True)
     recorded_at = Column(DateTime(timezone=True), index=True)
     uploaded_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), index=True)
+    # Set when the Celery task actually acquires the sequential-processing
+    # lock and starts working on this track — NULL while still queued behind
+    # other uploads. The stuck-processing reaper (list_tracks) uses this,
+    # not uploaded_at, to tell "genuinely still queued" apart from "worker
+    # died mid-task" — see M1-followup in the security audit backlog.
+    processing_started_at = Column(DateTime(timezone=True), nullable=True)
 
     speed_avg = Column(Float, index=True)
     speed_max = Column(Float)

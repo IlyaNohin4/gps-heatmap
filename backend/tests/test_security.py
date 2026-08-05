@@ -252,7 +252,14 @@ class TestUploadContentIntegrity:
             app.dependency_overrides.clear()
 
         assert r.status_code == 202
-        sent_content = mock_task.delay.call_args[0][1]
+        # process_track.delay's 2nd arg is now the on-disk path the upload
+        # was written to (see security audit backlog item 5 — a task
+        # argument goes through Redis, the broker, so raw bytes there used
+        # to hold the whole file in Redis's memory for as long as it sat
+        # queued), not the raw bytes — read the file back to check integrity.
+        sent_path = mock_task.delay.call_args[0][1]
+        with open(sent_path, "rb") as f:
+            sent_content = f.read()
         assert sent_content == original
         assert len(sent_content) == len(original)
 

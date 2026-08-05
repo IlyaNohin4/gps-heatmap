@@ -25,6 +25,8 @@ router = APIRouter(prefix="/api/poi", tags=["poi"])
 
 MAX_FILE_BYTES = 5 * 1024 * 1024  # 5 MB
 UPLOAD_CHUNK_SIZE = 1024 * 1024  # 1 MB — read in chunks so the size limit aborts early
+MAX_POI_PER_UPLOAD = 10_000  # a well-formed 5MB KML can still contain tens of
+# thousands of Placemarks — cap the row count per import, not just file bytes
 
 
 def _validate_icon(icon: Optional[str]) -> None:
@@ -140,6 +142,11 @@ class CreatePOIRequest(BaseModel):
     visited: bool = False
     import_name: str = Field(..., min_length=1, max_length=255)
 
+    @field_validator("name", "category")
+    @classmethod
+    def _strip_name_category(cls, v: str) -> str:
+        return _strip_and_require_nonempty(v)
+
 
 class UpdatePOIRequest(BaseModel):
     name: Optional[str] = Field(None, max_length=255)
@@ -149,39 +156,52 @@ class UpdatePOIRequest(BaseModel):
     color: Optional[str] = Field(None, max_length=20)
     visited: Optional[bool] = None
 
+    @field_validator("name", "category")
+    @classmethod
+    def _strip_name_category(cls, v: Optional[str]) -> Optional[str]:
+        # Optional on this schema (PATCH — only present fields are updated),
+        # so unlike CreatePOIRequest a None here is legitimate and skips the
+        # non-empty check; only reject an actually-provided empty/whitespace
+        # string, same rule as create.
+        if v is None:
+            return v
+        return _strip_and_require_nonempty(v)
+
 
 @router.post("/create", response_model=POIResponse, status_code=status.HTTP_201_CREATED)
+@limiter.limit("30/minute")
 async def create_poi(
-    request: CreatePOIRequest,
+    request: Request,
+    body: CreatePOIRequest,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     """Create a single POI point on the map."""
 
     # Validate coordinates
-    if not (-90 <= request.lat <= 90):
+    if not (-90 <= body.lat <= 90):
         raise HTTPException(status_code=400, detail="Latitude must be between -90 and 90")
-    if not (-180 <= request.lon <= 180):
+    if not (-180 <= body.lon <= 180):
         raise HTTPException(status_code=400, detail="Longitude must be between -180 and 180")
 
-    _validate_icon(request.icon)
-    _validate_color(request.color)
+    _validate_icon(body.icon)
+    _validate_color(body.color)
 
     # import_name is required (min_length=1) on this schema — always truthy here.
-    _get_or_create_import(db, current_user.id, request.import_name)
+    _get_or_create_import(db, current_user.id, body.import_name)
 
     # Create POI
     poi = POI(
         user_id=current_user.id,
-        name=request.name,
-        lat=request.lat,
-        lon=request.lon,
-        category=request.category,
-        description=request.description,
-        icon=request.icon,
-        color=request.color,
-        visited=request.visited,
-        import_name=request.import_name,
+        name=body.name,
+        lat=body.lat,
+        lon=body.lon,
+        category=body.category,
+        description=body.description,
+        icon=body.icon,
+        color=body.color,
+        visited=body.visited,
+        import_name=body.import_name,
     )
     db.add(poi)
     db.commit()
@@ -221,14 +241,25 @@ async def upload_poi(
 
     if not poi_list:
         raise HTTPException(status_code=400, detail="No POI found in file")
+    if len(poi_list) > MAX_POI_PER_UPLOAD:
+        raise HTTPException(
+            status_code=400,
+            detail=f"File contains {len(poi_list)} points, which exceeds the {MAX_POI_PER_UPLOAD} limit per upload",
+        )
 
-    # Extract import name from filename (remove extension)
-    import_name = Path(file.filename).stem
+    # Extract import name from filename (remove extension). Path(...).name
+    # first, not just .stem, so a filename smuggling path separators (e.g.
+    # "../x.kml") can't escape into the parent dir's name; strip + fallback
+    # so a name of just "." (stem of ".kml") doesn't become the import name.
+    import_name = Path(file.filename).name
+    import_name = Path(import_name).stem.strip() or "Import"
     _get_or_create_import(db, current_user.id, import_name)
 
-    # Save to DB
-    for poi_data in poi_list:
-        poi = POI(
+    # Save to DB — add_all + one commit instead of per-row db.add(), so the
+    # ORM session doesn't do per-object bookkeeping on every iteration of a
+    # loop that can be up to MAX_POI_PER_UPLOAD long.
+    db.add_all(
+        POI(
             user_id=current_user.id,
             name=poi_data['name'],
             lat=poi_data['lat'],
@@ -243,7 +274,8 @@ async def upload_poi(
             kml_style_color=poi_data.get('kml_style_color'),
             kml_altitude=poi_data.get('kml_altitude'),
         )
-        db.add(poi)
+        for poi_data in poi_list
+    )
 
     db.commit()
 
@@ -387,9 +419,11 @@ def delete_category(
 
 
 @router.patch("/{poi_id}", response_model=POIResponse)
+@limiter.limit("30/minute")
 def update_poi(
+    request: Request,
     poi_id: int,
-    request: UpdatePOIRequest,
+    body: UpdatePOIRequest,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -398,24 +432,24 @@ def update_poi(
     if not poi:
         raise HTTPException(status_code=404, detail="POI not found")
 
-    _validate_icon(request.icon)
-    _validate_color(request.color)
+    _validate_icon(body.icon)
+    _validate_color(body.color)
 
-    if request.name is not None:
-        poi.name = request.name
-    if request.category is not None:
-        poi.category = request.category
-    if request.description is not None:
-        poi.description = request.description
+    if body.name is not None:
+        poi.name = body.name
+    if body.category is not None:
+        poi.category = body.category
+    if body.description is not None:
+        poi.description = body.description
     # icon/color are nullable-by-design (null = "auto by category"), so a
     # client must be able to explicitly reset them to null. Distinguish
     # "field omitted" from "field sent as null" via model_fields_set.
-    if 'icon' in request.model_fields_set:
-        poi.icon = request.icon
-    if 'color' in request.model_fields_set:
-        poi.color = request.color
-    if request.visited is not None:
-        poi.visited = request.visited
+    if 'icon' in body.model_fields_set:
+        poi.icon = body.icon
+    if 'color' in body.model_fields_set:
+        poi.color = body.color
+    if body.visited is not None:
+        poi.visited = body.visited
 
     db.commit()
     db.refresh(poi)
@@ -423,7 +457,9 @@ def update_poi(
 
 
 @router.delete("/{poi_id}", status_code=status.HTTP_204_NO_CONTENT)
+@limiter.limit("30/minute")
 def delete_poi(
+    request: Request,
     poi_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),

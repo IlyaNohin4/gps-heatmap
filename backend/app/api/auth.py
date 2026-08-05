@@ -5,7 +5,7 @@ from datetime import datetime, timedelta, timezone
 
 from typing import Literal, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, status
 from pydantic import BaseModel, EmailStr, field_validator
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -22,6 +22,17 @@ from app.models.user import User
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 logger = logging.getLogger(__name__)
 
+# bcrypt (security.hash_password) silently truncates/raises past 72 bytes —
+# reject oversized passwords here so callers get a 422 instead of hitting
+# hash_password's ValueError and getting an unhandled 500. Bytes, not chars:
+# ~24 Cyrillic characters is already 72 bytes (3 bytes/char in UTF-8).
+def _validate_password_strength(v: str) -> str:
+    if len(v) < 8:
+        raise ValueError("Password must be at least 8 characters")
+    if len(v.encode("utf-8")) > 72:
+        raise ValueError("Password must be 72 bytes or fewer")
+    return v
+
 
 class RegisterRequest(BaseModel):
     email: EmailStr
@@ -35,9 +46,7 @@ class RegisterRequest(BaseModel):
     @field_validator("password")
     @classmethod
     def strong_password(cls, v: str) -> str:
-        if len(v) < 8:
-            raise ValueError("Password must be at least 8 characters")
-        return v
+        return _validate_password_strength(v)
 
 
 class LoginRequest(BaseModel):
@@ -65,9 +74,7 @@ class ResetPasswordRequest(BaseModel):
     @field_validator("password")
     @classmethod
     def strong_password(cls, v: str) -> str:
-        if len(v) < 8:
-            raise ValueError("Password must be at least 8 characters")
-        return v
+        return _validate_password_strength(v)
 
 
 class TokenResponse(BaseModel):
@@ -126,9 +133,31 @@ def login(request: Request, body: LoginRequest, db: Session = Depends(get_db)):
     return TokenResponse(access_token=create_access_token(user.id))
 
 
+def _send_reset_email(email: str, token: str, user_id: int) -> None:
+    try:
+        import resend
+        from app.core.config import settings
+        resend.api_key = settings.RESEND_API_KEY
+        resend.Emails.send({
+            "from": settings.RESEND_FROM_EMAIL,
+            "to": email,
+            "subject": "Reset your password",
+            "html": f"<p>Click to reset: <a href='{settings.FRONTEND_URL}/reset-password/{token}'>Reset password</a></p>",
+        })
+    except Exception:
+        # User-facing behavior stays silent (don't reveal email delivery status),
+        # but log so failures (bad API key, network) are diagnosable. Token is still saved.
+        logger.error("Failed to send password reset email to user_id=%s", user_id, exc_info=True)
+
+
 @router.post("/forgot-password", status_code=status.HTTP_204_NO_CONTENT)
 @limiter.limit("3/minute")
-def forgot_password(request: Request, body: ForgotPasswordRequest, db: Session = Depends(get_db)):
+def forgot_password(
+    request: Request,
+    body: ForgotPasswordRequest,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+):
     user = db.query(User).filter(User.email == body.email).first()
     if not user:
         # Do comparable-cost work (bcrypt is deliberately slow) so response
@@ -149,20 +178,13 @@ def forgot_password(request: Request, body: ForgotPasswordRequest, db: Session =
     db.add(PasswordReset(token=token_hash, user_id=user.id, expires_at=expires))
     db.commit()
 
-    try:
-        import resend
-        from app.core.config import settings
-        resend.api_key = settings.RESEND_API_KEY
-        resend.Emails.send({
-            "from": settings.RESEND_FROM_EMAIL,
-            "to": user.email,
-            "subject": "Reset your password",
-            "html": f"<p>Click to reset: <a href='{settings.FRONTEND_URL}/reset-password/{token}'>Reset password</a></p>",
-        })
-    except Exception:
-        # User-facing behavior stays silent (don't reveal email delivery status),
-        # but log so failures (bad API key, network) are diagnosable. Token is still saved.
-        logger.error("Failed to send password reset email to user_id=%s", user.id, exc_info=True)
+    # Sent after the response is returned (BackgroundTasks), not inline —
+    # the network call to Resend (hundreds of ms to seconds) used to run
+    # synchronously only on this branch, while the "email not registered"
+    # branch above returns almost immediately. That response-time gap was a
+    # reliable timing oracle for enumerating registered emails even with the
+    # dummy bcrypt call. Both branches now return in comparable time.
+    background_tasks.add_task(_send_reset_email, user.email, token, user.id)
 
 
 @router.post("/reset-password/{token}", status_code=status.HTTP_204_NO_CONTENT)
@@ -232,9 +254,7 @@ class ChangePasswordRequest(BaseModel):
     @field_validator("new_password")
     @classmethod
     def strong_password(cls, v: str) -> str:
-        if len(v) < 8:
-            raise ValueError("Password must be at least 8 characters")
-        return v
+        return _validate_password_strength(v)
 
 
 @router.get("/me", response_model=UserOut)
