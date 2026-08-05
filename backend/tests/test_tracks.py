@@ -227,6 +227,20 @@ class TestListTracks:
         app.dependency_overrides.clear()
         assert r.status_code == 400
 
+    @pytest.mark.parametrize("is_public_value", ["true", "false"])
+    def test_is_public_filter_is_accepted(self, client, auth_headers, mock_db, is_public_value):
+        from app.main import app
+
+        fake_user = _make_fake_user()
+        _setup_mock_db_user(mock_db, fake_user)
+        tracks = [_make_track(1, fake_user.id, is_public=(is_public_value == "true"))]
+        _setup_mock_db_tracks(mock_db, tracks)
+
+        app.dependency_overrides[get_db] = lambda: (yield mock_db)
+        r = client.get(f"/api/tracks?is_public={is_public_value}", headers=auth_headers)
+        app.dependency_overrides.clear()
+        assert r.status_code == 200
+
 
 # ── Bulk geometries ────────────────────────────────────────────────────────────
 
@@ -479,8 +493,18 @@ def _setup_mock_db_user(mock_db: MagicMock, fake_user: User):
 
 def _setup_mock_db_tracks(mock_db: MagicMock, tracks: list, total: int = None):
     """Wire mock_db to return a list of tracks from .order_by().offset().limit().all(),
-    and a count from .order_by().count()."""
-    order_by_mock = mock_db.query.return_value.filter.return_value.order_by.return_value
+    and a count from .order_by().count().
+
+    list_tracks() chains .filter() calls conditionally (search, file_format,
+    speed_avg_min/max, is_public, bbox), each returning a fresh MagicMock —
+    so any single additional filter beyond the base user_id one lands on an
+    unconfigured child mock unless it's wired too. filter.return_value is
+    itself a MagicMock whose own .filter() returns the same object again, so
+    stubbing that one node covers any chain depth/order.
+    """
+    filter_mock = mock_db.query.return_value.filter.return_value
+    filter_mock.filter.return_value = filter_mock
+    order_by_mock = filter_mock.order_by.return_value
     order_by_mock.count.return_value = total if total is not None else len(tracks)
     order_by_mock.offset.return_value.limit.return_value.all.return_value = tracks
     # Back-compat for any code path calling .all() directly on order_by().

@@ -311,6 +311,7 @@ def list_tracks(
     file_format: Optional[str] = Query(None),
     speed_avg_min: Optional[float] = Query(None),
     speed_avg_max: Optional[float] = Query(None),
+    is_public: Optional[bool] = Query(None),
     limit: int = Query(50, ge=1, le=500),
     offset: int = Query(0, ge=0),
     db: Session = Depends(get_db),
@@ -367,6 +368,9 @@ def list_tracks(
         if not math.isfinite(speed_avg_max):
             raise HTTPException(status_code=400, detail="speed_avg_max must be a finite number")
         q = q.filter(Track.speed_avg <= speed_avg_max)
+
+    if is_public is not None:
+        q = q.filter(Track.is_public == is_public)
 
     if bbox:
         try:

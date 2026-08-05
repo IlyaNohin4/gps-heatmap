@@ -13,6 +13,7 @@ import Button from '../../ui/Button.jsx';
 import Input from '../../ui/Input.jsx';
 import Chip from '../../ui/Chip.jsx';
 import SkeletonCard from '../shared/SkeletonCard.jsx';
+import BulkDeleteModal from '../modals/BulkDeleteModal.jsx';
 import '../../styles/poi.css';
 const POIRenameModal = lazy(() => import('../modals/POIRenameModal.jsx'));
 const POIDeleteModal = lazy(() => import('../modals/POIDeleteModal.jsx'));
@@ -21,7 +22,10 @@ export default React.memo(function POITab({ setSidebarOpen }) {
   const { t } = useTranslation();
   const { pois, setPOIs, setPoiCreationMode, poiCreationMode, mapInstance, lists, setLists, hiddenLists, toggleListVisibility } = useMapStore();
   const { isAuthenticated } = useAuthStore();
-  const { activePanel, setActivePanel, poiListVersion, bumpPOIListVersion } = useAppStore();
+  const {
+    activePanel, setActivePanel, poiListVersion, bumpPOIListVersion,
+    selectedPOIIds, togglePOISelection, clearPOISelection,
+  } = useAppStore();
   const filterOpen = activePanel === 'left:poi-filter';
   const listsOpen = activePanel === 'left:poi-lists';
   const [loading, setLoading] = useState(false);
@@ -38,6 +42,7 @@ export default React.memo(function POITab({ setSidebarOpen }) {
   const [creatingList, setCreatingList] = useState(false);
   const [newListNameInput, setNewListNameInput] = useState('');
   const [savingNewList, setSavingNewList] = useState(false);
+  const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false);
   const fileInputRef = useRef(null);
   const requestVersion = useRef(0);
 
@@ -188,6 +193,16 @@ export default React.memo(function POITab({ setSidebarOpen }) {
     if (!mapInstance) return;
     mapInstance.flyTo([poi.lat, poi.lon], 16, { duration: 1.2, easeLinearity: 0.25 });
   }, [mapInstance]);
+
+  const handleCardClick = useCallback((e, poi) => {
+    if (e.ctrlKey || e.metaKey) {
+      e.stopPropagation();
+      togglePOISelection(poi.id);
+      return;
+    }
+    if (selectedPOIIds.size > 0) clearPOISelection();
+    handleZoomToPOI(poi);
+  }, [selectedPOIIds, togglePOISelection, clearPOISelection, handleZoomToPOI]);
 
   const handleOpenRenameModalCb = useCallback((poi) => {
     setSelectedPOI(poi);
@@ -348,7 +363,8 @@ export default React.memo(function POITab({ setSidebarOpen }) {
               <POICard
                 key={poi.id}
                 poi={poi}
-                onZoom={() => handleZoomToPOI(poi)}
+                isSelected={selectedPOIIds.has(poi.id)}
+                onZoom={(e) => handleCardClick(e, poi)}
                 onRename={() => handleOpenRenameModalCb(poi)}
                 onDelete={() => handleOpenDeleteModalCb(poi)}
               />
@@ -360,6 +376,26 @@ export default React.memo(function POITab({ setSidebarOpen }) {
           </>
         )}
       </div>
+
+      {/* Bulk selection bar — Ctrl/Cmd+click on a POI adds it here */}
+      {selectedPOIIds.size > 0 && (
+        <div style={{
+          padding: 'var(--space-2) var(--space-3)', borderTop: '1px solid var(--border)',
+          flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--space-2)',
+        }}>
+          <span style={{ fontSize: 'var(--text-sm)', fontWeight: 600, color: 'var(--text)' }}>
+            {t('bulk.selected', { count: selectedPOIIds.size })}
+          </span>
+          <div style={{ display: 'flex', gap: 'var(--space-1)' }}>
+            <Button variant="ghost" onClick={clearPOISelection} title={t('bulk.clear_selection')}>
+              <XIcon size={14} />
+            </Button>
+            <Button variant="danger" onClick={() => setShowBulkDeleteModal(true)}>
+              <Trash2 size={14} /> {t('bulk.delete_selected')}
+            </Button>
+          </div>
+        </div>
+      )}
 
       {/* Lists panel — rename/delete/export/toggle-visibility per list.
           Sits right above the bottom action row, next to the Import/Manage lists
@@ -558,6 +594,20 @@ export default React.memo(function POITab({ setSidebarOpen }) {
           onDeleted={handleDeleted}
         />
       </Suspense>
+
+      <BulkDeleteModal
+        isOpen={showBulkDeleteModal}
+        onClose={() => setShowBulkDeleteModal(false)}
+        ids={[...selectedPOIIds]}
+        deleteFn={deletePOI}
+        title={t('bulk.delete_selected')}
+        itemLabel={t('bulk.poi_label')}
+        onDeleted={(succeededIds) => {
+          succeededIds.forEach((id) => handleDeleted(id));
+          clearPOISelection();
+          bumpPOIListVersion();
+        }}
+      />
     </div>
   );
 });

@@ -196,7 +196,7 @@ def test_stuck_processing_track_is_reaped_on_list(db_session, test_user):
 
     list_tracks(
         sort=None, search=None, bbox=None, file_format=None,
-        speed_avg_min=None, speed_avg_max=None, limit=50, offset=0,
+        speed_avg_min=None, speed_avg_max=None, is_public=None, limit=50, offset=0,
         db=db_session, current_user=test_user,
     )
 

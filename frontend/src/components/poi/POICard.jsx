@@ -4,11 +4,13 @@ import Card from '../../ui/Card.jsx';
 import Button from '../../ui/Button.jsx';
 import { POI_ICON_COMPONENT, DEFAULT_POI_ICON } from '../../utils/poiIcons.js';
 
-export default React.memo(function POICard({ poi, isDeleting, onZoom, onDelete, onRename }) {
+export default React.memo(function POICard({ poi, isDeleting, isSelected, onZoom, onDelete, onRename }) {
   const Icon = POI_ICON_COMPONENT[poi.icon] || DEFAULT_POI_ICON;
   return (
     <Card
       style={{
+        background: isSelected ? 'rgba(0,122,255,0.08)' : 'var(--surface)',
+        border: `1px solid ${isSelected ? 'rgba(0,122,255,0.3)' : 'var(--border)'}`,
         cursor: 'pointer',
         transition: 'all 0.15s',
         display: 'flex',

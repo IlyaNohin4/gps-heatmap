@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef, useTransition } from 'react';
-import { Search, Filter, Plus, X, ChevronLeft, ChevronRight, MapPin, Route, Eye, EyeOff, Upload } from 'lucide-react';
+import { Search, Filter, Plus, X, ChevronLeft, ChevronRight, MapPin, Route, Eye, EyeOff, Upload, Trash2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { notify as toast } from '../../utils/notify.js';
 import Slider from 'rc-slider';
@@ -9,9 +9,10 @@ import POITab from './POITab.jsx';
 import useAppStore from '../../store/appStore.js';
 import useAuthStore from '../../store/authStore.js';
 import useMapStore from '../../store/mapStore.js';
-import { getTrack, fetchTracksPage, fetchTracks, createTrackFromPoints } from '../../api/tracks.js';
+import { getTrack, fetchTracksPage, fetchTracks, createTrackFromPoints, deleteTrack } from '../../api/tracks.js';
 import { TrackCreatorPanel } from '../../map/TrackCreator.jsx';
 import SaveTrackModal from '../modals/SaveTrackModal.jsx';
+import BulkDeleteModal from '../modals/BulkDeleteModal.jsx';
 import useInfiniteScroll from '../../hooks/useInfiniteScroll.js';
 import Input from '../../ui/Input.jsx';
 import Chip from '../../ui/Chip.jsx';
@@ -34,7 +35,11 @@ const FORMAT_OPTIONS = [
 
 function LeftIslandContent({ onUploadClick, loading, allTracksVisible, onToggleVisibility }) {
   const { t } = useTranslation();
-  const { selectedTrackId, setSelectedTrack, isUploadingIds, activePanel, setActivePanel, tracksListVersion, setTracks, bumpTracksListVersion } = useAppStore();
+  const {
+    selectedTrackId, setSelectedTrack, isUploadingIds, activePanel, setActivePanel,
+    tracksListVersion, setTracks, bumpTracksListVersion,
+    selectedTrackIds, toggleTrackSelection, clearTrackSelection, removeTrack,
+  } = useAppStore();
   const {
     showTrackCreator, toggleTrackCreator, mapInstance,
     trackCreatorState, setTrackCreatorState, undoWaypoint, redoWaypoint, clearTrackCreatorState, clearTrackCreatorPoints,
@@ -52,12 +57,14 @@ function LeftIslandContent({ onUploadClick, loading, allTracksVisible, onToggleV
   const [sort, setSort] = useState('newest');
   const [formatFilter, setFormatFilter] = useState('all');
   const [speedRange, setSpeedRange] = useState([0, 200]);
+  const [publicFilter, setPublicFilter] = useState('all'); // 'all' | 'published'
   const [items, setItems] = useState([]);
   const [total, setTotal] = useState(0);
   const [hasMore, setHasMore] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [retryCount, setRetryCount] = useState(0);
+  const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false);
   const requestVersion = useRef(0);
 
   const handleSetCurrentTab = useCallback((tab) => {
@@ -75,9 +82,10 @@ function LeftIslandContent({ onUploadClick, loading, allTracksVisible, onToggleV
     if (formatFilter !== 'all') params.file_format = formatFilter;
     if (speedRange[0] > 0) params.speed_avg_min = speedRange[0];
     if (speedRange[1] < 200) params.speed_avg_max = speedRange[1];
+    if (publicFilter === 'published') params.is_public = true;
     if (filterByMapBounds && mapBounds) params.bbox = mapBounds;
     return params;
-  }, [search, sort, formatFilter, speedRange, filterByMapBounds, mapBounds]);
+  }, [search, sort, formatFilter, speedRange, publicFilter, filterByMapBounds, mapBounds]);
 
   // Список фильтруется/сортируется на сервере — это отдельный от карты поток
   // данных: App.jsx грузит все треки (limit=500) для heatmap через
@@ -215,7 +223,7 @@ function LeftIslandContent({ onUploadClick, loading, allTracksVisible, onToggleV
               title={showPOI ? 'Hide all POI' : 'Show all POI'}
               style={{
                 position: 'absolute',
-                left: 'var(--space-2)',
+                right: 'var(--space-2)',
                 top: '50%',
                 transform: 'translateY(-50%)',
                 background: 'none',
@@ -293,6 +301,12 @@ function LeftIslandContent({ onUploadClick, loading, allTracksVisible, onToggleV
               {t('tracks.avg_speed')}: {speedRange[0]}–{speedRange[1]} km/h
             </div>
             <Slider range min={0} max={200} value={speedRange} onChange={setSpeedRange} style={{ marginBottom: 'var(--space-2)' }} />
+            <div style={{ fontSize: 'var(--text-xs)', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: 'var(--space-2)', textTransform: 'uppercase' }}>{t('tracks.publication')}</div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-1)' }}>
+              {(['all', 'published']).map((v) => (
+                <Chip key={v} active={publicFilter === v} onClick={() => setPublicFilter(v)}>{t(`publication.${v}`)}</Chip>
+              ))}
+            </div>
           </div>
         )}
 
@@ -307,7 +321,7 @@ function LeftIslandContent({ onUploadClick, loading, allTracksVisible, onToggleV
             [1, 2, 3].map((i) => <SkeletonCard key={i} />)
           ) : items.length === 0 ? (
             <div style={{ textAlign: 'center', padding: 'var(--space-5) 0', color: 'var(--text-secondary)', fontSize: 'var(--text-sm)' }}>
-              {total === 0 && !search.trim() && formatFilter === 'all' && speedRange[0] === 0 && speedRange[1] === 200
+              {total === 0 && !search.trim() && formatFilter === 'all' && speedRange[0] === 0 && speedRange[1] === 200 && publicFilter === 'all'
                 ? t('tracks.no_tracks')
                 : t('tracks.no_results')}
             </div>
@@ -316,8 +330,14 @@ function LeftIslandContent({ onUploadClick, loading, allTracksVisible, onToggleV
               <TrackCard
                 key={track.id}
                 track={track}
-                isSelected={track.id === selectedTrackId}
-                onClick={() => {
+                isSelected={track.id === selectedTrackId || selectedTrackIds.has(track.id)}
+                onClick={(e) => {
+                  if (e.ctrlKey || e.metaKey) {
+                    e.stopPropagation();
+                    toggleTrackSelection(track.id);
+                    return;
+                  }
+                  if (selectedTrackIds.size > 0) clearTrackSelection();
                   const isDeselecting = track.id === selectedTrackId;
                   setSelectedTrack(isDeselecting ? null : track.id);
                   if (showTrackCreator && !isDeselecting) toggleTrackCreator();
@@ -368,6 +388,26 @@ function LeftIslandContent({ onUploadClick, loading, allTracksVisible, onToggleV
             </div>
           )}
         </div>
+
+        {/* Bulk selection bar — Ctrl/Cmd+click on a track adds it here */}
+        {selectedTrackIds.size > 0 && (
+          <div style={{
+            padding: 'var(--space-2) var(--space-3)', borderTop: '1px solid var(--border)',
+            flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--space-2)',
+          }}>
+            <span style={{ fontSize: 'var(--text-sm)', fontWeight: 600, color: 'var(--text)' }}>
+              {t('bulk.selected', { count: selectedTrackIds.size })}
+            </span>
+            <div style={{ display: 'flex', gap: 'var(--space-1)' }}>
+              <Button variant="ghost" onClick={clearTrackSelection} title={t('bulk.clear_selection')}>
+                <X size={14} />
+              </Button>
+              <Button variant="danger" onClick={() => setShowBulkDeleteModal(true)}>
+                <Trash2 size={14} /> {t('bulk.delete_selected')}
+              </Button>
+            </div>
+          </div>
+        )}
 
         {/* Bottom actions - Tracks tab only */}
         <div style={{ padding: 'var(--space-2) var(--space-3) var(--space-3)', borderTop: '1px solid var(--border)', flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
@@ -465,6 +505,24 @@ function LeftIslandContent({ onUploadClick, loading, allTracksVisible, onToggleV
         <div style={{ display: currentTab === 'poi' ? 'flex' : 'none', flexDirection: 'column', flex: 1, minHeight: 0 }}>
           <POITab setSidebarOpen={setSidebarOpen} />
         </div>
+
+        <BulkDeleteModal
+          isOpen={showBulkDeleteModal}
+          onClose={() => setShowBulkDeleteModal(false)}
+          ids={[...selectedTrackIds]}
+          deleteFn={deleteTrack}
+          title={t('bulk.delete_selected')}
+          itemLabel={t('bulk.tracks_label')}
+          onDeleted={(succeededIds) => {
+            succeededIds.forEach((id) => {
+              removeTrack(id);
+              useMapStore.getState().evictTrack(id);
+              if (selectedTrackId === id) setSelectedTrack(null);
+            });
+            clearTrackSelection();
+            bumpTracksListVersion();
+          }}
+        />
       </Panel>
     </div>
 
