@@ -1,4 +1,5 @@
-import React, { useRef } from 'react';
+import React, { useEffect, useRef } from 'react';
+import L from 'leaflet';
 import {
   Plus, Minus, Search, Locate, LocateFixed, Layers, Info, X,
   Flame, Gauge, ChevronRight,
@@ -48,18 +49,39 @@ export default function RightIsland() {
   function zoomIn() { mapInstance?.zoomIn(); }
   function zoomOut() { mapInstance?.zoomOut(); }
 
+  // LocateFixed only while the map is still centered on the located point —
+  // pan/zoom away from it and the icon reverts to plain Locate, same idea
+  // as Apple/Google Maps' "recenter" button.
   const [located, setLocated] = React.useState(false);
+  const locatedPosRef = useRef(null);
+  const DRIFT_THRESHOLD_M = 50;
 
   function geolocate() {
     if (!navigator.geolocation) return;
     navigator.geolocation.getCurrentPosition(
       (pos) => {
-        mapInstance?.flyTo([pos.coords.latitude, pos.coords.longitude], 14, MAP_ANIMATIONS.geolocation);
+        const latlng = [pos.coords.latitude, pos.coords.longitude];
+        mapInstance?.flyTo(latlng, 14, MAP_ANIMATIONS.geolocation);
+        locatedPosRef.current = latlng;
         setLocated(true);
       },
       () => import('react-toastify').then((m) => m.toast.error(i18n.t('errors.geolocation_denied')))
     );
   }
+
+  useEffect(() => {
+    if (!mapInstance) return;
+    const checkDrift = () => {
+      if (!locatedPosRef.current) return;
+      const dist = mapInstance.getCenter().distanceTo(L.latLng(locatedPosRef.current));
+      if (dist > DRIFT_THRESHOLD_M) {
+        locatedPosRef.current = null;
+        setLocated(false);
+      }
+    };
+    mapInstance.on('moveend', checkDrift);
+    return () => mapInstance.off('moveend', checkDrift);
+  }, [mapInstance]);
 
   async function searchCity(q) {
     if (!q.trim()) { setCityResults([]); return; }

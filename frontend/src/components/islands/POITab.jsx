@@ -288,7 +288,7 @@ export default React.memo(function POITab({ setSidebarOpen }) {
             title="Filters"
             style={{
               position: 'absolute',
-              right: 'var(--space-2)',
+              right: 'var(--space-3)',
               background: 'none',
               border: 'none',
               color: filterOpen ? 'var(--accent)' : 'var(--text-secondary)',

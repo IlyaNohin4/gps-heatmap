@@ -173,44 +173,62 @@ function LeftIslandContent({ onUploadClick, loading, allTracksVisible, onToggleV
           gap: 'var(--space-1)',
           borderBottom: '1px solid var(--border)',
         }}>
-          <Button
-            variant="ghost"
-            active={currentTab === 'tracks'}
-            onClick={() => handleSetCurrentTab('tracks')}
-            style={{ flex: 1 }}
-          >
-            <Route size={14} /> Tracks
-          </Button>
-          <Button
-            variant="ghost"
-            active={currentTab === 'poi'}
-            onClick={() => handleSetCurrentTab('poi')}
-            style={{ flex: 1 }}
-          >
-            <MapPin size={14} /> POI
-          </Button>
-          {currentTab === 'tracks' && (
+          <div style={{ position: 'relative', flex: 1, display: 'flex' }}>
             <Button
-              iconOnly
               variant="ghost"
-              active={allTracksVisible}
-              onClick={onToggleVisibility}
+              active={currentTab === 'tracks'}
+              onClick={() => handleSetCurrentTab('tracks')}
+              style={{ flex: 1 }}
+            >
+              <Route size={14} /> Tracks
+            </Button>
+            <button
+              onClick={(e) => { e.stopPropagation(); onToggleVisibility(); }}
               title={allTracksVisible ? 'Hide all tracks' : 'Show all tracks'}
+              style={{
+                position: 'absolute',
+                left: 'var(--space-2)',
+                top: '50%',
+                transform: 'translateY(-50%)',
+                background: 'none',
+                border: 'none',
+                color: allTracksVisible ? 'var(--accent)' : 'var(--text-secondary)',
+                cursor: 'pointer',
+                display: 'flex',
+                padding: 0,
+              }}
             >
               {allTracksVisible ? <Eye size={15} /> : <EyeOff size={15} />}
-            </Button>
-          )}
-          {currentTab === 'poi' && (
+            </button>
+          </div>
+          <div style={{ position: 'relative', flex: 1, display: 'flex' }}>
             <Button
-              iconOnly
               variant="ghost"
-              active={showPOI}
-              onClick={togglePOI}
+              active={currentTab === 'poi'}
+              onClick={() => handleSetCurrentTab('poi')}
+              style={{ flex: 1 }}
+            >
+              <MapPin size={14} /> POI
+            </Button>
+            <button
+              onClick={(e) => { e.stopPropagation(); togglePOI(); }}
               title={showPOI ? 'Hide all POI' : 'Show all POI'}
+              style={{
+                position: 'absolute',
+                left: 'var(--space-2)',
+                top: '50%',
+                transform: 'translateY(-50%)',
+                background: 'none',
+                border: 'none',
+                color: showPOI ? 'var(--accent)' : 'var(--text-secondary)',
+                cursor: 'pointer',
+                display: 'flex',
+                padding: 0,
+              }}
             >
               {showPOI ? <Eye size={15} /> : <EyeOff size={15} />}
-            </Button>
-          )}
+            </button>
+          </div>
         </div>
 
         {/* Tracks Tab */}
@@ -235,7 +253,7 @@ function LeftIslandContent({ onUploadClick, loading, allTracksVisible, onToggleV
               title="Filters"
               style={{
                 position: 'absolute',
-                right: 'var(--space-2)',
+                right: 'var(--space-3)',
                 background: 'none',
                 border: 'none',
                 color: filterOpen ? 'var(--accent)' : 'var(--text-secondary)',
@@ -473,7 +491,7 @@ function LeftIslandContent({ onUploadClick, loading, allTracksVisible, onToggleV
         onClick={() => setSidebarOpen(true)}
         title={t('tracks.show_sidebar')}
       >
-        <ChevronRight size={13} />
+        <ChevronRight size={15} />
       </Button>
     </Panel>
     )}
