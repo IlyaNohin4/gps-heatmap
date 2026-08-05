@@ -25,6 +25,7 @@ import POIContextMenu from '../components/poi/POIContextMenu.jsx';
 import POICreationModal from '../components/modals/POICreationModal.jsx';
 import POIRenameModal from '../components/modals/POIRenameModal.jsx';
 import CoordinatesContextMenu from '../components/map/CoordinatesContextMenu.jsx';
+import TrackDetailsPopover from '../components/tracks/TrackDetailsPopover.jsx';
 
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
@@ -135,7 +136,18 @@ function MapLayers({ onPOIClick }) {
 
       {/* Plain coloured polylines (default) */}
       {!showSpeed && (
-        <TrackLayer tracks={visibleTracks} selectedTrackId={selectedTrackId} showHeatmap={showHeatmap} showStartEndMarkers={showStartEndMarkers} />
+        <TrackLayer
+          tracks={visibleTracks}
+          selectedTrackId={selectedTrackId}
+          showHeatmap={showHeatmap}
+          showStartEndMarkers={showStartEndMarkers}
+          onTrackClick={(id, originalEvent) => {
+            useAppStore.getState().setDetailsTrackId(id);
+            useAppStore.getState().setDetailsTrackPosition(
+              originalEvent ? { x: originalEvent.clientX, y: originalEvent.clientY } : null
+            );
+          }}
+        />
       )}
 
       {/* Speed gradient segments */}
@@ -210,6 +222,8 @@ export default function MapContainer() {
           onCoordinatesMenu={(lat, lon, x, y) => setCoordsMenu({ lat, lon, x, y })}
         />
       </LeafletMap>
+
+      <TrackDetailsPopover />
 
       {contextMenu && (
         <POIContextMenu

@@ -13,7 +13,7 @@ function colorForIndex(i) {
   return TRACK_COLORS[i % TRACK_COLORS.length];
 }
 
-const TrackLayer = memo(function TrackLayer({ tracks, selectedTrackId, showHeatmap, showStartEndMarkers = true }) {
+const TrackLayer = memo(function TrackLayer({ tracks, selectedTrackId, showHeatmap, showStartEndMarkers = true, onTrackClick }) {
   const map = useMap();
   const groupRef = useRef(null);
 
@@ -44,6 +44,12 @@ const TrackLayer = memo(function TrackLayer({ tracks, selectedTrackId, showHeatm
           });
 
       line.bindTooltip(escapeHtml(track.name || 'Track'), { sticky: true, offset: [0, -4] });
+      if (onTrackClick) {
+        line.on('click', (e) => {
+          L.DomEvent.stopPropagation(e);
+          onTrackClick(track.id, e.originalEvent);
+        });
+      }
       line.addTo(group);
       if (isSelected) line.bringToFront();
 
@@ -71,7 +77,7 @@ const TrackLayer = memo(function TrackLayer({ tracks, selectedTrackId, showHeatm
         L.marker([pts[pts.length - 1].lat, pts[pts.length - 1].lon], { icon: endIcon }).addTo(group);
       }
     });
-  }, [tracks, selectedTrackId, map, showHeatmap, showStartEndMarkers]);
+  }, [tracks, selectedTrackId, map, showHeatmap, showStartEndMarkers, onTrackClick]);
 
   return null;
 });

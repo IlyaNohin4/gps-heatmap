@@ -8,6 +8,11 @@ const useAppStore = create(
       unitSystem: 'metric', // 'metric' (km + km/h) | 'imperial' (mi + mph)
       language: 'en',
       selectedTrackId: null,
+      // Track whose details popover should be open, set when clicking the
+      // track's line on the map. detailsTrackPosition is the click's screen
+      // coordinates so the popover can appear next to the cursor.
+      detailsTrackId: null,
+      detailsTrackPosition: null,
       activePanel: null,
       tracks: [],
       isUploadingIds: new Set(),
@@ -20,6 +25,8 @@ const useAppStore = create(
       setLanguage: (language) => set({ language }),
       setSelectedTrack: (id) => set({ selectedTrackId: id, activePanel: null }),
       setSelectedTrackId: (id) => set({ selectedTrackId: id }),
+      setDetailsTrackId: (id) => set({ detailsTrackId: id }),
+      setDetailsTrackPosition: (pos) => set({ detailsTrackPosition: pos }),
       setActivePanel: (panel) => set({ activePanel: panel }),
       setTracks: (tracks) => set({ tracks }),
       setExpandedTrackInfo: (mode) => set({ expandedTrackInfo: mode }),
@@ -44,7 +51,7 @@ const useAppStore = create(
         }),
       // Called on logout / auth switch (App.jsx). tracksListVersion (T19 bump
       // mechanism) is intentionally left untouched (see T21).
-      resetUserData: () => set({ selectedTrackId: null, isUploadingIds: new Set() }),
+      resetUserData: () => set({ selectedTrackId: null, detailsTrackId: null, detailsTrackPosition: null, isUploadingIds: new Set() }),
     }),
     {
       name: 'gps_app',
