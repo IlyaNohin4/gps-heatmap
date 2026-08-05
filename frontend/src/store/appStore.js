@@ -19,8 +19,13 @@ const useAppStore = create(
       tracksListVersion: 0,
       poiListVersion: 0,
       expandedTrackInfo: 'partial', // 'off' | 'partial' | 'on'
+      // Which screen corner toast notifications stack in — a client-only UI
+      // preference (like theme used to be before server sync), so it's the
+      // one field this store actually persists (see partialize below).
+      toastPosition: 'top-right', // 'top-right' | 'top-left' | 'bottom-right' | 'bottom-left'
 
       setTheme: (theme) => set({ theme }),
+      setToastPosition: (toastPosition) => set({ toastPosition }),
       setUnitSystem: (system) => set({ unitSystem: system }),
       setLanguage: (language) => set({ language }),
       setSelectedTrack: (id) => set({ selectedTrackId: id, activePanel: null }),
@@ -55,9 +60,11 @@ const useAppStore = create(
     }),
     {
       name: 'gps_app',
-      // Persist nothing — theme/units/language come from server via getMe(),
-      // selectedTrackId and everything else here is session-only state.
-      partialize: () => ({}),
+      // Persist nothing except toastPosition — theme/units/language come
+      // from server via getMe(), selectedTrackId and everything else here
+      // is session-only state. toastPosition has no server-side field, it's
+      // a purely local UI preference.
+      partialize: (state) => ({ toastPosition: state.toastPosition }),
     }
   )
 );

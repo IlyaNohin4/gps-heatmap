@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { toast } from 'react-toastify';
+import { notify as toast } from '../../utils/notify.js';
 import { useTranslation } from 'react-i18next';
 import { X, MapPin, Pencil, Download, Trash2 } from 'lucide-react';
 import useAppStore from '../../store/appStore.js';

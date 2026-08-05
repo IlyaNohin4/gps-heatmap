@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { toast } from 'react-toastify';
+import { notify as toast } from '../../utils/notify.js';
 import { useTranslation } from 'react-i18next';
 import { Mail, Lock, Eye, EyeOff } from 'lucide-react';
 import useAuthStore from '../../store/authStore.js';

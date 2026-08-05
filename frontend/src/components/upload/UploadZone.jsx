@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { toast } from 'react-toastify';
+import { notify as toast } from '../../utils/notify.js';
 import { useTranslation } from 'react-i18next';
 import { Upload } from 'lucide-react';
 import useAppStore from '../../store/appStore.js';
@@ -72,10 +72,8 @@ export default function UploadZone({ inputRef: externalInputRef, onTrackFiles, o
       }
       validFiles.push(file);
     }
-    if (duplicateNames.length === 1) {
-      toast.warn(t('validation.duplicate_track_name', { name: duplicateNames[0] }));
-    } else if (duplicateNames.length > 1) {
-      toast.warn(t('validation.duplicate_track_names', { names: duplicateNames.join(', '), count: duplicateNames.length }));
+    if (duplicateNames.length > 0) {
+      toast.warn(t('validation.duplicate_track_names'));
     }
     if (!validFiles.length) return;
 
@@ -93,14 +91,25 @@ export default function UploadZone({ inputRef: externalInputRef, onTrackFiles, o
   async function runQueue() {
     // Snapshot total at queue start (more files may arrive during processing)
     let processed = 0;
+    let successCount = 0;
+    let failCount = 0;
     while (pendingQueue.current.length > 0) {
       const total = processed + pendingQueue.current.length;
       const file = pendingQueue.current.shift();
       processed++;
       setQueueProgress({ current: processed, total });
-      await processFile(file);
+      const outcome = await processFile(file);
+      if (outcome === 'success') successCount++; else failCount++;
     }
     setQueueProgress(null);
+    // One summary toast for the whole queue instead of one per file — see
+    // notification-reduction pass: no filenames, no per-file counts.
+    if (successCount > 0) {
+      toast.success(t(successCount === 1 ? 'tracks.upload_success' : 'tracks.upload_success_plural'));
+    }
+    if (failCount > 0) {
+      toast.error(t('tracks.upload_failed'));
+    }
   }
 
   async function processFile(file) {
@@ -110,20 +119,20 @@ export default function UploadZone({ inputRef: externalInputRef, onTrackFiles, o
       taskId = result.task_id;
       if (taskId) {
         addUploadingId(taskId);
-        await pollUntilDone(taskId, file.name);
-      } else if (result.track) {
+        return await pollUntilDone(taskId);
+      }
+      if (result.track) {
         addTrack(result.track);
         bumpTracksListVersion();
-        toast.success(t('tracks.upload_success', { name: file.name }));
       }
+      return 'success';
     } catch (err) {
-      toast.error(t('tracks.upload_failed', { name: file.name }));
       if (taskId) removeUploadingId(taskId);
-      // Continue to next file — don't rethrow
+      return 'error';
     }
   }
 
-  async function pollUntilDone(taskId, filename) {
+  async function pollUntilDone(taskId) {
     const POLL_INTERVAL_MS = 2000;
     const MAX_ATTEMPTS = 150; // ~5 minutes — a stuck/PENDING-forever task shouldn't poll silently forever
     let attempts = 0;
@@ -137,13 +146,12 @@ export default function UploadZone({ inputRef: externalInputRef, onTrackFiles, o
           // returns as {"status": "error", ...} — Celery still reports the
           // task itself as SUCCESS (it ran to completion without raising),
           // so the real outcome is nested in `result`, not the top-level
-          // `state`. Checking `state === 'SUCCESS'` alone shows a false
-          // "uploaded" toast for a track that was actually rejected.
+          // `state`. Checking `state === 'SUCCESS'` alone would report a
+          // false "uploaded" outcome for a track that was actually rejected.
           if (status.state === 'SUCCESS' && status.result?.status === 'error') {
             clearInterval(interval);
             removeUploadingId(taskId);
-            toast.error(t('tracks.upload_failed', { name: filename }));
-            resolve();
+            resolve('error');
           } else if (status.state === 'SUCCESS' || status.status === 'done' || status.status === 'completed') {
             clearInterval(interval);
             removeUploadingId(taskId);
@@ -154,24 +162,20 @@ export default function UploadZone({ inputRef: externalInputRef, onTrackFiles, o
               if (status.track) addTrack(status.track);
             }
             bumpTracksListVersion();
-            toast.success(t('tracks.upload_success', { name: filename }));
-            resolve();
+            resolve('success');
           } else if (status.state === 'FAILURE' || status.status === 'error' || status.status === 'failed') {
             clearInterval(interval);
             removeUploadingId(taskId);
-            toast.error(t('tracks.upload_failed', { name: filename }));
-            resolve();
+            resolve('error');
           } else if (attempts >= MAX_ATTEMPTS) {
             clearInterval(interval);
             removeUploadingId(taskId);
-            toast.error(t('tracks.upload_timeout', { name: filename }));
-            resolve();
+            resolve('error'); // treated the same as a failure in the batch summary — no per-file specifics
           }
         } catch {
           clearInterval(interval);
           removeUploadingId(taskId);
-          toast.error(t('tracks.upload_failed', { name: filename }));
-          resolve();
+          resolve('error');
         }
       }, POLL_INTERVAL_MS);
     });

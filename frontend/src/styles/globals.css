@@ -224,6 +224,23 @@ input:where(:not([type="checkbox"]):not([type="radio"])):focus, select:focus, te
   }
 }
 
+/* Toast exit — mirrors fadeSlideInUp (slide up + fade in) with a slide-right
+   + fade-out, so a dismissed toast doesn't just pop out of existence. */
+@keyframes fadeSlideOutRight {
+  from {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateX(24px);
+  }
+}
+
+.toast-animate-out {
+  animation: fadeSlideOutRight 0.2s ease-in forwards;
+}
+
 @keyframes fadeIn {
   from {
     opacity: 0;
