@@ -23,6 +23,12 @@ RUN useradd --create-home --shell /usr/sbin/nologin appuser
 COPY --from=builder --chown=appuser:appuser /install /usr/local
 COPY --chown=appuser:appuser . .
 
+# Pre-create with appuser ownership: a fresh named Docker volume mounted at
+# this path (uploads_data, shared with celery_worker — see docker-compose)
+# inherits whatever's already at that path in the image on first mount, root
+# otherwise, which appuser can't write into.
+RUN mkdir -p /app/uploads && chown appuser:appuser /app/uploads
+
 USER appuser
 
 CMD ["sh", "-c", "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000"]

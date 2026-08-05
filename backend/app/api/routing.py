@@ -11,6 +11,11 @@ router = APIRouter(prefix="/api/routing", tags=["routing"])
 
 ORS_PROFILES = {"foot-walking", "cycling-regular", "foot-hiking", "driving-car", "driving-hgv"}
 
+# Module-level, reused across requests — a fresh httpx.AsyncClient() per
+# request means a new TCP+TLS handshake to ORS every single call instead of
+# reusing a pooled connection.
+_ors_client = httpx.AsyncClient(timeout=15)
+
 
 class DirectionsRequest(BaseModel):
     profile: str
@@ -50,15 +55,14 @@ async def get_directions(
 
     url = f"https://api.openrouteservice.org/v2/directions/{body.profile}/geojson"
     try:
-        async with httpx.AsyncClient(timeout=15) as client:
-            resp = await client.post(
-                url,
-                headers={
-                    "Content-Type": "application/json",
-                    "Authorization": f"Bearer {settings.ORS_API_KEY}",
-                },
-                json={"coordinates": body.coordinates},
-            )
+        resp = await _ors_client.post(
+            url,
+            headers={
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {settings.ORS_API_KEY}",
+            },
+            json={"coordinates": body.coordinates},
+        )
     except httpx.RequestError:
         raise HTTPException(status_code=502, detail="Routing service unavailable")
 

@@ -60,12 +60,14 @@ class TestRetryPolicy:
         assert process_track.time_limit is not None
         assert process_track.time_limit < _semaphore.timeout
 
-    def test_soft_time_limit_exceeded_sets_error_without_retry(self):
+    def test_soft_time_limit_exceeded_sets_error_without_retry(self, tmp_path):
         from celery.exceptions import SoftTimeLimitExceeded
 
         track = _mock_track()
         db = MagicMock()
         db.query.return_value.filter.return_value.first.return_value = track
+        file_path = str(tmp_path / "upload.gpx")
+        open(file_path, "wb").write(b"<gpx></gpx>")
 
         process_track.push_request(id="test-task-id", retries=0)
         try:
@@ -74,18 +76,20 @@ class TestRetryPolicy:
                  patch("app.services.parser_factory.parse", side_effect=SoftTimeLimitExceeded()), \
                  patch.object(process_track, "update_state"):
                 with pytest.raises(SoftTimeLimitExceeded):
-                    process_track._orig_run(track.id, b"<gpx></gpx>")
+                    process_track._orig_run(track.id, file_path)
         finally:
             process_track.pop_request()
 
         assert track.status == "error"
 
-    def test_broken_file_sets_error_without_retry(self):
+    def test_broken_file_sets_error_without_retry(self, tmp_path):
         """A corrupt file (parser raises ValueError) must mark the track as
         error and return immediately — no exception propagates, no retry."""
         track = _mock_track()
         db = MagicMock()
         db.query.return_value.filter.return_value.first.return_value = track
+        file_path = str(tmp_path / "upload.gpx")
+        open(file_path, "wb").write(b"this is not gpx content")
 
         process_track.push_request(id="test-task-id", retries=0)
         try:
@@ -93,7 +97,7 @@ class TestRetryPolicy:
                  patch("app.tasks.process_track._semaphore"), \
                  patch("app.services.parser_factory.parse", side_effect=ValueError("not a valid gpx file")), \
                  patch.object(process_track, "update_state"):
-                result = process_track._orig_run(track.id, b"this is not gpx content")
+                result = process_track._orig_run(track.id, file_path)
         finally:
             process_track.pop_request()
 
@@ -103,7 +107,7 @@ class TestRetryPolicy:
         assert "not a valid gpx" in track.error_detail
         db.commit.assert_called()
 
-    def test_transient_db_error_propagates_without_setting_error(self):
+    def test_transient_db_error_propagates_without_setting_error(self, tmp_path):
         """An OperationalError on commit (DB blip), with retries remaining,
         must propagate uncaught (so autoretry_for can retry it) and must
         NOT mark the track as error yet."""
@@ -111,6 +115,8 @@ class TestRetryPolicy:
         db = MagicMock()
         db.query.return_value.filter.return_value.first.return_value = track
         db.commit.side_effect = OperationalError("stmt", {}, Exception("connection lost"))
+        file_path = str(tmp_path / "upload.gpx")
+        open(file_path, "wb").write(b"<gpx></gpx>")
 
         process_track.push_request(id="test-task-id", retries=0)
         try:
@@ -120,19 +126,21 @@ class TestRetryPolicy:
                  patch("app.services.regions.get_regions", return_value=[]), \
                  patch.object(process_track, "update_state"):
                 with pytest.raises(OperationalError):
-                    process_track._orig_run(track.id, b"<gpx></gpx>")
+                    process_track._orig_run(track.id, file_path)
         finally:
             process_track.pop_request()
 
         assert track.regions == []
 
-    def test_transient_db_error_sets_error_once_retries_exhausted(self):
+    def test_transient_db_error_sets_error_once_retries_exhausted(self, tmp_path):
         """Once self.request.retries reaches max_retries, a further
         transient failure must record the error before propagating."""
         track = _mock_track()
         db = MagicMock()
         db.query.return_value.filter.return_value.first.return_value = track
         db.commit.side_effect = OperationalError("stmt", {}, Exception("connection lost"))
+        file_path = str(tmp_path / "upload.gpx")
+        open(file_path, "wb").write(b"<gpx></gpx>")
 
         process_track.push_request(id="test-task-id", retries=process_track.max_retries)
         try:
@@ -142,7 +150,7 @@ class TestRetryPolicy:
                  patch("app.services.regions.get_regions", return_value=[]), \
                  patch.object(process_track, "update_state"):
                 with pytest.raises(OperationalError):
-                    process_track._orig_run(track.id, b"<gpx></gpx>")
+                    process_track._orig_run(track.id, file_path)
         finally:
             process_track.pop_request()
 
