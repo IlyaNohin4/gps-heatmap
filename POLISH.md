@@ -395,7 +395,13 @@
     одного трека heatmap показывает посещения по всем") `useAllTracksWithGeometry()`
     убрана, `VisitLayer` переведён на тот же `visibleTracks`, что и
     `TrackLayer`/`SpeedLayer` — heatmap теперь показывает только видимые/выбранные
-    треки. См. группу B фиксов и `ARCHITECTURE.md` § VisitLayer (актуальное описание).
+    треки. См. группу B фиксов.
+  - **СУПЕРСЕДЕД ЕЩЁ РАЗ 2026-08-05:** `VisitLayer` удалён целиком (`HeatmapLayer`
+    переписан в line-based слой на `/api/tracks/road-usage`, см. `ARCHITECTURE.md`
+    § Modes) — visibleTracks-гейтинг из абзаца выше больше не действует, heatmap
+    снова показывает агрегат по всем трекам юзера, но теперь это осознанное решение
+    (агрегация server-side, не привязана к тому, что сейчас включено на карте), а
+    не регрессия.
 
 - [x] **RESOLVED** — LeftIsland POI tab delay when switching tabs (Performance, 2026-07-05)
   - **Проблема:** При клике на вкладку POI происходило 1.1s зависание браузера
