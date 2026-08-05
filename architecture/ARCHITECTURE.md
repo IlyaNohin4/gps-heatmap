@@ -174,6 +174,8 @@ GET    /api/tracks                     — список треков юзера 
        PostGIS/SQL не доходит)
        ?file_format=gpx|kml|tcx|fit|geojson
        ?speed_avg_min=X&speed_avg_max=Y
+       ?is_public=true|false — фильтр по статусу публикации (Track.is_public);
+       не передан → без фильтра. Фронтенд: чип "Published" в LeftIsland.jsx.
        ?limit=N (default 50, max 500) &offset=N (default 0)
        Response: {items: TrackOut[], total: int, has_more: bool}
 
@@ -350,6 +352,22 @@ POST   /api/routing/directions         — прокси к OpenRouteService дл
   Import, того же размера, что Import/Create. `POICreationModal.jsx` при
   создании точки вручную даёт выбрать список (или создать новый на лету);
   выбор запоминается в `mapStore.lastUsedImportName` между созданиями.
+- **POI show/hide toggle (2026-08-05):** глазик "показать/скрыть все POI" на
+  вкладке POI перенесён с левого на правый край кнопки таба (симметрично
+  такому же глазику у вкладки Tracks — оба теперь у правого края своей
+  кнопки), см. `LeftIsland.jsx`.
+- **Мульти-выбор + bulk-действия (2026-08-05):** Ctrl/Cmd+клик по карточке
+  трека или POI добавляет/убирает её из `appStore.selectedTrackIds` /
+  `selectedPOIIds` (Set, независим от одиночного `selectedTrackId`, который
+  по-прежнему рулит fit-bounds/попапом деталей). Обычный клик при активном
+  мульти-выборе сбрасывает его и ведёт себя как раньше. Когда набор непуст,
+  под списком появляется bar "N selected" с кнопками очистки выбора и
+  Delete → `BulkDeleteModal.jsx` (`components/modals/`, общий для треков и
+  POI: принимает `ids`, `deleteFn`), удаляет по одному через существующие
+  `deleteTrack`/`deletePOI`, не прерывается на отдельных ошибках (частичный
+  успех → отдельный тост). Хранилище видимости per-item (hide/show
+  выбранных) не реализовано — инфраструктуры для этого нет (только глобальный
+  `allTracksVisible`/`showPOI` на весь слой), см. FUTURE.md, если понадобится.
 
 ### RightIsland
 - Zoom, Compass, Nominatim поиск, Geolocation

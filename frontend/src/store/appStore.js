@@ -8,6 +8,11 @@ const useAppStore = create(
       unitSystem: 'metric', // 'metric' (km + km/h) | 'imperial' (mi + mph)
       language: 'en',
       selectedTrackId: null,
+      // Ctrl/Cmd+click multi-select for bulk actions (delete) — independent
+      // of selectedTrackId, which drives single-select behaviors like
+      // map fit-bounds and the details popover.
+      selectedTrackIds: new Set(),
+      selectedPOIIds: new Set(),
       // Track whose details popover should be open, set when clicking the
       // track's line on the map. detailsTrackPosition is the click's screen
       // coordinates so the popover can appear next to the cursor.
@@ -30,6 +35,20 @@ const useAppStore = create(
       setLanguage: (language) => set({ language }),
       setSelectedTrack: (id) => set({ selectedTrackId: id, activePanel: null }),
       setSelectedTrackId: (id) => set({ selectedTrackId: id }),
+      toggleTrackSelection: (id) =>
+        set((s) => {
+          const next = new Set(s.selectedTrackIds);
+          next.has(id) ? next.delete(id) : next.add(id);
+          return { selectedTrackIds: next };
+        }),
+      clearTrackSelection: () => set({ selectedTrackIds: new Set() }),
+      togglePOISelection: (id) =>
+        set((s) => {
+          const next = new Set(s.selectedPOIIds);
+          next.has(id) ? next.delete(id) : next.add(id);
+          return { selectedPOIIds: next };
+        }),
+      clearPOISelection: () => set({ selectedPOIIds: new Set() }),
       setDetailsTrackId: (id) => set({ detailsTrackId: id }),
       setDetailsTrackPosition: (pos) => set({ detailsTrackPosition: pos }),
       setActivePanel: (panel) => set({ activePanel: panel }),
@@ -39,7 +58,12 @@ const useAppStore = create(
       bumpTracksListVersion: () => set((s) => ({ tracksListVersion: s.tracksListVersion + 1 })),
       bumpPOIListVersion: () => set((s) => ({ poiListVersion: s.poiListVersion + 1 })),
       removeTrack: (id) =>
-        set((s) => ({ tracks: s.tracks.filter((t) => t.id !== id) })),
+        set((s) => {
+          if (!s.selectedTrackIds.has(id)) return { tracks: s.tracks.filter((t) => t.id !== id) };
+          const next = new Set(s.selectedTrackIds);
+          next.delete(id);
+          return { tracks: s.tracks.filter((t) => t.id !== id), selectedTrackIds: next };
+        }),
       updateTrack: (updated) =>
         set((s) => ({ tracks: s.tracks.map((t) => (t.id === updated.id ? { ...t, ...updated } : t)) })),
       addUploadingId: (taskId) =>
@@ -56,7 +80,14 @@ const useAppStore = create(
         }),
       // Called on logout / auth switch (App.jsx). tracksListVersion (T19 bump
       // mechanism) is intentionally left untouched (see T21).
-      resetUserData: () => set({ selectedTrackId: null, detailsTrackId: null, detailsTrackPosition: null, isUploadingIds: new Set() }),
+      resetUserData: () => set({
+        selectedTrackId: null,
+        selectedTrackIds: new Set(),
+        selectedPOIIds: new Set(),
+        detailsTrackId: null,
+        detailsTrackPosition: null,
+        isUploadingIds: new Set(),
+      }),
     }),
     {
       name: 'gps_app',
