@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next';
 import useAppStore from '../../store/appStore.js';
 import useAuthStore from '../../store/authStore.js';
 import useMapStore from '../../store/mapStore.js';
-import { fetchPOI, fetchPOIPage, fetchPOICategories, deletePOI, uploadPOI, getImports, createImport, renameImport, deleteImport, exportImport } from '../../api/poi.js';
+import { fetchPOI, fetchPOIPage, fetchPOICategories, deletePOI, uploadPOI, getLists, createList, renameList, deleteList, exportList } from '../../api/poi.js';
 import { apiErrorMessage } from '../../utils/apiError.js';
 import POICard from '../poi/POICard.jsx';
 import useInfiniteScroll from '../../hooks/useInfiniteScroll.js';
@@ -19,11 +19,11 @@ const POIDeleteModal = lazy(() => import('../modals/POIDeleteModal.jsx'));
 
 export default React.memo(function POITab({ setSidebarOpen }) {
   const { t } = useTranslation();
-  const { pois, setPOIs, setPoiCreationMode, poiCreationMode, mapInstance, imports, setImports, hiddenImports, toggleImportVisibility } = useMapStore();
+  const { pois, setPOIs, setPoiCreationMode, poiCreationMode, mapInstance, lists, setLists, hiddenLists, toggleListVisibility } = useMapStore();
   const { isAuthenticated } = useAuthStore();
   const { activePanel, setActivePanel, poiListVersion, bumpPOIListVersion } = useAppStore();
   const filterOpen = activePanel === 'left:poi-filter';
-  const importsOpen = activePanel === 'left:poi-imports';
+  const listsOpen = activePanel === 'left:poi-lists';
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [search, setSearch] = useState('');
@@ -32,46 +32,46 @@ export default React.memo(function POITab({ setSidebarOpen }) {
   const [showRenameModal, setShowRenameModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [selectedPOI, setSelectedPOI] = useState(null);
-  const [editingImportName, setEditingImportName] = useState(null);
-  const [editingImportValue, setEditingImportValue] = useState('');
-  const [deletingImportName, setDeletingImportName] = useState(null);
-  const [creatingImport, setCreatingImport] = useState(false);
-  const [newImportName, setNewImportName] = useState('');
-  const [savingNewImport, setSavingNewImport] = useState(false);
+  const [editingListName, setEditingListName] = useState(null);
+  const [editingListValue, setEditingListValue] = useState('');
+  const [deletingListName, setDeletingListName] = useState(null);
+  const [creatingList, setCreatingList] = useState(false);
+  const [newListNameInput, setNewListNameInput] = useState('');
+  const [savingNewList, setSavingNewList] = useState(false);
   const fileInputRef = useRef(null);
   const requestVersion = useRef(0);
 
-  // Imports panel — lazy-loaded on first open, not on every POITab mount.
+  // Lists panel — lazy-loaded on first open, not on every POITab mount.
   useEffect(() => {
-    if (!importsOpen) return;
-    getImports().then(setImports).catch((err) => console.error('Failed to load imports:', err));
-  }, [importsOpen, setImports]);
+    if (!listsOpen) return;
+    getLists().then(setLists).catch((err) => console.error('Failed to load lists:', err));
+  }, [listsOpen, setLists]);
 
-  async function handleRenameImport(oldName) {
-    if (!editingImportValue.trim()) {
-      setEditingImportName(null);
+  async function handleRenameList(oldName) {
+    if (!editingListValue.trim()) {
+      setEditingListName(null);
       return;
     }
     try {
-      await renameImport(oldName, editingImportValue);
+      await renameList(oldName, editingListValue);
       toast.success(t('poi.renamed'));
-      const data = await getImports();
-      setImports(data);
+      const data = await getLists();
+      setLists(data);
     } catch (err) {
       toast.error(t('poi.rename_failed'));
-      console.error('Rename import error:', err);
+      console.error('Rename list error:', err);
     } finally {
-      setEditingImportName(null);
+      setEditingListName(null);
     }
   }
 
-  async function handleDeleteImport(name) {
-    setDeletingImportName(name);
+  async function handleDeleteList(name) {
+    setDeletingListName(name);
     try {
-      await deleteImport(name);
+      await deleteList(name);
       toast.success(t('poi.deleted'));
-      const data = await getImports();
-      setImports(data);
+      const data = await getLists();
+      setLists(data);
       // Deleting a list deletes its POI server-side too — refresh both the
       // map markers (mapStore.pois) and this tab's paginated list, or the
       // deleted points stay visible until a page reload.
@@ -79,40 +79,40 @@ export default React.memo(function POITab({ setSidebarOpen }) {
       bumpPOIListVersion();
     } catch (err) {
       toast.error(t('poi.delete_failed'));
-      console.error('Delete import error:', err);
+      console.error('Delete list error:', err);
     } finally {
-      setDeletingImportName(null);
+      setDeletingListName(null);
     }
   }
 
-  async function handleCreateImport() {
-    if (!newImportName.trim()) {
-      setCreatingImport(false);
+  async function handleCreateList() {
+    if (!newListNameInput.trim()) {
+      setCreatingList(false);
       return;
     }
-    setSavingNewImport(true);
+    setSavingNewList(true);
     try {
-      await createImport(newImportName.trim());
-      toast.success(t('poi.imported'));
-      const data = await getImports();
-      setImports(data);
-      setNewImportName('');
-      setCreatingImport(false);
+      await createList(newListNameInput.trim());
+      toast.success(t('poi.list_created'));
+      const data = await getLists();
+      setLists(data);
+      setNewListNameInput('');
+      setCreatingList(false);
     } catch (err) {
       toast.error(apiErrorMessage(err, t('poi.import_failed')));
-      console.error('Create import error:', err);
+      console.error('Create list error:', err);
     } finally {
-      setSavingNewImport(false);
+      setSavingNewList(false);
     }
   }
 
-  async function handleExportImport(name) {
+  async function handleExportList(name) {
     try {
-      await exportImport(name);
+      await exportList(name);
       toast.success(t('poi.exported'));
     } catch (err) {
       toast.error(t('poi.export_failed'));
-      console.error('Export import error:', err);
+      console.error('Export list error:', err);
     }
   }
 
@@ -157,7 +157,7 @@ export default React.memo(function POITab({ setSidebarOpen }) {
       await uploadPOI(file);
       toast.success(t('poi.imported_success'));
       await loadPOIs();
-      getImports().then(setImports).catch((err) => console.error('Failed to load imports:', err));
+      getLists().then(setLists).catch((err) => console.error('Failed to load lists:', err));
       bumpPOIListVersion();
     } catch (err) {
       toast.error(apiErrorMessage(err, t('poi.import_failed')));
@@ -361,51 +361,51 @@ export default React.memo(function POITab({ setSidebarOpen }) {
         )}
       </div>
 
-      {/* Imports panel — rename/delete/export/toggle-visibility per import.
-          Sits right above the bottom action row, next to the Import/Manage
+      {/* Lists panel — rename/delete/export/toggle-visibility per list.
+          Sits right above the bottom action row, next to the Import/Manage lists
           buttons that trigger it — not up near the search bar, so the panel
           opens where the eye looks instead of jumping across the tab. */}
-      {importsOpen && (
+      {listsOpen && (
         <div style={{ padding: 'var(--space-3)', borderTop: '1px solid var(--border)', animation: 'fadeIn 0.3s ease-out', flexShrink: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 'var(--space-2)' }}>
             <div style={{ fontSize: 'var(--text-xs)', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase' }}>
-              Imports {imports.length > 0 && `(${imports.length})`}
+              Lists {lists.length > 0 && `(${lists.length})`}
             </div>
-            {!creatingImport && (
+            {!creatingList && (
               <button
-                onClick={() => setCreatingImport(true)}
+                onClick={() => setCreatingList(true)}
                 style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--accent)', fontSize: 'var(--text-xs)', fontWeight: 600, padding: 0 }}
               >
                 + New list
               </button>
             )}
           </div>
-          {creatingImport && (
+          {creatingList && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-1)', marginBottom: 'var(--space-2)' }}>
               <input
                 autoFocus
                 type="text"
-                value={newImportName}
-                onChange={(e) => setNewImportName(e.target.value)}
+                value={newListNameInput}
+                onChange={(e) => setNewListNameInput(e.target.value)}
                 onKeyDown={(e) => {
-                  if (e.key === 'Enter') handleCreateImport();
-                  if (e.key === 'Escape') { setCreatingImport(false); setNewImportName(''); }
+                  if (e.key === 'Enter') handleCreateList();
+                  if (e.key === 'Escape') { setCreatingList(false); setNewListNameInput(''); }
                 }}
                 placeholder="List name"
-                disabled={savingNewImport}
+                disabled={savingNewList}
                 style={{ flex: 1, border: '1px solid var(--accent)', padding: '4px 6px', borderRadius: 4, fontSize: 'var(--text-sm)', background: 'var(--bg)', color: 'var(--text)' }}
               />
               <button
-                onClick={handleCreateImport}
-                disabled={savingNewImport}
-                style={{ background: 'none', border: 'none', cursor: savingNewImport ? 'not-allowed' : 'pointer', color: 'var(--accent)', display: 'flex', padding: 0 }}
+                onClick={handleCreateList}
+                disabled={savingNewList}
+                style={{ background: 'none', border: 'none', cursor: savingNewList ? 'not-allowed' : 'pointer', color: 'var(--accent)', display: 'flex', padding: 0 }}
                 title="Save"
               >
-                {savingNewImport ? <Loader size={14} style={{ animation: 'spin 1s linear infinite' }} /> : <Plus size={14} />}
+                {savingNewList ? <Loader size={14} style={{ animation: 'spin 1s linear infinite' }} /> : <Plus size={14} />}
               </button>
               <button
-                onClick={() => { setCreatingImport(false); setNewImportName(''); }}
-                disabled={savingNewImport}
+                onClick={() => { setCreatingList(false); setNewListNameInput(''); }}
+                disabled={savingNewList}
                 style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)', display: 'flex', padding: 0 }}
                 title="Cancel"
               >
@@ -413,19 +413,19 @@ export default React.memo(function POITab({ setSidebarOpen }) {
               </button>
             </div>
           )}
-          {imports.length === 0 ? (
+          {lists.length === 0 ? (
             <div style={{ fontSize: 'var(--text-sm)', color: 'var(--text-secondary)', padding: 'var(--space-2) 0' }}>
               {t('poi.no_data')}
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-1)' }}>
-              {imports.map((imp) => {
-                const isVisible = !hiddenImports.has(imp.name);
-                const isEditing = editingImportName === imp.name;
-                const isDeleting = deletingImportName === imp.name;
+              {lists.map((list) => {
+                const isVisible = !hiddenLists.has(list.name);
+                const isEditing = editingListName === list.name;
+                const isDeleting = deletingListName === list.name;
                 return (
                   <div
-                    key={imp.name}
+                    key={list.name}
                     style={{
                       display: 'flex', alignItems: 'center', gap: 'var(--space-1)',
                       padding: '6px 8px', borderRadius: 6,
@@ -434,7 +434,7 @@ export default React.memo(function POITab({ setSidebarOpen }) {
                     }}
                   >
                     <button
-                      onClick={() => toggleImportVisibility(imp.name)}
+                      onClick={() => toggleListVisibility(list.name)}
                       title={isVisible ? 'Hide' : 'Show'}
                       style={{ background: 'none', border: 'none', cursor: 'pointer', color: isVisible ? 'var(--accent)' : 'var(--text-secondary)', display: 'flex', padding: 0 }}
                     >
@@ -444,25 +444,25 @@ export default React.memo(function POITab({ setSidebarOpen }) {
                       <input
                         autoFocus
                         type="text"
-                        value={editingImportValue}
-                        onChange={(e) => setEditingImportValue(e.target.value)}
-                        onBlur={() => handleRenameImport(imp.name)}
+                        value={editingListValue}
+                        onChange={(e) => setEditingListValue(e.target.value)}
+                        onBlur={() => handleRenameList(list.name)}
                         onKeyDown={(e) => {
-                          if (e.key === 'Enter') handleRenameImport(imp.name);
-                          if (e.key === 'Escape') setEditingImportName(null);
+                          if (e.key === 'Enter') handleRenameList(list.name);
+                          if (e.key === 'Escape') setEditingListName(null);
                         }}
                         style={{ flex: 1, border: '1px solid var(--accent)', padding: '4px 6px', borderRadius: 4, fontSize: 'var(--text-sm)', background: 'var(--bg)', color: 'var(--text)' }}
                       />
                     ) : (
-                      <span style={{ flex: 1, cursor: 'pointer', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={imp.name}>
-                        {imp.name}
+                      <span style={{ flex: 1, cursor: 'pointer', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={list.name}>
+                        {list.name}
                       </span>
                     )}
                     <span style={{ fontSize: 'var(--text-xs)', color: 'var(--text-secondary)', padding: '2px 4px', background: 'rgba(0,0,0,0.1)', borderRadius: 3 }}>
-                      {imp.count}
+                      {list.count}
                     </span>
                     <button
-                      onClick={() => { setEditingImportName(imp.name); setEditingImportValue(imp.name); }}
+                      onClick={() => { setEditingListName(list.name); setEditingListValue(list.name); }}
                       disabled={isEditing || isDeleting}
                       title="Rename"
                       style={{ background: 'none', border: 'none', cursor: isEditing || isDeleting ? 'not-allowed' : 'pointer', color: 'var(--text-secondary)', display: 'flex', padding: 0, opacity: isEditing || isDeleting ? 0.5 : 1 }}
@@ -470,7 +470,7 @@ export default React.memo(function POITab({ setSidebarOpen }) {
                       <Edit2 size={13} />
                     </button>
                     <button
-                      onClick={() => handleExportImport(imp.name)}
+                      onClick={() => handleExportList(list.name)}
                       disabled={isEditing || isDeleting}
                       title="Export"
                       style={{ background: 'none', border: 'none', cursor: isEditing || isDeleting ? 'not-allowed' : 'pointer', color: 'var(--text-secondary)', display: 'flex', padding: 0, opacity: isEditing || isDeleting ? 0.5 : 1 }}
@@ -478,7 +478,7 @@ export default React.memo(function POITab({ setSidebarOpen }) {
                       <Download size={13} />
                     </button>
                     <button
-                      onClick={() => handleDeleteImport(imp.name)}
+                      onClick={() => handleDeleteList(list.name)}
                       disabled={isEditing || isDeleting}
                       title="Delete"
                       style={{ background: 'none', border: 'none', cursor: isEditing || isDeleting ? 'not-allowed' : 'pointer', color: isDeleting ? 'var(--accent)' : 'var(--text-secondary)', display: 'flex', padding: 0, opacity: isEditing ? 0.5 : 1 }}
@@ -497,10 +497,10 @@ export default React.memo(function POITab({ setSidebarOpen }) {
       <div style={{ padding: 'var(--space-2) var(--space-3) var(--space-3)', borderTop: '1px solid var(--border)', display: 'flex', gap: 'var(--space-2)', flexShrink: 0 }}>
         <Button
           variant="secondary"
-          active={importsOpen}
-          onClick={() => setActivePanel(importsOpen ? null : 'left:poi-imports')}
+          active={listsOpen}
+          onClick={() => setActivePanel(listsOpen ? null : 'left:poi-lists')}
           style={{ flex: 1, minWidth: 0, border: 'none' }}
-          title="Manage imports"
+          title="Manage lists"
         >
           <FolderCog size={14} />
         </Button>

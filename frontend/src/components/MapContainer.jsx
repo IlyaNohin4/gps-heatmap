@@ -22,7 +22,7 @@ import SpeedLayer from '../map/SpeedLayer.jsx';
 import POILayer from '../map/POILayer.jsx';
 import TrackCreator from '../map/TrackCreator.jsx';
 import POICreationModal from '../components/modals/POICreationModal.jsx';
-import POIRenameModal from '../components/modals/POIRenameModal.jsx';
+import POIDetailsPopover from '../components/poi/POIDetailsPopover.jsx';
 import POIContextMenu from '../components/poi/POIContextMenu.jsx';
 import TrackDetailsPopover from '../components/tracks/TrackDetailsPopover.jsx';
 
@@ -178,11 +178,17 @@ export default function MapContainer() {
   const [coordsMenu, setCoordsMenu] = useState(null);
   const [creatingPOI, setCreatingPOI] = useState(null);
   const [detailsPOI, setDetailsPOI] = useState(null);
+  const [detailsPOIPosition, setDetailsPOIPosition] = useState(null);
 
   const handlePOIRenamed = (updatedPOI) => {
     useMapStore.getState().setPOIs(
       useMapStore.getState().pois.map((p) => (p.id === updatedPOI.id ? updatedPOI : p))
     );
+    useAppStore.getState().bumpPOIListVersion();
+  };
+
+  const handlePOIDeleted = (poiId) => {
+    useMapStore.getState().removePOI(poiId);
     useAppStore.getState().bumpPOIListVersion();
   };
 
@@ -204,7 +210,12 @@ export default function MapContainer() {
         zoomControl={false}
         attributionControl={false}
       >
-        <MapLayers onPOIClick={setDetailsPOI} />
+        <MapLayers
+          onPOIClick={(poi, originalEvent) => {
+            setDetailsPOI(poi);
+            setDetailsPOIPosition(originalEvent ? { x: originalEvent.clientX, y: originalEvent.clientY } : null);
+          }}
+        />
         <POIContextMenuHandler
           onCoordinatesMenu={(lat, lon, x, y) => setCoordsMenu({ lat, lon, x, y })}
           poiCreationMode={poiCreationMode}
@@ -222,14 +233,18 @@ export default function MapContainer() {
         />
       )}
 
-      <POIRenameModal
+      <POIDetailsPopover
         poi={detailsPOI}
-        isOpen={!!detailsPOI}
-        onClose={() => setDetailsPOI(null)}
+        position={detailsPOIPosition}
+        onClose={() => {
+          setDetailsPOI(null);
+          setDetailsPOIPosition(null);
+        }}
         onRenamed={(updated) => {
           handlePOIRenamed(updated);
-          setDetailsPOI(null);
+          setDetailsPOI(updated);
         }}
+        onDeleted={handlePOIDeleted}
       />
 
       {coordsMenu && (

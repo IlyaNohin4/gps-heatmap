@@ -72,7 +72,7 @@ function makeDivIcon(category, color, iconSlug) {
 
 export default function POILayer({ onPOIClick }) {
   const map = useMap();
-  const { hiddenImports, pois } = useMapStore();
+  const { hiddenLists, pois } = useMapStore();
   const groupRef = useRef(null);
 
   // Create layer group on mount
@@ -86,20 +86,21 @@ export default function POILayer({ onPOIClick }) {
     return () => group.remove();
   }, [map]);
 
-  // Re-render when POI or hidden imports change
+  // Re-render when POI or hidden lists change
   useEffect(() => {
     renderPOI();
-  }, [pois, hiddenImports]);
+  }, [pois, hiddenLists]);
 
   function renderPOI() {
     if (!groupRef.current) return;
 
     groupRef.current.clearLayers();
 
-    // POI with no import_name were created directly (not from a KML/KMZ
-    // import) and are always shown; imported POI are shown unless their
-    // import was explicitly hidden via the per-import toggle.
-    const visiblePOI = pois.filter((poi) => !poi.import_name || !hiddenImports.has(poi.import_name));
+    // POI with no import_name (the field name on the wire — see api/poi.js)
+    // were created directly (not from a KML/KMZ import) and are always
+    // shown; imported POI are shown unless their list was explicitly hidden
+    // via the per-list toggle.
+    const visiblePOI = pois.filter((poi) => !poi.import_name || !hiddenLists.has(poi.import_name));
 
     const markers = visiblePOI.map((poi) => {
       const category = poi.category?.toLowerCase() || 'other';
@@ -107,10 +108,10 @@ export default function POILayer({ onPOIClick }) {
       const icon = makeDivIcon(category, color, poi.icon);
 
       const marker = L.marker([poi.lat, poi.lon], { icon });
-      // Clicking a marker opens the full details/edit modal (icon, name,
-      // category, visited) instead of a plain Leaflet popup — reuses
-      // POIRenameModal wholesale rather than duplicating its fields here.
-      if (onPOIClick) marker.on('click', () => onPOIClick(poi));
+      // Clicking a marker opens a small non-modal popup (name + Rename/
+      // Delete) — see POIDetailsPopover.jsx — anchored near the click,
+      // same pattern as TrackDetailsPopover for track lines.
+      if (onPOIClick) marker.on('click', (e) => onPOIClick(poi, e.originalEvent));
       return marker;
     });
 
