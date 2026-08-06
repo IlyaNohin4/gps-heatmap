@@ -281,6 +281,31 @@ export default React.memo(function POITab({ setSidebarOpen }) {
   const listContainerRef = useRef(null);
   const sentinelRef = useInfiniteScroll(loadMorePOIList, listHasMore, listContainerRef);
 
+  // No per-POI download endpoint exists backend-side (only whole-list KML
+  // export, see exportList) — build the file client-side from whatever's
+  // already loaded in this tab's paginated list instead of adding one.
+  function bulkDownloadPOI() {
+    const selected = listItems.filter((p) => selectedPOIIds.has(p.id));
+    if (selected.length === 0) return;
+    const geojson = {
+      type: 'FeatureCollection',
+      features: selected.map((p) => ({
+        type: 'Feature',
+        geometry: { type: 'Point', coordinates: [p.lon, p.lat] },
+        properties: { name: p.name, category: p.category, description: p.description, visited: p.visited },
+      })),
+    };
+    const blob = new Blob([JSON.stringify(geojson, null, 2)], { type: 'application/geo+json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `poi-export-${Date.now()}.geojson`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  }
+
   return (
     <div className="poi-tab">
       {/* Search bar */}
@@ -376,26 +401,6 @@ export default React.memo(function POITab({ setSidebarOpen }) {
           </>
         )}
       </div>
-
-      {/* Bulk selection bar — Ctrl/Cmd+click on a POI adds it here */}
-      {selectedPOIIds.size > 0 && (
-        <div style={{
-          padding: 'var(--space-2) var(--space-3)', borderTop: '1px solid var(--border)',
-          flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--space-2)',
-        }}>
-          <span style={{ fontSize: 'var(--text-sm)', fontWeight: 600, color: 'var(--text)' }}>
-            {t('bulk.selected', { count: selectedPOIIds.size })}
-          </span>
-          <div style={{ display: 'flex', gap: 'var(--space-1)' }}>
-            <Button variant="ghost" onClick={clearPOISelection} title={t('bulk.clear_selection')}>
-              <XIcon size={14} />
-            </Button>
-            <Button variant="danger" onClick={() => setShowBulkDeleteModal(true)}>
-              <Trash2 size={14} /> {t('bulk.delete_selected')}
-            </Button>
-          </div>
-        </div>
-      )}
 
       {/* Lists panel — rename/delete/export/toggle-visibility per list.
           Sits right above the bottom action row, next to the Import/Manage lists
@@ -529,27 +534,57 @@ export default React.memo(function POITab({ setSidebarOpen }) {
         </div>
       )}
 
-      {/* Bottom actions */}
+      {/* Bottom actions. Bulk selection (Ctrl/Cmd+click a card) replaces
+          this row in place instead of stacking a separate bar — same
+          "primary actions for this tab" slot either way. */}
       <div style={{ padding: 'var(--space-2) var(--space-3) var(--space-3)', borderTop: '1px solid var(--border)', display: 'flex', gap: 'var(--space-2)', flexShrink: 0 }}>
-        <Button
-          variant="secondary"
-          active={listsOpen}
-          onClick={() => setActivePanel(listsOpen ? null : 'left:poi-lists')}
-          style={{ flex: 1, minWidth: 0, border: 'none' }}
-          title="Manage lists"
-        >
-          <FolderCog size={14} />
-        </Button>
-        <Button
-          variant="secondary"
-          onClick={() => fileInputRef.current?.click()}
-          disabled={uploading}
-          style={{ flex: 1, minWidth: 0, border: 'none' }}
-          title="Import KML/KMZ file"
-        >
-          {uploading ? <Loader size={14} style={{ animation: 'spin 1s linear infinite' }} /> : <Upload size={14} />}
-          Import
-        </Button>
+        {selectedPOIIds.size > 0 ? (
+          <>
+            <span style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', fontSize: 'var(--text-sm)', fontWeight: 600, color: 'var(--text)' }}>
+              {t('bulk.selected', { count: selectedPOIIds.size })}
+            </span>
+            <Button variant="secondary" iconOnly onClick={bulkDownloadPOI} title={t('bulk.download_selected')}>
+              <Download size={14} />
+            </Button>
+            <Button variant="danger" iconOnly onClick={() => setShowBulkDeleteModal(true)} title={t('bulk.delete_selected')}>
+              <Trash2 size={14} />
+            </Button>
+            <Button variant="ghost" iconOnly onClick={clearPOISelection} title={t('bulk.clear_selection')}>
+              <XIcon size={14} />
+            </Button>
+          </>
+        ) : (
+          <>
+            <Button
+              variant="secondary"
+              active={listsOpen}
+              onClick={() => setActivePanel(listsOpen ? null : 'left:poi-lists')}
+              style={{ flex: 1, minWidth: 0, border: 'none' }}
+              title="Manage lists"
+            >
+              <FolderCog size={14} />
+            </Button>
+            <Button
+              variant="secondary"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploading}
+              style={{ flex: 1, minWidth: 0, border: 'none' }}
+              title="Import KML/KMZ file"
+            >
+              {uploading ? <Loader size={14} style={{ animation: 'spin 1s linear infinite' }} /> : <Upload size={14} />}
+              Import
+            </Button>
+            <Button
+              variant="secondary"
+              active={poiCreationMode}
+              onClick={handleToggleCreation}
+              style={{ flex: 1, minWidth: 0, border: 'none' }}
+              title="Create POI"
+            >
+              <Plus size={14} /> Create
+            </Button>
+          </>
+        )}
         <input
           ref={fileInputRef}
           type="file"
@@ -558,15 +593,6 @@ export default React.memo(function POITab({ setSidebarOpen }) {
           disabled={uploading}
           style={{ display: 'none' }}
         />
-        <Button
-          variant="secondary"
-          active={poiCreationMode}
-          onClick={handleToggleCreation}
-          style={{ flex: 1, minWidth: 0, border: 'none' }}
-          title="Create POI"
-        >
-          <Plus size={14} /> Create
-        </Button>
       </div>
 
       {/* Status indicator */}

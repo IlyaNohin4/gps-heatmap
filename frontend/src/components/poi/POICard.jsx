@@ -67,7 +67,7 @@ export default React.memo(function POICard({ poi, isDeleting, isSelected, onZoom
           onRename?.();
         }}
         disabled={isDeleting}
-        title="Rename POI"
+        title="Edit POI"
       >
         <Pencil size={14} />
       </Button>

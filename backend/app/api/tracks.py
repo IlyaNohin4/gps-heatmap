@@ -2,6 +2,7 @@ import datetime
 import json
 import math
 import os
+import random
 import secrets
 from typing import List, Optional
 from xml.sax.saxutils import escape as xml_escape
@@ -53,6 +54,23 @@ def _register_task_owner(task_id: str, user_id: int) -> None:
     redis_client.setex(f"task_owner:{task_id}", TASK_OWNER_TTL_SECONDS, str(user_id))
 
 ALLOWED_FORMATS = {"gpx", "kml", "tcx", "fit", "geojson"}
+
+# Same swatch set as the POI color picker (frontend/src/utils/poiIcons.js's
+# POI_COLOR_SWATCHES), minus the grayscale row — track lines need to read
+# against both a light and a dark basemap, where near-white/near-black
+# swatches disappear.
+TRACK_COLOR_PALETTE = [
+    "#b0120a", "#dd4b39", "#ff6600", "#ff9900", "#ffcc00",
+    "#009688", "#0f9d58", "#00bcd4", "#4986e8", "#0d47a1", "#7b1fa2",
+    "#e6b8af", "#f4c7c3", "#ffc794", "#ffe0b2", "#fff2ac",
+    "#b2dfdb", "#b7e1cd", "#b2ebf2", "#c9daf8", "#a4c2f4", "#d5a6bd",
+]
+
+
+def _pick_track_color(current_user: User) -> Optional[str]:
+    if not current_user.randomize_track_colors:
+        return None
+    return random.choice(TRACK_COLOR_PALETTE)
 
 
 # ── Schemas ────────────────────────────────────────────────────────────────────
@@ -243,6 +261,7 @@ class TrackOut(BaseModel):
     public_token: str
     status: str
     error_detail: Optional[str]
+    color: Optional[str]
 
     model_config = {"from_attributes": True}
 
@@ -267,6 +286,7 @@ class TrackOut(BaseModel):
             public_token=t.public_token,
             status=t.status,
             error_detail=t.error_detail,
+            color=t.color,
         )
 
 
@@ -439,7 +459,10 @@ async def upload_track(
     # max_length=255 — Track.name itself is an unbounded Postgres varchar
     # (no 500 risk), but an unbounded filename-derived name is still bad UX.
     name = ((file.filename or "track").rsplit(".", 1)[0] or "track")[:255]
-    track = Track(user_id=current_user.id, name=name, file_format=fmt, raw_points=None, status="processing")
+    track = Track(
+        user_id=current_user.id, name=name, file_format=fmt, raw_points=None, status="processing",
+        color=_pick_track_color(current_user),
+    )
     db.add(track)
     db.commit()
     db.refresh(track)
@@ -544,7 +567,10 @@ async def create_track(
 
     # Create track record
     name = body.name.strip()
-    track = Track(user_id=current_user.id, name=name, file_format=body.format, raw_points=None, status="processing")
+    track = Track(
+        user_id=current_user.id, name=name, file_format=body.format, raw_points=None, status="processing",
+        color=_pick_track_color(current_user),
+    )
     db.add(track)
     db.commit()
     db.refresh(track)

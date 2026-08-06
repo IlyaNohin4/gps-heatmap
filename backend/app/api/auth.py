@@ -234,6 +234,9 @@ class UserOut(BaseModel):
     theme: str
     unit_distance: str
     unit_speed: str
+    notifications_enabled: bool
+    show_start_end_markers: bool
+    randomize_track_colors: bool
 
     model_config = {"from_attributes": True}
 
@@ -245,6 +248,9 @@ class UpdatePrefsRequest(BaseModel):
     theme: Optional[str] = None
     unit_distance: Optional[str] = None
     unit_speed: Optional[str] = None
+    notifications_enabled: Optional[bool] = None
+    show_start_end_markers: Optional[bool] = None
+    randomize_track_colors: Optional[bool] = None
 
 
 class ChangePasswordRequest(BaseModel):
@@ -296,6 +302,12 @@ def update_me(
         if body.unit_speed not in VALID_UNIT_SPEED:
             raise HTTPException(status_code=400, detail="Invalid unit_speed")
         current_user.unit_speed = body.unit_speed
+    if body.notifications_enabled is not None:
+        current_user.notifications_enabled = body.notifications_enabled
+    if body.show_start_end_markers is not None:
+        current_user.show_start_end_markers = body.show_start_end_markers
+    if body.randomize_track_colors is not None:
+        current_user.randomize_track_colors = body.randomize_track_colors
     db.commit()
     db.refresh(current_user)
     return current_user

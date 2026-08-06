@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 
-from sqlalchemy import Column, DateTime, Integer, String
+from sqlalchemy import Boolean, Column, DateTime, Integer, String
 
 from app.core.database import Base
 
@@ -21,3 +21,9 @@ class User(Base):
     theme = Column(String(10), nullable=False, server_default="light")
     unit_distance = Column(String(4), nullable=False, server_default="km")
     unit_speed = Column(String(8), nullable=False, server_default="kmh")
+    notifications_enabled = Column(Boolean, nullable=False, server_default="true")
+    show_start_end_markers = Column(Boolean, nullable=False, server_default="true")
+    # When on, newly created/uploaded tracks get a random color (from the
+    # same swatch set as POI colors) baked into Track.color at creation time,
+    # instead of the frontend's default sequential-by-list-position color.
+    randomize_track_colors = Column(Boolean, nullable=False, server_default="false")

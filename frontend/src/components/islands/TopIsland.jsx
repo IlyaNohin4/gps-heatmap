@@ -29,6 +29,8 @@ export default function TopIsland() {
   const { theme, unitSystem, language, expandedTrackInfo, toastPosition, setTheme, setUnitSystem, setLanguage, setExpandedTrackInfo, setToastPosition, activePanel, setActivePanel } = useAppStore();
   const { showStartEndMarkers, toggleStartEndMarkers } = useMapStore();
   const { isAuthenticated, user, logout, setUser } = useAuthStore();
+  const notificationsEnabled = user?.notifications_enabled !== false;
+  const randomizeTrackColors = user?.randomize_track_colors === true;
   const { t, i18n } = useTranslation();
   const open = activePanel === 'top';
   const langSaveTimer = useRef(null);
@@ -65,6 +67,24 @@ export default function TopIsland() {
       unit_distance: system === 'imperial' ? 'mi' : 'km',
       unit_speed: system === 'imperial' ? 'mph' : 'kmh',
     });
+  }
+
+  function handleStartEndMarkers(next) {
+    if (next === showStartEndMarkers) return;
+    toggleStartEndMarkers();
+    if (isAuthenticated) savePref({ show_start_end_markers: next });
+  }
+
+  function handleNotificationsEnabled(next) {
+    if (next === notificationsEnabled) return;
+    setUser({ ...user, notifications_enabled: next });
+    if (isAuthenticated) savePref({ notifications_enabled: next });
+  }
+
+  function handleRandomizeTrackColors(next) {
+    if (next === randomizeTrackColors) return;
+    setUser({ ...user, randomize_track_colors: next });
+    if (isAuthenticated) savePref({ randomize_track_colors: next });
   }
 
   async function handleLanguage(code) {
@@ -169,7 +189,7 @@ export default function TopIsland() {
         </button>
 
         {open && (
-          <div style={{ padding: '0 var(--space-4) var(--space-4)', borderTop: '1px solid var(--border)', animation: 'fadeIn 0.3s ease-out' }}>
+          <div className="panel-animate-in-up" style={{ padding: '0 var(--space-4) var(--space-4)', borderTop: '1px solid var(--border)' }}>
             <div style={sectionLabel}>{t('settings.display')}</div>
 
             <div style={row}>
@@ -231,10 +251,34 @@ export default function TopIsland() {
             <div style={row}>
               <span style={{ fontSize: 'var(--text-sm)', color: 'var(--text)' }}>{t('settings.start_end_markers')}</span>
               <div style={chipGroup}>
-                <Chip active={showStartEndMarkers} onClick={() => !showStartEndMarkers && toggleStartEndMarkers()}>
+                <Chip active={showStartEndMarkers} onClick={() => handleStartEndMarkers(true)}>
                   {t('settings.on')}
                 </Chip>
-                <Chip active={!showStartEndMarkers} onClick={() => showStartEndMarkers && toggleStartEndMarkers()}>
+                <Chip active={!showStartEndMarkers} onClick={() => handleStartEndMarkers(false)}>
+                  {t('settings.off')}
+                </Chip>
+              </div>
+            </div>
+
+            <div style={row}>
+              <span style={{ fontSize: 'var(--text-sm)', color: 'var(--text)' }}>{t('settings.random_track_colors')}</span>
+              <div style={chipGroup}>
+                <Chip active={randomizeTrackColors} onClick={() => handleRandomizeTrackColors(true)}>
+                  {t('settings.on')}
+                </Chip>
+                <Chip active={!randomizeTrackColors} onClick={() => handleRandomizeTrackColors(false)}>
+                  {t('settings.off')}
+                </Chip>
+              </div>
+            </div>
+
+            <div style={row}>
+              <span style={{ fontSize: 'var(--text-sm)', color: 'var(--text)' }}>{t('settings.notifications_enabled')}</span>
+              <div style={chipGroup}>
+                <Chip active={notificationsEnabled} onClick={() => handleNotificationsEnabled(true)}>
+                  {t('settings.on')}
+                </Chip>
+                <Chip active={!notificationsEnabled} onClick={() => handleNotificationsEnabled(false)}>
                   {t('settings.off')}
                 </Chip>
               </div>

@@ -37,7 +37,7 @@ const HeatmapLayer = memo(function HeatmapLayer({ tracks }) {
       chains.forEach((chain) => {
         L.polyline(chain.points, {
           weight: LINE_WEIGHT,
-          color: 'var(--accent)',
+          color: '#002287',
           opacity: opacityForCount(chain.count),
           interactive: false,
         }).addTo(group);

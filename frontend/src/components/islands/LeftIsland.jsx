@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef, useTransition } from 'react';
-import { Search, Filter, Plus, X, ChevronLeft, ChevronRight, MapPin, Route, Eye, EyeOff, Upload, Trash2 } from 'lucide-react';
+import { Search, Filter, Plus, X, ChevronLeft, ChevronRight, MapPin, Route, Eye, EyeOff, Upload, Trash2, Download } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { notify as toast } from '../../utils/notify.js';
 import Slider from 'rc-slider';
@@ -9,7 +9,7 @@ import POITab from './POITab.jsx';
 import useAppStore from '../../store/appStore.js';
 import useAuthStore from '../../store/authStore.js';
 import useMapStore from '../../store/mapStore.js';
-import { getTrack, fetchTracksPage, fetchTracks, createTrackFromPoints, deleteTrack } from '../../api/tracks.js';
+import { getTrack, fetchTracksPage, fetchTracks, createTrackFromPoints, deleteTrack, downloadTrackFile } from '../../api/tracks.js';
 import { TrackCreatorPanel } from '../../map/TrackCreator.jsx';
 import SaveTrackModal from '../modals/SaveTrackModal.jsx';
 import BulkDeleteModal from '../modals/BulkDeleteModal.jsx';
@@ -50,8 +50,18 @@ function LeftIslandContent({ onUploadClick, loading, allTracksVisible, onToggleV
   const [savingTrack, setSavingTrack] = useState(false);
   const [isPending, startTransition] = useTransition();
   const [open, setOpen] = useState(true);
-  const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [currentTab, setCurrentTab] = useState('tracks'); // 'tracks' or 'poi'
+  // Restored from localStorage so a reload doesn't reset which tab/collapse
+  // state the user had left the sidebar in.
+  const [sidebarOpen, setSidebarOpen] = useState(() => {
+    try { return localStorage.getItem('gps_sidebar_open') !== 'false'; } catch (_) { return true; }
+  });
+  const [currentTab, setCurrentTabState] = useState(() => {
+    try { return localStorage.getItem('gps_sidebar_tab') === 'poi' ? 'poi' : 'tracks'; } catch (_) { return 'tracks'; }
+  }); // 'tracks' or 'poi'
+  const setCurrentTab = (tab) => {
+    setCurrentTabState(tab);
+    try { localStorage.setItem('gps_sidebar_tab', tab); } catch (_) {}
+  };
   const [search, setSearch] = useState('');
   const filterOpen = activePanel === 'left:filter';
   const [sort, setSort] = useState('newest');
@@ -70,6 +80,10 @@ function LeftIslandContent({ onUploadClick, loading, allTracksVisible, onToggleV
   const handleSetCurrentTab = useCallback((tab) => {
     startTransition(() => setCurrentTab(tab));
   }, []);
+
+  useEffect(() => {
+    try { localStorage.setItem('gps_sidebar_open', String(sidebarOpen)); } catch (_) {}
+  }, [sidebarOpen]);
 
   const buildParams = useCallback((offset) => {
     const params = { sort, limit: 50, offset };
@@ -147,6 +161,27 @@ function LeftIslandContent({ onUploadClick, loading, allTracksVisible, onToggleV
   const listContainerRef = useRef(null);
   const sentinelRef = useInfiniteScroll(loadMoreTracks, hasMore, listContainerRef);
 
+  async function bulkDownloadTracks() {
+    // Sequential, not Promise.all — firing many simultaneous <a download>
+    // clicks in one tick gets the later ones blocked as a "download flood"
+    // by some browsers' popup/download heuristics.
+    for (const id of selectedTrackIds) {
+      try {
+        const { blob, filename } = await downloadTrackFile(id);
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+      } catch (err) {
+        console.error(`Bulk download failed for track ${id}:`, err);
+      }
+    }
+  }
+
   return (
     <>
     <div onClick={(e) => e.stopPropagation()} style={{
@@ -156,10 +191,12 @@ function LeftIslandContent({ onUploadClick, loading, allTracksVisible, onToggleV
       transform: 'translateY(-50%)',
       zIndex: 1000,
       width: sidebarOpen ? 300 : 0,
+      opacity: sidebarOpen ? 1 : 0,
       maxHeight: 'calc(100vh - 320px)',
       display: 'flex',
       flexDirection: 'column',
       overflow: 'hidden',
+      transition: 'width 0.3s ease-out, opacity 0.3s ease-out',
     }}>
       {/* Always mounted, hidden via the wrapper's width:0/overflow:hidden
           above — not `{sidebarOpen && <Panel>}` — collapsing/expanding the
@@ -223,7 +260,7 @@ function LeftIslandContent({ onUploadClick, loading, allTracksVisible, onToggleV
               title={showPOI ? 'Hide all POI' : 'Show all POI'}
               style={{
                 position: 'absolute',
-                right: 'var(--space-2)',
+                left: 'var(--space-2)',
                 top: '50%',
                 transform: 'translateY(-50%)',
                 background: 'none',
@@ -287,7 +324,7 @@ function LeftIslandContent({ onUploadClick, loading, allTracksVisible, onToggleV
           <div style={{ padding: 'var(--space-3)', borderBottom: '1px solid var(--border)', animation: 'fadeIn 0.3s ease-out', flexShrink: 0 }}>
             <div style={{ fontSize: 'var(--text-xs)', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: 'var(--space-2)', textTransform: 'uppercase' }}>{t('tracks.sort')}</div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-1)', marginBottom: 'var(--space-3)' }}>
-              {(['newest', 'oldest', 'longest', 'shortest', 'fastest', 'slowest']).map((v) => (
+              {(['newest', 'oldest', 'longest', 'shortest']).map((v) => (
                 <Chip key={v} active={sort === v} onClick={() => setSort(v)}>{t(`sort.${v}`)}</Chip>
               ))}
             </div>
@@ -389,48 +426,48 @@ function LeftIslandContent({ onUploadClick, loading, allTracksVisible, onToggleV
           )}
         </div>
 
-        {/* Bulk selection bar — Ctrl/Cmd+click on a track adds it here */}
-        {selectedTrackIds.size > 0 && (
-          <div style={{
-            padding: 'var(--space-2) var(--space-3)', borderTop: '1px solid var(--border)',
-            flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--space-2)',
-          }}>
-            <span style={{ fontSize: 'var(--text-sm)', fontWeight: 600, color: 'var(--text)' }}>
-              {t('bulk.selected', { count: selectedTrackIds.size })}
-            </span>
-            <div style={{ display: 'flex', gap: 'var(--space-1)' }}>
-              <Button variant="ghost" onClick={clearTrackSelection} title={t('bulk.clear_selection')}>
+        {/* Bottom actions - Tracks tab only. Bulk selection (Ctrl/Cmd+click
+            a card) replaces the Import/Create row in place instead of
+            stacking a separate bar — the row is the same "primary actions
+            for this tab" slot either way. */}
+        <div style={{ padding: 'var(--space-2) var(--space-3) var(--space-3)', borderTop: '1px solid var(--border)', flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
+          {selectedTrackIds.size > 0 ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+              <span style={{ flex: 1, minWidth: 0, fontSize: 'var(--text-sm)', fontWeight: 600, color: 'var(--text)' }}>
+                {t('bulk.selected', { count: selectedTrackIds.size })}
+              </span>
+              <Button variant="secondary" iconOnly onClick={bulkDownloadTracks} title={t('bulk.download_selected')}>
+                <Download size={14} />
+              </Button>
+              <Button variant="danger" iconOnly onClick={() => setShowBulkDeleteModal(true)} title={t('bulk.delete_selected')}>
+                <Trash2 size={14} />
+              </Button>
+              <Button variant="ghost" iconOnly onClick={clearTrackSelection} title={t('bulk.clear_selection')}>
                 <X size={14} />
               </Button>
-              <Button variant="danger" onClick={() => setShowBulkDeleteModal(true)}>
-                <Trash2 size={14} /> {t('bulk.delete_selected')}
+            </div>
+          ) : (
+            <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
+              <Button
+                variant="secondary"
+                style={{ flex: 1, minWidth: 0 }}
+                onClick={onUploadClick}
+              >
+                <Upload size={14} /> {t('tracks.import_track')}
+              </Button>
+              <Button
+                variant="secondary"
+                active={showTrackCreator}
+                style={{ flex: 1, minWidth: 0 }}
+                onClick={() => {
+                  if (!showTrackCreator) setSelectedTrack(null);
+                  toggleTrackCreator();
+                }}
+              >
+                <Plus size={14} /> {t('tracks.create_track')}
               </Button>
             </div>
-          </div>
-        )}
-
-        {/* Bottom actions - Tracks tab only */}
-        <div style={{ padding: 'var(--space-2) var(--space-3) var(--space-3)', borderTop: '1px solid var(--border)', flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
-          <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
-            <Button
-              variant="secondary"
-              style={{ flex: 1, minWidth: 0 }}
-              onClick={onUploadClick}
-            >
-              <Upload size={14} /> {t('tracks.import_track')}
-            </Button>
-            <Button
-              variant="secondary"
-              active={showTrackCreator}
-              style={{ flex: 1, minWidth: 0 }}
-              onClick={() => {
-                if (!showTrackCreator) setSelectedTrack(null);
-                toggleTrackCreator();
-              }}
-            >
-              <Plus size={14} /> {t('tracks.create_track')}
-            </Button>
-          </div>
+          )}
 
           {showTrackCreator && (
             <TrackCreatorPanel
@@ -533,6 +570,7 @@ function LeftIslandContent({ onUploadClick, loading, allTracksVisible, onToggleV
         with a single job. */}
     {!sidebarOpen && (
     <Panel
+      className="panel-animate-in-left"
       onClick={(e) => e.stopPropagation()}
       style={{
         position: 'fixed',

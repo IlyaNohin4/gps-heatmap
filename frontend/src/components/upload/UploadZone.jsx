@@ -44,11 +44,13 @@ export default function UploadZone({ inputRef: externalInputRef, onTrackFiles, o
 
   async function processFiles(files) {
     const validFiles = [];
-    // QA#4: collected instead of toasted one-per-file below — doesn't block
-    // the upload (a same-named track can be legitimate, e.g. re-uploading a
-    // corrected file), just a heads-up. Dropping 10 files with clashing
-    // names used to fire 10 separate toasts; one summary reads better.
+    // Blocks a track from being uploaded if its name collides with one
+    // already loaded, or with another file in this same batch — silently
+    // creating two tracks named identically was confusing (which is which
+    // in the list?). Collected instead of toasted one-per-file so dropping
+    // 10 clashing files fires one summary toast, not 10.
     const duplicateNames = [];
+    const seenNames = new Set(tracks.map((tr) => tr.name?.toLowerCase()).filter(Boolean));
     for (const file of files) {
       const ext = getExt(file.name);
       if (!ACCEPTED.includes(ext)) {
@@ -67,13 +69,16 @@ export default function UploadZone({ inputRef: externalInputRef, onTrackFiles, o
         }
       }
       const baseName = file.name.replace(/\.[^.]+$/, '');
-      if (tracks.some((tr) => tr.name?.toLowerCase() === baseName.toLowerCase())) {
+      const baseNameLower = baseName.toLowerCase();
+      if (seenNames.has(baseNameLower)) {
         duplicateNames.push(baseName);
+        continue;
       }
+      seenNames.add(baseNameLower);
       validFiles.push(file);
     }
     if (duplicateNames.length > 0) {
-      toast.warn(t('validation.duplicate_track_names'));
+      toast.error(t('validation.duplicate_track_names'));
     }
     if (!validFiles.length) return;
 

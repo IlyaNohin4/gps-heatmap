@@ -152,7 +152,7 @@ export default function RightIsland() {
 
       {/* City search popover */}
       {cityOpen && (
-        <Panel className="panel-animate-in-right" style={{ position: 'absolute', right: 52, width: 260, padding: 'var(--space-2)' }}>
+        <Panel className="panel-animate-in-right" style={{ position: 'absolute', right: 52, width: 260, padding: 'var(--space-2)', borderRadius: 'var(--radius-search)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
             <Input
               value={citySearch}

@@ -48,6 +48,10 @@ class Track(Base):
     regions = Column(ARRAY(Text), default=list)
     geom = Column(Geometry("LINESTRING", srid=4326))
     raw_points = Column(JSON)
+    # Hex color (e.g. "#4986e8"), set once at creation when the owner has
+    # User.randomize_track_colors on — null means "use the frontend's
+    # sequential per-list-position color" (TrackLayer's colorForIndex).
+    color = Column(String(7), nullable=True)
     normalized_points = Column(JSON)
     speed_segments = Column(JSON)
 

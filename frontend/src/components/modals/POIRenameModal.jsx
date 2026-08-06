@@ -78,7 +78,7 @@ export default function POIRenameModal({ poi, isOpen, onClose, onRenamed }) {
     <Modal
       open={isOpen}
       onClose={onClose}
-      title="Rename POI"
+      title="Edit POI"
       actions={
         <>
           <Button variant="secondary" onClick={onClose} disabled={renaming} style={{ flex: 1 }}>
@@ -90,10 +90,6 @@ export default function POIRenameModal({ poi, isOpen, onClose, onRenamed }) {
         </>
       }
     >
-      <p style={{ margin: '0 0 var(--space-3)', fontSize: 13, color: 'var(--text-secondary)' }}>
-        Edit POI details
-      </p>
-
       {/* Name Input */}
       <div style={{ marginBottom: 'var(--space-3)' }}>
         <label style={{ fontSize: 12, color: 'var(--text-secondary)', fontWeight: 600, display: 'block', marginBottom: 'var(--space-1)' }}>
@@ -104,6 +100,7 @@ export default function POIRenameModal({ poi, isOpen, onClose, onRenamed }) {
           value={nameValue}
           onChange={(e) => setNameValue(e.target.value)}
           placeholder="POI name"
+          maxLength={100}
           disabled={renaming}
           autoFocus
           onKeyDown={(e) => {

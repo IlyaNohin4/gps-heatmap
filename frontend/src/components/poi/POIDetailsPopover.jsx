@@ -10,7 +10,14 @@ import POIDeleteModal from '../modals/POIDeleteModal.jsx';
 // name + Rename/Delete popup instead of jumping straight into the full
 // edit modal on click. Rename opens the existing POIRenameModal (name/
 // category/icon/color/visited); Delete opens the existing POIDeleteModal.
+//
+// PANEL_WIDTH is the minimum/positioning width; the panel grows up to
+// MAX_PANEL_WIDTH so long names (up to ~100 chars) wrap onto a couple of
+// lines instead of being clipped with an ellipsis. Position clamping uses
+// MAX_PANEL_WIDTH (the worst case) so the panel never overflows the
+// viewport even before its actual (content-dependent) width is known.
 const PANEL_WIDTH = 220;
+const MAX_PANEL_WIDTH = 420;
 const VIEWPORT_MARGIN = 16;
 const CURSOR_OFFSET = 16;
 
@@ -35,9 +42,9 @@ export default function POIDetailsPopover({ poi, position, onClose, onRenamed, o
 
   if (!poi) return null;
 
-  const fallback = { x: window.innerWidth - PANEL_WIDTH - VIEWPORT_MARGIN - CURSOR_OFFSET, y: VIEWPORT_MARGIN };
+  const fallback = { x: window.innerWidth - MAX_PANEL_WIDTH - VIEWPORT_MARGIN - CURSOR_OFFSET, y: VIEWPORT_MARGIN };
   const { x, y } = position || fallback;
-  const left = Math.min(x + CURSOR_OFFSET, window.innerWidth - PANEL_WIDTH - VIEWPORT_MARGIN);
+  const left = Math.min(x + CURSOR_OFFSET, window.innerWidth - MAX_PANEL_WIDTH - VIEWPORT_MARGIN);
   const top = Math.min(Math.max(y, VIEWPORT_MARGIN), window.innerHeight - 140 - VIEWPORT_MARGIN);
 
   return (
@@ -49,13 +56,15 @@ export default function POIDetailsPopover({ poi, position, onClose, onRenamed, o
           position: 'fixed',
           left,
           top,
-          width: PANEL_WIDTH,
+          minWidth: PANEL_WIDTH,
+          maxWidth: MAX_PANEL_WIDTH,
+          width: 'max-content',
           padding: 'var(--space-3)',
           zIndex: 1000,
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 'var(--space-3)' }}>
-          <div style={{ fontSize: 'var(--text-md)', fontWeight: 600, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          <div style={{ fontSize: 'var(--text-md)', fontWeight: 600, color: 'var(--text)', wordBreak: 'break-word' }}>
             {poi.name || t('card.unnamed')}
           </div>
           <button
@@ -68,7 +77,7 @@ export default function POIDetailsPopover({ poi, position, onClose, onRenamed, o
 
         <div style={{ display: 'flex', gap: 'var(--space-1)' }}>
           <Button variant="secondary" onClick={() => setShowRenameModal(true)} style={{ flex: 1 }}>
-            <Pencil size={14} /> {t('card.rename')}
+            <Pencil size={14} /> {t('card.edit')}
           </Button>
           <Button variant="secondary" onClick={() => setShowDeleteModal(true)} style={{ flex: 1 }}>
             <Trash2 size={14} /> {t('card.delete')}

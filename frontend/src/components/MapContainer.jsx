@@ -97,9 +97,12 @@ function useVisibleTracks() {
   const tracks = useAppStore((s) => s.tracks);
   const selectedTrackId = useAppStore((s) => s.selectedTrackId);
 
-  // Always include the selected track in the rendered set
-  const effectiveIds = new Set(visibleTrackIds);
-  if (selectedTrackId) effectiveIds.add(selectedTrackId);
+  // Selecting a track isolates the map to just that track — otherwise
+  // selecting one out of an already-visible batch (e.g. after "Show all")
+  // left every other track drawn underneath it, which read as if selection
+  // did nothing. Deselecting (selectedTrackId back to null) restores
+  // whatever set visibleTrackIds already had.
+  const effectiveIds = selectedTrackId ? new Set([selectedTrackId]) : new Set(visibleTrackIds);
 
   // Lazy-load full detail for selected track (needs normalized_points / speed_segments)
   useEffect(() => {

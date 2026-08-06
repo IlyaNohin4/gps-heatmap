@@ -5,7 +5,7 @@ import Slider from 'rc-slider';
 import 'rc-slider/assets/index.css';
 import {
   ChevronDown, ChevronUp, Trash2, Globe, Lock, MapPin, Calendar,
-  Gauge, Route, Download, Pencil, Loader2, AlertTriangle, RefreshCw,
+  Gauge, Route, Download, Pencil, Loader2, AlertTriangle, RefreshCw, Link2,
 } from 'lucide-react';
 import useAppStore from '../../store/appStore.js';
 import useMapStore from '../../store/mapStore.js';
@@ -110,6 +110,10 @@ export default React.memo(function TrackCard({ track, isSelected, onClick }) {
   const { unitSystem, expandedTrackInfo, removeTrack, updateTrack, selectedTrackId, setSelectedTrackId, bumpTracksListVersion } = useAppStore();
   const [expanded, setExpanded] = useState(false);
   const [published, setPublished] = useState(track.is_public || false);
+  // Kept alongside `published` (not read from `track.public_token` directly)
+  // because rotating the link changes the token without a fresh `track`
+  // prop coming down — the Copy button needs the token that's actually live.
+  const [publicToken, setPublicToken] = useState(track.public_token || null);
   const [showRenameModal, setShowRenameModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showDownloadPopover, setShowDownloadPopover] = useState(false);
@@ -166,6 +170,7 @@ export default React.memo(function TrackCard({ track, isSelected, onClick }) {
     try {
       const result = await togglePublish(track.id);
       setPublished(result.is_public);
+      setPublicToken(result.public_token);
       if (result.is_public) {
         const copied = await copyShareLink(result.public_token);
         toast.success(copied ? t('toast.published_and_copied') : t('toast.published'));
@@ -181,11 +186,19 @@ export default React.memo(function TrackCard({ track, isSelected, onClick }) {
     e.stopPropagation();
     try {
       const result = await rotatePublicLink(track.id);
+      setPublicToken(result.public_token);
       const copied = await copyShareLink(result.public_token);
       toast.success(copied ? t('toast.link_rotated_and_copied') : t('toast.link_rotated'));
     } catch {
       toast.error(t('toast.link_rotate_failed'));
     }
+  }
+
+  async function handleCopyLink(e) {
+    e.stopPropagation();
+    if (!publicToken) return;
+    const copied = await copyShareLink(publicToken);
+    if (copied) toast.success(t('toast.link_copied'));
   }
 
   async function runDownload(poiRadiusM = null, downloadCategories = null) {
@@ -320,6 +333,16 @@ export default React.memo(function TrackCard({ track, isSelected, onClick }) {
           >
             {published ? <Globe size={14} color="var(--accent)" /> : <Lock size={14} />}
           </Button>
+          {published && (
+            <Button
+              iconOnly
+              variant="ghost"
+              onClick={handleCopyLink}
+              title={t('card.copy_link')}
+            >
+              <Link2 size={14} />
+            </Button>
+          )}
           {published && (
             <Button
               iconOnly

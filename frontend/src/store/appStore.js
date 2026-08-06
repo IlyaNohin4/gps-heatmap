@@ -91,11 +91,19 @@ const useAppStore = create(
     }),
     {
       name: 'gps_app',
-      // Persist nothing except toastPosition — theme/units/language come
-      // from server via getMe(), selectedTrackId and everything else here
-      // is session-only state. toastPosition has no server-side field, it's
-      // a purely local UI preference.
-      partialize: (state) => ({ toastPosition: state.toastPosition }),
+      // theme/unitSystem/language are ultimately server-synced (getMe()
+      // overwrites them post-login, see App.jsx) — but persisting a local
+      // copy too means a reload shows the user's last-known settings
+      // immediately instead of flashing English/light/metric defaults
+      // while the profile fetch is in flight, and it's the only copy at
+      // all for a logged-out visitor. selectedTrackId and the rest of this
+      // store is session-only state and stays unpersisted.
+      partialize: (state) => ({
+        toastPosition: state.toastPosition,
+        theme: state.theme,
+        unitSystem: state.unitSystem,
+        language: state.language,
+      }),
     }
   )
 );
