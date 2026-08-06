@@ -55,6 +55,11 @@ export async function fetchRoadUsage() {
   return data;
 }
 
+export async function fetchSpeedUsage() {
+  const { data } = await client.get('/api/tracks/speed-usage');
+  return data;
+}
+
 export async function deleteTrack(id) {
   const { data } = await client.delete(`/api/tracks/${id}`);
   return data;

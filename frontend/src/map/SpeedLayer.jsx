@@ -1,6 +1,7 @@
 import { useEffect, useRef, memo } from 'react';
 import { useMap } from 'react-leaflet';
 import L from 'leaflet';
+import { fetchSpeedUsage } from '../api/tracks.js';
 
 // Speed breakpoints with RGB colors
 const BREAKPOINTS = [
@@ -12,86 +13,63 @@ const BREAKPOINTS = [
   { kmh: 120, rgb: [255,  59,  48] }, // red
 ];
 
-function speedToColor(kmh) {
-  const v = Math.max(0, kmh);
-  for (let i = 1; i < BREAKPOINTS.length; i++) {
-    const lo = BREAKPOINTS[i - 1];
-    const hi = BREAKPOINTS[i];
-    if (v <= hi.kmh) {
-      const t = (v - lo.kmh) / (hi.kmh - lo.kmh);
-      const r = Math.round(lo.rgb[0] + t * (hi.rgb[0] - lo.rgb[0]));
-      const g = Math.round(lo.rgb[1] + t * (hi.rgb[1] - lo.rgb[1]));
-      const b = Math.round(lo.rgb[2] + t * (hi.rgb[2] - lo.rgb[2]));
-      return `rgb(${r},${g},${b})`;
-    }
-  }
-  return 'rgb(255,59,48)';
+function colorForBucket(bucket) {
+  const tier = BREAKPOINTS[bucket] || BREAKPOINTS[BREAKPOINTS.length - 1];
+  return `rgb(${tier.rgb.join(',')})`;
 }
 
-const SpeedLayer = memo(function SpeedLayer({ tracks }) {
+const LINE_WEIGHT = 4;
+
+// Line-based speed usage, mirroring HeatmapLayer.jsx's road-usage approach:
+// chains come pre-aggregated from GET /api/tracks/speed-usage (grid-keyed
+// and merged by speed tier on the backend, both along a single track and
+// across different tracks passing the same spot at a similar speed) so
+// Speed mode draws a countable number of polylines instead of one per raw
+// GPS point pair. The old per-point-pair approach was tens of thousands of
+// Leaflet Path objects with 116 tracks — reprojecting all of them on every
+// pan/zoom frame was the actual bottleneck, not renderer choice or rebuild
+// frequency (see 2026-08-06 perf profiling; a frontend-only run-length
+// merge along each track individually wasn't enough, because GPS speed
+// noise flickers across tiers within one track far more than it stays
+// put — merging across tracks too, like /road-usage already did, is what
+// actually cuts the object count).
+const SpeedLayer = memo(function SpeedLayer({ tracksListVersion }) {
   const map = useMap();
-  const groupRef = useRef(null);
-  const rendererRef = useRef(null);
+  const layerRef = useRef(null);
 
   useEffect(() => {
-    // One shared L.canvas() renderer for every segment of every track —
-    // under the default SVG renderer, a segment-per-point-pair layer (no
-    // backend-side merging here, unlike the heatmap's /road-usage chains)
-    // means one <path> DOM node per pair of GPS points. With 116 tracks at
-    // hundreds of points each that's tens of thousands of nodes Leaflet has
-    // to reproject on every pan/zoom frame — that per-frame cost, not how
-    // often the layer gets rebuilt, was the actual bottleneck (see
-    // 2026-08-06 perf profiling: fixing the rebuild-churn in MapContainer's
-    // useVisibleTracks didn't help Speed mode at all). Canvas redraws in a
-    // single paint instead of touching each node individually.
-    rendererRef.current = L.canvas();
-    const group = L.layerGroup().addTo(map);
-    groupRef.current = group;
-    return () => group.remove();
-  }, [map]);
+    let cancelled = false;
 
-  useEffect(() => {
-    const group = groupRef.current;
-    const renderer = rendererRef.current;
-    if (!group || !renderer) return;
-    group.clearLayers();
-
-    tracks.forEach((track) => {
-      const points = track.normalized_points || [];
-      if (points.length < 2) return;
-
-      // speed_kmh is written onto each point during processing (see
-      // _build_segments in parser_factory.py) instead of shipped as a
-      // separate speed_segments array — no need to duplicate every
-      // from/to coordinate that's already in normalized_points. Tracks
-      // processed before that change simply have no speed_kmh on their
-      // points yet; fall back to a single average-speed color for those
-      // until they're reprocessed/backfilled.
-      const hasPointSpeed = points.some((p) => p.speed_kmh !== undefined && p.speed_kmh !== null);
-      if (!hasPointSpeed) {
-        L.polyline(points.map((p) => [p.lat, p.lon]), {
+    // One shared L.canvas() renderer for every chain — a fresh L.canvas()
+    // per polyline would mean a separate <canvas> per line, defeating the
+    // point of switching off SVG in the first place.
+    const renderer = L.canvas();
+    const group = L.layerGroup();
+    fetchSpeedUsage().then((data) => {
+      if (cancelled) return;
+      const chains = data.chains || [];
+      chains.forEach((chain) => {
+        L.polyline(chain.points, {
           renderer,
-          color: speedToColor(track.speed_avg ? track.speed_avg * 3.6 : 0),
-          weight: 4,
-          opacity: 0.85,
-        }).addTo(group);
-        return;
-      }
-
-      for (let i = 1; i < points.length; i++) {
-        const p0 = points[i - 1];
-        const p1 = points[i];
-        const speed = p1.speed_kmh ?? 0;
-        L.polyline([[p0.lat, p0.lon], [p1.lat, p1.lon]], {
-          renderer,
-          color: speedToColor(speed),
-          weight: 4,
+          weight: LINE_WEIGHT,
+          color: colorForBucket(chain.bucket),
           opacity: 0.85,
           interactive: false,
         }).addTo(group);
-      }
+      });
     });
-  }, [tracks]);
+
+    group.addTo(map);
+    layerRef.current = group;
+
+    return () => {
+      cancelled = true;
+      group.remove();
+    };
+  // tracksListVersion (not a `tracks` array) on purpose — see
+  // HeatmapLayer.jsx's identical comment. This layer fetches its own
+  // aggregated data from /speed-usage regardless of what's passed in.
+  }, [tracksListVersion, map]);
 
   return null;
 });

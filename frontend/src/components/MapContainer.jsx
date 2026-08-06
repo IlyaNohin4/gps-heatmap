@@ -145,6 +145,11 @@ function MapLayers({ onPOIClick }) {
     clearTrackCreatorState,
   } = useMapStore();
   const { visibleTracks, selectedTrackId } = useVisibleTracks();
+  // Must be called unconditionally (Rules of Hooks) — HeatmapLayer/SpeedLayer
+  // are only mounted behind showHeatmap/showSpeed below, so this can't live
+  // inline in their JSX branches; that crashed React with "Rendered more
+  // hooks than during the previous render" the moment either toggle changed.
+  const tracksListVersion = useAppStore((s) => s.tracksListVersion);
 
 
   return (
@@ -175,12 +180,14 @@ function MapLayers({ onPOIClick }) {
           rebuild every chain's polyline on any unrelated re-render (see
           HeatmapLayer.jsx's comment). */}
       {showHeatmap && (
-        <HeatmapLayer tracksListVersion={useAppStore((s) => s.tracksListVersion)} />
+        <HeatmapLayer tracksListVersion={tracksListVersion} />
       )}
 
-      {/* Speed gradient segments */}
+      {/* Speed gradient segments — tracksListVersion, not visibleTracks: this
+          layer fetches its own aggregated /speed-usage data now, same
+          reasoning as the heatmap above. */}
       {showSpeed && (
-        <SpeedLayer tracks={visibleTracks} />
+        <SpeedLayer tracksListVersion={tracksListVersion} />
       )}
 
       {/* POI markers */}

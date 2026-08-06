@@ -20,7 +20,13 @@ from app.core.database import get_db
 from app.core.deps import get_current_user
 from app.core.http_utils import safe_content_disposition
 from app.core.limiter import limiter
-from app.core.geometry_cache import GEOMETRY_CACHE_TTL, geometry_cache_key, invalidate_geometry_cache, road_usage_cache_key
+from app.core.geometry_cache import (
+    GEOMETRY_CACHE_TTL,
+    geometry_cache_key,
+    invalidate_geometry_cache,
+    road_usage_cache_key,
+    speed_usage_cache_key,
+)
 from app.core.redis_client import redis_client
 from app.models.poi import POI
 from app.models.track import Track
@@ -689,6 +695,92 @@ def get_road_usage(
             segments[key] = segments.get(key, 0) + 1
 
     result = {"chains": _merge_segments_into_chains(segments)}
+    redis_client.setex(cache_key, GEOMETRY_CACHE_TTL, json.dumps(result))
+    return result
+
+
+class SpeedUsageChain(BaseModel):
+    points: List[List[float]]
+    bucket: int
+
+
+class SpeedUsageResponse(BaseModel):
+    chains: List[SpeedUsageChain]
+
+
+# Same tiers as the frontend's SpeedLayer.jsx BREAKPOINTS (kept in sync
+# manually — no shared source of truth between Python and JS here). Used as
+# the chain-merge key (see get_speed_usage): grouping by discrete tier lets
+# segments merge both along a track (consecutive points in the same tier)
+# and across different tracks/passes over the same road at a similar speed,
+# the same way /road-usage merges by visit count. A per-point-pair polyline
+# for Speed mode (the old approach) was tens of thousands of Leaflet Path
+# objects with 116 tracks — reprojecting all of them on every pan/zoom
+# frame was the actual "дико лагает" cause, not renderer choice (canvas vs
+# SVG) or how often the layer rebuilt (see 2026-08-06 perf profiling —
+# a frontend-only run-length merge along each track individually wasn't
+# enough because GPS speed noise flickers across tiers within one track far
+# more than it stays put; merging across tracks too, like this, is why
+# /road-usage already worked).
+_SPEED_TIER_KMH = [0, 10, 30, 60, 90, 120]
+
+
+def _speed_bucket(kmh: float) -> int:
+    for i in range(1, len(_SPEED_TIER_KMH)):
+        if kmh <= _SPEED_TIER_KMH[i]:
+            return i
+    return len(_SPEED_TIER_KMH) - 1
+
+
+@router.get("/speed-usage", response_model=SpeedUsageResponse)
+def get_speed_usage(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Aggregate every track's points into speed-tier chains, mirroring
+    get_road_usage above but grouping segments by speed tier instead of
+    visit count. Powers the "Speed mode" line layer (see SpeedLayer.jsx).
+    """
+    cache_key = speed_usage_cache_key(current_user.id)
+    cached = redis_client.get(cache_key)
+    if cached is not None:
+        return json.loads(cached)
+
+    tracks = (
+        db.query(Track.id, Track.normalized_points)
+        .filter(Track.user_id == current_user.id)
+        .limit(5000)
+        .all()
+    )
+
+    # key -> [sum_kmh, occurrences], later collapsed to an average per key
+    # before bucketing — a segment crossed by several tracks (or the same
+    # track more than once) gets one representative speed, not one entry
+    # per pass.
+    speed_totals: dict = {}
+    for track in tracks:
+        points = track.normalized_points or []
+        for i in range(len(points) - 1):
+            p1, p2 = points[i], points[i + 1]
+            if p1.get("lat") is None or p1.get("lon") is None:
+                continue
+            if p2.get("lat") is None or p2.get("lon") is None:
+                continue
+            speed = p2.get("speed_kmh")
+            if speed is None:
+                continue
+            k1 = (round(p1["lat"], _ROAD_USAGE_GRID), round(p1["lon"], _ROAD_USAGE_GRID))
+            k2 = (round(p2["lat"], _ROAD_USAGE_GRID), round(p2["lon"], _ROAD_USAGE_GRID))
+            if k1 == k2:
+                continue
+            key = (k1, k2) if k1 < k2 else (k2, k1)
+            total, count = speed_totals.get(key, (0.0, 0))
+            speed_totals[key] = (total + speed, count + 1)
+
+    segments = {key: _speed_bucket(total / count) for key, (total, count) in speed_totals.items()}
+
+    chains = _merge_segments_into_chains(segments)
+    result = {"chains": [{"points": c["points"], "bucket": c["count"]} for c in chains]}
     redis_client.setex(cache_key, GEOMETRY_CACHE_TTL, json.dumps(result))
     return result
 
