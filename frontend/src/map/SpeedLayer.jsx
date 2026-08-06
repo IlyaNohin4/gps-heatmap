@@ -31,8 +31,20 @@ function speedToColor(kmh) {
 const SpeedLayer = memo(function SpeedLayer({ tracks }) {
   const map = useMap();
   const groupRef = useRef(null);
+  const rendererRef = useRef(null);
 
   useEffect(() => {
+    // One shared L.canvas() renderer for every segment of every track —
+    // under the default SVG renderer, a segment-per-point-pair layer (no
+    // backend-side merging here, unlike the heatmap's /road-usage chains)
+    // means one <path> DOM node per pair of GPS points. With 116 tracks at
+    // hundreds of points each that's tens of thousands of nodes Leaflet has
+    // to reproject on every pan/zoom frame — that per-frame cost, not how
+    // often the layer gets rebuilt, was the actual bottleneck (see
+    // 2026-08-06 perf profiling: fixing the rebuild-churn in MapContainer's
+    // useVisibleTracks didn't help Speed mode at all). Canvas redraws in a
+    // single paint instead of touching each node individually.
+    rendererRef.current = L.canvas();
     const group = L.layerGroup().addTo(map);
     groupRef.current = group;
     return () => group.remove();
@@ -40,7 +52,8 @@ const SpeedLayer = memo(function SpeedLayer({ tracks }) {
 
   useEffect(() => {
     const group = groupRef.current;
-    if (!group) return;
+    const renderer = rendererRef.current;
+    if (!group || !renderer) return;
     group.clearLayers();
 
     tracks.forEach((track) => {
@@ -57,6 +70,7 @@ const SpeedLayer = memo(function SpeedLayer({ tracks }) {
       const hasPointSpeed = points.some((p) => p.speed_kmh !== undefined && p.speed_kmh !== null);
       if (!hasPointSpeed) {
         L.polyline(points.map((p) => [p.lat, p.lon]), {
+          renderer,
           color: speedToColor(track.speed_avg ? track.speed_avg * 3.6 : 0),
           weight: 4,
           opacity: 0.85,
@@ -69,12 +83,12 @@ const SpeedLayer = memo(function SpeedLayer({ tracks }) {
         const p1 = points[i];
         const speed = p1.speed_kmh ?? 0;
         L.polyline([[p0.lat, p0.lon], [p1.lat, p1.lon]], {
+          renderer,
           color: speedToColor(speed),
           weight: 4,
           opacity: 0.85,
-        })
-          .bindTooltip(`${speed.toFixed(1)} km/h`, { sticky: true })
-          .addTo(group);
+          interactive: false,
+        }).addTo(group);
       }
     });
   }, [tracks]);

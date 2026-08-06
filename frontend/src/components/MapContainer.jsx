@@ -109,13 +109,28 @@ function useVisibleTracks() {
     if (selectedTrackId) ensureTrackDetail(selectedTrackId);
   }, [selectedTrackId, ensureTrackDetail]);
 
-  const visibleTracks = [];
-  effectiveIds.forEach((id) => {
-    const detail = trackDetailCache[id];
-    const summary = tracks.find((t) => t.id === id);
-    if (detail) visibleTracks.push(detail);
-    else if (summary) visibleTracks.push(summary);
-  });
+  // Memoized so this array keeps its identity across renders that don't
+  // actually change which tracks (or their data) are visible — e.g.
+  // selecting a POI, a toast firing, hovering something. Map layers
+  // downstream (TrackLayer, SpeedLayer, previously HeatmapLayer) key their
+  // own effects off this array's reference; without memoizing it, it was a
+  // brand-new [] every render, and those effects — each doing a full
+  // Leaflet layer teardown/rebuild — reran constantly instead of only when
+  // the visible set genuinely changed (see 2026-08-06 perf profile).
+  const visibleTracks = React.useMemo(() => {
+    const result = [];
+    effectiveIds.forEach((id) => {
+      const detail = trackDetailCache[id];
+      const summary = tracks.find((t) => t.id === id);
+      if (detail) result.push(detail);
+      else if (summary) result.push(summary);
+    });
+    return result;
+  // effectiveIds is rebuilt fresh every call (cheap Set construction from
+  // primitives below) — its own identity isn't a useful dep, so we depend
+  // on what it's actually built from instead.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visibleTrackIds, selectedTrackId, trackDetailCache, tracks]);
 
   return { visibleTracks, selectedTrackId };
 }
@@ -153,9 +168,14 @@ function MapLayers({ onPOIClick }) {
         />
       )}
 
-      {/* Density heatmap (uMap-style) */}
+      {/* Density heatmap (uMap-style) — tracksListVersion, not visibleTracks:
+          this layer fetches its own aggregated /road-usage data, it doesn't
+          read the tracks array. visibleTracks is a fresh array every render
+          (see useVisibleTracks), which used to make the layer's effect
+          rebuild every chain's polyline on any unrelated re-render (see
+          HeatmapLayer.jsx's comment). */}
       {showHeatmap && (
-        <HeatmapLayer tracks={visibleTracks} />
+        <HeatmapLayer tracksListVersion={useAppStore((s) => s.tracksListVersion)} />
       )}
 
       {/* Speed gradient segments */}

@@ -624,11 +624,18 @@ class RoadUsageResponse(BaseModel):
     chains: List[RoadUsageChain]
 
 
-# Grid size (degrees) used to snap track points onto shared "road" segments —
-# ~5 decimal places is roughly 1m at the equator. Coarse enough that GPS noise
-# on repeated passes of the same road collapses onto the same segment key,
-# fine enough not to merge genuinely different streets.
-_ROAD_USAGE_GRID = 5
+# Grid size (degrees) used to snap track points onto shared "road" segments.
+# Was 5 decimal places (~1m at the equator) — finer than typical consumer
+# GPS accuracy (commonly 3-10m), so two different tracks' points over the
+# "same" real-world road almost never rounded to the identical key. Chains
+# barely merged across tracks: with 116 tracks this produced many thousands
+# of near-duplicate 2-point chains instead of a manageable number of shared
+# roads, which is what actually made the line-based heatmap "дико лагает"
+# (each one became its own Leaflet polyline — see HeatmapLayer.jsx and the
+# 2026-08-06 perf profile). 4 decimals (~11m) is still fine enough not to
+# fuse genuinely different parallel streets, but loose enough for repeat
+# passes/different tracks over the same road to actually collapse together.
+_ROAD_USAGE_GRID = 4
 
 
 @router.get("/road-usage", response_model=RoadUsageResponse)

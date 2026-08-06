@@ -18,24 +18,29 @@ function opacityForCount(count) {
   return Math.min(MIN_OPACITY + count * OPACITY_STEP, 1);
 }
 
-const HeatmapLayer = memo(function HeatmapLayer({ tracks }) {
+const HeatmapLayer = memo(function HeatmapLayer({ tracksListVersion }) {
   const map = useMap();
   const layerRef = useRef(null);
 
   useEffect(() => {
     let cancelled = false;
 
+    // One shared L.canvas() renderer for every chain: with real-world track
+    // counts, road-usage chains can run into the thousands (see backend's
+    // grid-merge in /road-usage) — that many separate <path> elements under
+    // the default SVG renderer is the difference between smooth and "дико
+    // лагает" (see perf profile, 2026-08-06). All polylines must share one
+    // renderer instance, not get their own L.canvas() each — a fresh one
+    // per call would mean a separate <canvas> per line, which defeats the
+    // point entirely.
+    const renderer = L.canvas();
     const group = L.layerGroup();
-    // Chains are now merged into continuous multi-point paths (few dozen
-    // objects, not thousands of grid segments), so the default SVG renderer
-    // is affordable again — its vector strokes render crisper than
-    // L.canvas()'s rasterized, more anti-aliased edges, and it resolves
-    // CSS custom properties like 'var(--accent)' directly.
     fetchRoadUsage().then((data) => {
       if (cancelled) return;
       const chains = [...(data.chains || [])].sort((a, b) => a.count - b.count);
       chains.forEach((chain) => {
         L.polyline(chain.points, {
+          renderer,
           weight: LINE_WEIGHT,
           color: '#002287',
           opacity: opacityForCount(chain.count),
@@ -51,7 +56,17 @@ const HeatmapLayer = memo(function HeatmapLayer({ tracks }) {
       cancelled = true;
       group.remove();
     };
-  }, [tracks, map]);
+  // tracksListVersion (not a `tracks` array) on purpose: this layer fetches
+  // its own aggregated data from /road-usage regardless of what's passed
+  // in, so it only needs to know "did the track list actually change" —
+  // not be handed a fresh-identity array on every unrelated re-render of
+  // MapContainer (selecting a track, a toast firing, hovering a POI, …).
+  // The old `tracks` prop looked like a real dependency but wasn't one;
+  // MapContainer built a brand-new array every render, so this effect —
+  // and the full teardown/rebuild of every chain's polyline it does, via
+  // Leaflet's internal `_layers` object — reran constantly rather than
+  // only when tracks were actually added/removed.
+  }, [tracksListVersion, map]);
 
   return null;
 });
