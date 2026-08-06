@@ -28,6 +28,20 @@ function speedToColor(kmh) {
   return 'rgb(255,59,48)';
 }
 
+// Which BREAKPOINTS tier a speed falls into — used to run-length-merge
+// consecutive same-tier points into one polyline instead of one per point
+// pair (see SpeedLayer below). Real GPS speed noise flickers within a
+// tier far more than it crosses tiers, so this collapses node count
+// substantially without changing what's visible: speedToColor already
+// quantizes color perception to these same tiers.
+function bucketForSpeed(kmh) {
+  const v = Math.max(0, kmh);
+  for (let i = 1; i < BREAKPOINTS.length; i++) {
+    if (v <= BREAKPOINTS[i].kmh) return i;
+  }
+  return BREAKPOINTS.length - 1;
+}
+
 const SpeedLayer = memo(function SpeedLayer({ tracks }) {
   const map = useMap();
   const groupRef = useRef(null);
@@ -78,18 +92,52 @@ const SpeedLayer = memo(function SpeedLayer({ tracks }) {
         return;
       }
 
-      for (let i = 1; i < points.length; i++) {
-        const p0 = points[i - 1];
-        const p1 = points[i];
-        const speed = p1.speed_kmh ?? 0;
-        L.polyline([[p0.lat, p0.lon], [p1.lat, p1.lon]], {
+      // Run-length merge: walk the track once, accumulating consecutive
+      // points that fall in the same speed tier into a single multi-point
+      // polyline (colored by that run's average speed) instead of creating
+      // a separate Path object per raw point pair. A 116-track, hundreds-
+      // of-points-each set of tracks was tens of thousands of individual
+      // Path objects Leaflet had to reproject on every pan/zoom frame —
+      // switching the renderer to canvas alone didn't fix that per-frame
+      // reprojection cost (2026-08-06 perf profiling). This cuts the
+      // object count to roughly "number of tier transitions" per track,
+      // which for real (not adversarially noisy) GPS traces is far lower
+      // than "number of points".
+      let runBucket = null;
+      let runPoints = [];
+      let runSpeeds = [];
+
+      const flushRun = () => {
+        if (runPoints.length < 2) return;
+        const avgSpeed = runSpeeds.reduce((a, b) => a + b, 0) / runSpeeds.length;
+        L.polyline(runPoints, {
           renderer,
-          color: speedToColor(speed),
+          color: speedToColor(avgSpeed),
           weight: 4,
           opacity: 0.85,
           interactive: false,
         }).addTo(group);
+      };
+
+      for (let i = 1; i < points.length; i++) {
+        const p0 = points[i - 1];
+        const p1 = points[i];
+        const speed = p1.speed_kmh ?? 0;
+        const bucket = bucketForSpeed(speed);
+
+        if (bucket !== runBucket) {
+          flushRun();
+          runBucket = bucket;
+          // Start the new run from p0 too, so it connects visually to
+          // where the previous run's line ended instead of leaving a gap.
+          runPoints = [[p0.lat, p0.lon], [p1.lat, p1.lon]];
+          runSpeeds = [speed];
+        } else {
+          runPoints.push([p1.lat, p1.lon]);
+          runSpeeds.push(speed);
+        }
       }
+      flushRun();
     });
   }, [tracks]);
 
