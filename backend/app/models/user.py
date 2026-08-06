@@ -27,3 +27,8 @@ class User(Base):
     # same swatch set as POI colors) baked into Track.color at creation time,
     # instead of the frontend's default sequential-by-list-position color.
     randomize_track_colors = Column(Boolean, nullable=False, server_default="false")
+    # Which screen corner toast notifications stack in — was frontend-only
+    # localStorage state; moved server-side so it (like the rest of these
+    # prefs) survives across devices/reloads without relying on local
+    # persistence at all.
+    toast_position = Column(String(12), nullable=False, server_default="top-right")

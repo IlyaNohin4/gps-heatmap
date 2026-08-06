@@ -1,8 +1,11 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
 
+// Nothing in this store is persisted to localStorage — theme/unitSystem/
+// language/toastPosition are all server-synced (getMe()/updatePrefs, see
+// App.jsx and TopIsland.jsx) and reset to these defaults on load until
+// that resolves, rather than caching a local copy. Everything else here is
+// session-only UI state by nature (selection, upload progress, etc).
 const useAppStore = create(
-  persist(
     (set, get) => ({
       theme: 'light',
       unitSystem: 'metric', // 'metric' (km + km/h) | 'imperial' (mi + mph)
@@ -24,9 +27,8 @@ const useAppStore = create(
       tracksListVersion: 0,
       poiListVersion: 0,
       expandedTrackInfo: 'partial', // 'off' | 'partial' | 'on'
-      // Which screen corner toast notifications stack in — a client-only UI
-      // preference (like theme used to be before server sync), so it's the
-      // one field this store actually persists (see partialize below).
+      // Which screen corner toast notifications stack in — server-synced
+      // like theme/unitSystem/language (see TopIsland.jsx's handler).
       toastPosition: 'top-right', // 'top-right' | 'top-left' | 'bottom-right' | 'bottom-left'
 
       setTheme: (theme) => set({ theme }),
@@ -88,24 +90,7 @@ const useAppStore = create(
         detailsTrackPosition: null,
         isUploadingIds: new Set(),
       }),
-    }),
-    {
-      name: 'gps_app',
-      // theme/unitSystem/language are ultimately server-synced (getMe()
-      // overwrites them post-login, see App.jsx) — but persisting a local
-      // copy too means a reload shows the user's last-known settings
-      // immediately instead of flashing English/light/metric defaults
-      // while the profile fetch is in flight, and it's the only copy at
-      // all for a logged-out visitor. selectedTrackId and the rest of this
-      // store is session-only state and stays unpersisted.
-      partialize: (state) => ({
-        toastPosition: state.toastPosition,
-        theme: state.theme,
-        unitSystem: state.unitSystem,
-        language: state.language,
-      }),
-    }
-  )
+    })
 );
 
 export default useAppStore;

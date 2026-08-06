@@ -1,10 +1,12 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
 import i18n from '../i18n/index.js';
 import { notify } from '../utils/notify.js';
 import { getTrack, fetchTrackGeometries } from '../api/tracks.js';
 
-const useMapStore = create(persist((set, get) => ({
+// Nothing here is persisted to localStorage — activeLayer/showHeatmap/
+// showSpeed/showPOI reset to these defaults on every load rather than
+// being restored from a prior session.
+const useMapStore = create((set, get) => ({
   mapInstance: null,
   activeLayer: 'osm',
   showHeatmap: false,
@@ -260,19 +262,6 @@ const useMapStore = create(persist((set, get) => ({
         },
       };
     }),
-}),
-{
-  name: 'gps_map_ui',
-  // Only the "what was on/off" visualization toggles — everything else
-  // here (mapInstance, caches, track-creator draft state, etc.) is
-  // session-only and would be actively wrong to restore verbatim on a
-  // fresh load (e.g. a stale trackDetailCache or a leftover mapInstance).
-  partialize: (state) => ({
-    activeLayer: state.activeLayer,
-    showHeatmap: state.showHeatmap,
-    showSpeed: state.showSpeed,
-    showPOI: state.showPOI,
-  }),
 }));
 
 export default useMapStore;

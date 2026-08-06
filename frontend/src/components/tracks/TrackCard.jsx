@@ -333,26 +333,6 @@ export default React.memo(function TrackCard({ track, isSelected, onClick }) {
           >
             {published ? <Globe size={14} color="var(--accent)" /> : <Lock size={14} />}
           </Button>
-          {published && (
-            <Button
-              iconOnly
-              variant="ghost"
-              onClick={handleCopyLink}
-              title={t('card.copy_link')}
-            >
-              <Link2 size={14} />
-            </Button>
-          )}
-          {published && (
-            <Button
-              iconOnly
-              variant="ghost"
-              onClick={handleRotateLink}
-              title={t('card.rotate_link')}
-            >
-              <RefreshCw size={14} />
-            </Button>
-          )}
           <Button
             iconOnly
             variant="ghost"
@@ -385,8 +365,19 @@ export default React.memo(function TrackCard({ track, isSelected, onClick }) {
             )}
           </div>
 
-          {/* Action buttons: rename, download, delete */}
-          <div style={{ display: 'flex', gap: 'var(--space-1)', flexShrink: 0 }}>
+          {/* Action buttons: [share], rename, download, delete */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-1)', flexShrink: 0 }}>
+            {published && (
+              <>
+                <Button iconOnly variant="ghost" onClick={handleCopyLink} title={t('card.copy_link')}>
+                  <Link2 size={14} />
+                </Button>
+                <Button iconOnly variant="ghost" onClick={handleRotateLink} title={t('card.rotate_link')}>
+                  <RefreshCw size={14} />
+                </Button>
+                <div style={{ width: 1, alignSelf: 'stretch', background: 'var(--border)', margin: '0 2px' }} />
+              </>
+            )}
             <Button iconOnly variant="ghost" onClick={handleOpenRenameModal} title={t('card.rename')}>
               <Pencil size={14} />
             </Button>
@@ -405,12 +396,24 @@ export default React.memo(function TrackCard({ track, isSelected, onClick }) {
           {!shouldShowTrackInfo() && (
             <div style={{
               display: 'flex',
+              alignItems: 'center',
               justifyContent: 'center',
               gap: 'var(--space-1)',
               marginBottom: 'var(--space-3)',
               paddingBottom: 'var(--space-3)',
               borderBottom: '1px solid var(--border)',
             }}>
+              {published && (
+                <>
+                  <Button iconOnly variant="ghost" onClick={handleCopyLink} title={t('card.copy_link')}>
+                    <Link2 size={14} />
+                  </Button>
+                  <Button iconOnly variant="ghost" onClick={handleRotateLink} title={t('card.rotate_link')}>
+                    <RefreshCw size={14} />
+                  </Button>
+                  <div style={{ width: 1, alignSelf: 'stretch', background: 'var(--border)', margin: '0 2px' }} />
+                </>
+              )}
               <Button iconOnly variant="ghost" onClick={handleOpenRenameModal} title={t('card.rename')}>
                 <Pencil size={14} />
               </Button>

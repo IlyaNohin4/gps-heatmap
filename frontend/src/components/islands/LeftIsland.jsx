@@ -50,18 +50,8 @@ function LeftIslandContent({ onUploadClick, loading, allTracksVisible, onToggleV
   const [savingTrack, setSavingTrack] = useState(false);
   const [isPending, startTransition] = useTransition();
   const [open, setOpen] = useState(true);
-  // Restored from localStorage so a reload doesn't reset which tab/collapse
-  // state the user had left the sidebar in.
-  const [sidebarOpen, setSidebarOpen] = useState(() => {
-    try { return localStorage.getItem('gps_sidebar_open') !== 'false'; } catch (_) { return true; }
-  });
-  const [currentTab, setCurrentTabState] = useState(() => {
-    try { return localStorage.getItem('gps_sidebar_tab') === 'poi' ? 'poi' : 'tracks'; } catch (_) { return 'tracks'; }
-  }); // 'tracks' or 'poi'
-  const setCurrentTab = (tab) => {
-    setCurrentTabState(tab);
-    try { localStorage.setItem('gps_sidebar_tab', tab); } catch (_) {}
-  };
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [currentTab, setCurrentTab] = useState('tracks'); // 'tracks' or 'poi'
   const [search, setSearch] = useState('');
   const filterOpen = activePanel === 'left:filter';
   const [sort, setSort] = useState('newest');
@@ -80,10 +70,6 @@ function LeftIslandContent({ onUploadClick, loading, allTracksVisible, onToggleV
   const handleSetCurrentTab = useCallback((tab) => {
     startTransition(() => setCurrentTab(tab));
   }, []);
-
-  useEffect(() => {
-    try { localStorage.setItem('gps_sidebar_open', String(sidebarOpen)); } catch (_) {}
-  }, [sidebarOpen]);
 
   const buildParams = useCallback((offset) => {
     const params = { sort, limit: 50, offset };

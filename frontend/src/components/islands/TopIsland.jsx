@@ -57,8 +57,12 @@ export default function TopIsland() {
     const next = theme === 'light' ? 'dark' : 'light';
     setTheme(next);
     document.documentElement.dataset.theme = next;
-    try { localStorage.setItem('gps_theme', next); } catch (_) {}
     if (isAuthenticated) savePref({ theme: next });
+  }
+
+  function handleToastPosition(position) {
+    setToastPosition(position);
+    if (isAuthenticated) savePref({ toast_position: position });
   }
 
   function handleUnitSystem(system) {
@@ -287,16 +291,16 @@ export default function TopIsland() {
             <div style={row}>
               <span style={{ fontSize: 'var(--text-sm)', color: 'var(--text)' }}>{t('settings.notifications')}</span>
               <div style={chipGroup}>
-                <Chip active={toastPosition === 'top-left'} onClick={() => setToastPosition('top-left')} title={t('settings.notif_top_left')}>
+                <Chip active={toastPosition === 'top-left'} onClick={() => handleToastPosition('top-left')} title={t('settings.notif_top_left')}>
                   ↖
                 </Chip>
-                <Chip active={toastPosition === 'top-right'} onClick={() => setToastPosition('top-right')} title={t('settings.notif_top_right')}>
+                <Chip active={toastPosition === 'top-right'} onClick={() => handleToastPosition('top-right')} title={t('settings.notif_top_right')}>
                   ↗
                 </Chip>
-                <Chip active={toastPosition === 'bottom-left'} onClick={() => setToastPosition('bottom-left')} title={t('settings.notif_bottom_left')}>
+                <Chip active={toastPosition === 'bottom-left'} onClick={() => handleToastPosition('bottom-left')} title={t('settings.notif_bottom_left')}>
                   ↙
                 </Chip>
-                <Chip active={toastPosition === 'bottom-right'} onClick={() => setToastPosition('bottom-right')} title={t('settings.notif_bottom_right')}>
+                <Chip active={toastPosition === 'bottom-right'} onClick={() => handleToastPosition('bottom-right')} title={t('settings.notif_bottom_right')}>
                   ↘
                 </Chip>
               </div>

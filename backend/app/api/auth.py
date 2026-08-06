@@ -225,6 +225,7 @@ VALID_LANGUAGES = {"en", "es", "de", "ru", "uk"}
 VALID_THEMES = {"light", "dark"}
 VALID_UNIT_DISTANCE = {"km", "mi"}
 VALID_UNIT_SPEED = {"kmh", "mph", "ms"}
+VALID_TOAST_POSITIONS = {"top-left", "top-right", "bottom-left", "bottom-right"}
 
 
 class UserOut(BaseModel):
@@ -237,6 +238,7 @@ class UserOut(BaseModel):
     notifications_enabled: bool
     show_start_end_markers: bool
     randomize_track_colors: bool
+    toast_position: str
 
     model_config = {"from_attributes": True}
 
@@ -251,6 +253,7 @@ class UpdatePrefsRequest(BaseModel):
     notifications_enabled: Optional[bool] = None
     show_start_end_markers: Optional[bool] = None
     randomize_track_colors: Optional[bool] = None
+    toast_position: Optional[str] = None
 
 
 class ChangePasswordRequest(BaseModel):
@@ -308,6 +311,10 @@ def update_me(
         current_user.show_start_end_markers = body.show_start_end_markers
     if body.randomize_track_colors is not None:
         current_user.randomize_track_colors = body.randomize_track_colors
+    if body.toast_position is not None:
+        if body.toast_position not in VALID_TOAST_POSITIONS:
+            raise HTTPException(status_code=400, detail="Invalid toast_position")
+        current_user.toast_position = body.toast_position
     db.commit()
     db.refresh(current_user)
     return current_user

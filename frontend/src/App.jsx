@@ -53,7 +53,7 @@ const SPEED_LEGEND = [
 // ---- Main App Page ----
 function MainPage() {
   const { isAuthenticated, setUser } = useAuthStore();
-  const { setTracks, setTheme, setUnitSystem, setLanguage, selectedTrackId, setSelectedTrackId, setSelectedTrack, unitSystem, tracks, bumpTracksListVersion } = useAppStore();
+  const { setTracks, setTheme, setUnitSystem, setLanguage, setToastPosition, selectedTrackId, setSelectedTrackId, setSelectedTrack, unitSystem, tracks, bumpTracksListVersion } = useAppStore();
   const {
     mapInstance, showSpeed,
     visibleTrackIds, toggleTrackVisibility, setShowStartEndMarkers
@@ -66,22 +66,6 @@ function MainPage() {
   const topIslandRef = useRef(null);
   const bottomIslandRef = useRef(null);
   const [legendBottom, setLegendBottom] = useState(16);
-
-  // Apply the locally-persisted theme/language (appStore's gps_app,
-  // restored from the previous session) right away — for a logged-out
-  // visitor this is the only source of these settings; for a returning
-  // logged-in user it avoids a flash of English/light defaults while the
-  // getMe() profile fetch below is still in flight (it re-applies the
-  // server copy once that resolves). main.jsx's inline pre-mount script
-  // already set the DOM attribute from the separate 'gps_theme' key to
-  // avoid a paint flash entirely — this just keeps i18n and appStore's own
-  // `theme` field consistent with it.
-  useEffect(() => {
-    const { theme, language } = useAppStore.getState();
-    document.documentElement.dataset.theme = theme;
-    if (language && language !== i18n.language) i18n.changeLanguage(language);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   // On auth change: fetch user profile and apply server preferences
   useEffect(() => {
@@ -96,10 +80,9 @@ function MainPage() {
         setLanguage(user.language);
         setUnitSystem(user.unit_distance === 'mi' ? 'imperial' : 'metric');
         setShowStartEndMarkers(user.show_start_end_markers);
+        setToastPosition(user.toast_position);
         i18n.changeLanguage(user.language);
-        // Apply theme to DOM and keep fast-load cache in sync
         document.documentElement.dataset.theme = user.theme;
-        try { localStorage.setItem('gps_theme', user.theme); } catch (_) {}
       })
       .catch(() => {});
   // eslint-disable-next-line react-hooks/exhaustive-deps
