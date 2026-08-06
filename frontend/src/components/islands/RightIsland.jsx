@@ -85,7 +85,10 @@ export default function RightIsland() {
   }, [mapInstance]);
 
   async function searchCity(q) {
-    if (!q.trim()) { setCityResults([]); return; }
+    // 1-2 characters match almost every place name and just spam
+    // Nominatim's public API on every keystroke — same floor as the
+    // track/POI search in LeftIsland.
+    if (q.trim().length < 3) { setCityResults([]); return; }
     setSearching(true);
     try {
       const resp = await fetch(
