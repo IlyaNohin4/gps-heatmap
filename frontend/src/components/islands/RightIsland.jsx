@@ -160,7 +160,7 @@ export default function RightIsland() {
               placeholder={t('map.search_city')}
               leftIcon={<Search size={14} />}
               autoFocus
-              style={{ flex: 1 }}
+              style={{ flex: 1, borderRadius: 'var(--radius-search)' }}
             />
             <Button variant="ghost" iconOnly size="sm" onClick={() => { setActivePanel(null); setCitySearch(''); setCityResults([]); }} title={t('map.search_city')}>
               <X size={14} />
