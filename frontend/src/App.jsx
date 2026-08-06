@@ -25,7 +25,7 @@ import LoadingIndicator from './components/LoadingIndicator.jsx';
 import { fetchTracks, uploadTrack } from './api/tracks.js';
 import { uploadPOI, fetchPOI } from './api/poi.js';
 import { getMe } from './api/auth.js';
-import { MapPinSearch, RotateCcw } from 'lucide-react';
+import { MapPinSearch, Search } from 'lucide-react';
 
 // Lazy-load the public track page so it doesn't pull leaflet into the main bundle
 const PublicTrackPage = lazy(() => import('./pages/PublicTrackPage.jsx'));
@@ -316,7 +316,7 @@ function MainPage() {
           title={t('tracks.show_all')}
           style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 32, height: 32, padding: 0 }}
         >
-          <RotateCcw size={14} />
+          <Search size={14} />
         </button>
       </div>
       <LeftIsland
