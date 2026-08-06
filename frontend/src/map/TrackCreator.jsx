@@ -30,11 +30,38 @@ async function fetchRoute(waypoints, profile) {
   return coords2.map(([lng, lat]) => [lat, lng]);
 }
 
+function fetchKeyFor(waypoints, profile) {
+  return JSON.stringify(waypoints.map((w) => [w.lat, w.lng])) + '|' + profile;
+}
+
+// Squared distance from p to the segment a-b, in raw lat/lng units — only
+// used to compare candidate segments against each other (see the
+// contextmenu handler below), so the degree-space distortion that would
+// matter for an actual meters figure doesn't matter here.
+function pointToSegmentDistSq(p, a, b) {
+  const dx = b.lng - a.lng;
+  const dy = b.lat - a.lat;
+  const lenSq = dx * dx + dy * dy;
+  if (lenSq === 0) {
+    const ddx = p.lng - a.lng;
+    const ddy = p.lat - a.lat;
+    return ddx * ddx + ddy * ddy;
+  }
+  let t = ((p.lat - a.lat) * dy + (p.lng - a.lng) * dx) / lenSq;
+  t = Math.max(0, Math.min(1, t));
+  const projLat = a.lat + t * dy;
+  const projLng = a.lng + t * dx;
+  const ddx = p.lng - projLng;
+  const ddy = p.lat - projLat;
+  return ddx * ddx + ddy * ddy;
+}
+
 export default function TrackCreator() {
   const map = useMap();
   const {
     trackCreatorState,
     addWaypoint,
+    insertWaypoint,
     updateWaypoint,
     setTrackCreatorState,
   } = useMapStore();
@@ -94,7 +121,24 @@ export default function TrackCreator() {
       routeLineRef.current = null;
     }
 
-    if (mode === 'manual' && waypoints.length >= 2) {
+    // In Manual mode, keep showing the road-following ORS curve from a
+    // previous Auto-mode fetch if it's still valid for the current
+    // waypoints/profile (same key check the fetch effect below uses) —
+    // switching Auto -> Manual used to always drop straight back to plain
+    // dashed waypoint-to-waypoint lines, which read as if the routed track
+    // had been discarded even though the underlying waypoints were intact.
+    // Once waypoints actually change while in Manual (drag/add/remove —
+    // nothing re-fetches outside Auto mode), the key stops matching and
+    // this correctly falls back to the straight preview instead of showing
+    // a now-inaccurate stale curve.
+    const routeIsFresh = routePoints.length >= 2 && fetchKeyFor(waypoints, profile) === lastFetchKeyRef.current;
+
+    if (mode === 'manual' && routeIsFresh) {
+      routeLineRef.current = L.polyline(routePoints, {
+        color: '#007aff',
+        weight: 4,
+      }).addTo(layerGroupRef.current);
+    } else if (mode === 'manual' && waypoints.length >= 2) {
       routeLineRef.current = L.polyline(
         waypoints.map((p) => [p.lat, p.lng]),
         { color: '#007aff', weight: 3, dashArray: '6 4' }
@@ -105,16 +149,16 @@ export default function TrackCreator() {
         weight: 4,
       }).addTo(layerGroupRef.current);
     }
-  }, [waypoints, routePoints, mode]);
+  }, [waypoints, routePoints, mode, profile]);
 
   // Fetch ORS route in auto mode when waypoints change. Only touches
   // routePoints while actually in auto mode — switching to Manual and back
   // used to blank routePoints on the way out and always re-fetch on the way
   // back in, even with identical waypoints, making an unsaved auto-routed
-  // track visibly disappear on every mode round-trip. Manual mode's own
-  // render path ignores routePoints entirely, so leaving them untouched
-  // while away is safe, and the key check below skips the refetch (and the
-  // route staying drawn the whole time) when nothing actually changed.
+  // track visibly disappear on every mode round-trip. The key check below
+  // (also read by the render effect above, to decide whether Manual mode
+  // can still show this same curve) skips the refetch when nothing
+  // actually changed.
   useEffect(() => {
     if (mode !== 'auto') return;
 
@@ -124,7 +168,7 @@ export default function TrackCreator() {
       return;
     }
 
-    const key = JSON.stringify(waypoints.map((w) => [w.lat, w.lng])) + '|' + profile;
+    const key = fetchKeyFor(waypoints, profile);
     if (key === lastFetchKeyRef.current) return;
 
     let cancelled = false;
@@ -151,10 +195,31 @@ export default function TrackCreator() {
     };
   }, [waypoints, mode, profile, setTrackCreatorState]);
 
-  // Map click handler
+  // Map click handler — left click appends to the end (addWaypoint), right
+  // click inserts a mid-route point at the nearest existing segment
+  // (insertWaypoint) instead of opening the usual coordinates/POI context
+  // menu (see MapContainer's POIContextMenuHandler, which is gated off
+  // while showTrackCreator is on).
   useMapEvents({
     click(e) {
       addWaypoint(e.latlng);
+    },
+    contextmenu(e) {
+      L.DomEvent.stop(e);
+      if (waypoints.length < 2) {
+        addWaypoint(e.latlng);
+        return;
+      }
+      let bestIndex = 0;
+      let bestDistSq = Infinity;
+      for (let i = 0; i < waypoints.length - 1; i++) {
+        const d = pointToSegmentDistSq(e.latlng, waypoints[i], waypoints[i + 1]);
+        if (d < bestDistSq) {
+          bestDistSq = d;
+          bestIndex = i;
+        }
+      }
+      insertWaypoint(bestIndex + 1, e.latlng);
     },
   });
 

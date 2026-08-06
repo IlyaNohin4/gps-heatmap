@@ -327,8 +327,13 @@ function MainPage() {
       )}
 
       <AuthModal />
-      <UploadZone inputRef={uploadInputRef} onTrackFiles={handleTrackFilesFromOverlay} onPOIFiles={handlePOIFilesFromOverlay} />
-      <ToastContainer />
+      <UploadZone
+        inputRef={uploadInputRef}
+        onTrackFiles={handleTrackFilesFromOverlay}
+        onPOIFiles={handlePOIFilesFromOverlay}
+        queueProgressBottom={legendBottom}
+      />
+      <ToastContainer topOffset={topIslandBottom + 40} bottomOffset={legendBottom} />
     </>
   );
 }

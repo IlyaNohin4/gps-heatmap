@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { notify as toast } from '../../utils/notify.js';
 import { useTranslation } from 'react-i18next';
-import { Upload } from 'lucide-react';
+import { Upload, X } from 'lucide-react';
 import useAppStore from '../../store/appStore.js';
 import { uploadTrack, pollTaskStatus, fetchTracks } from '../../api/tracks.js';
 import { sniffKmlKind, isKml } from '../../utils/fileSniff.js';
@@ -23,7 +23,7 @@ function getExt(filename) {
   return '.' + parts[parts.length - 1];
 }
 
-export default function UploadZone({ inputRef: externalInputRef, onTrackFiles, onPOIFiles }) {
+export default function UploadZone({ inputRef: externalInputRef, onTrackFiles, onPOIFiles, queueProgressBottom = 80 }) {
   const { t } = useTranslation();
   const { tracks, addTrack, addUploadingId, removeUploadingId, bumpTracksListVersion } = useAppStore();
   const [dragging, setDragging] = useState(false);
@@ -34,6 +34,13 @@ export default function UploadZone({ inputRef: externalInputRef, onTrackFiles, o
   // Serialise calls: track whether the queue is already running
   const queueRunning = useRef(false);
   const pendingQueue = useRef([]);
+  // Set by the queue progress indicator's cancel button — checked between
+  // files (runQueue) and on every poll tick (pollUntilDone) so cancelling
+  // stops the frontend from uploading/waiting on anything further. Doesn't
+  // (can't, without a dedicated revoke endpoint) stop a track already
+  // mid-processing on the backend — it just stops the frontend from
+  // queuing more work and waiting on what's in flight.
+  const cancelledRef = useRef(false);
 
   // Expose input ref to parent if needed
   useEffect(() => {
@@ -94,18 +101,26 @@ export default function UploadZone({ inputRef: externalInputRef, onTrackFiles, o
   }
 
   async function runQueue() {
+    cancelledRef.current = false;
     // Snapshot total at queue start (more files may arrive during processing)
     let processed = 0;
     let successCount = 0;
     let failCount = 0;
     while (pendingQueue.current.length > 0) {
+      if (cancelledRef.current) {
+        pendingQueue.current = [];
+        break;
+      }
       const total = processed + pendingQueue.current.length;
       const file = pendingQueue.current.shift();
       processed++;
       setQueueProgress({ current: processed, total });
       const outcome = await processFile(file);
-      if (outcome === 'success') successCount++; else failCount++;
+      if (outcome === 'success') successCount++;
+      else if (outcome !== 'cancelled') failCount++;
     }
+    const wasCancelled = cancelledRef.current;
+    cancelledRef.current = false;
     setQueueProgress(null);
     // One summary toast for the whole queue instead of one per file — see
     // notification-reduction pass: no filenames, no per-file counts.
@@ -115,6 +130,13 @@ export default function UploadZone({ inputRef: externalInputRef, onTrackFiles, o
     if (failCount > 0) {
       toast.error(t('tracks.upload_failed'));
     }
+    if (wasCancelled) {
+      toast.info(t('tracks.processing_cancelled'));
+    }
+  }
+
+  function handleCancelQueue() {
+    cancelledRef.current = true;
   }
 
   async function processFile(file) {
@@ -144,6 +166,12 @@ export default function UploadZone({ inputRef: externalInputRef, onTrackFiles, o
 
     return new Promise((resolve) => {
       const interval = setInterval(async () => {
+        if (cancelledRef.current) {
+          clearInterval(interval);
+          removeUploadingId(taskId);
+          resolve('cancelled');
+          return;
+        }
         attempts++;
         try {
           const status = await pollTaskStatus(taskId);
@@ -268,17 +296,21 @@ export default function UploadZone({ inputRef: externalInputRef, onTrackFiles, o
         onChange={handleInputChange}
       />
 
-      {/* Queue progress indicator */}
+      {/* Queue progress indicator — anchored at the same BottomIsland-aware
+          offset as bottom-corner toasts (see App.jsx's legendBottom), so it
+          sits at a consistent "below everything" level instead of a fixed
+          80px that could still land under an expanded chart panel. */}
       {queueProgress && (
         <div style={{
           position: 'fixed',
-          bottom: 80,
+          bottom: queueProgressBottom,
           left: '50%',
           transform: 'translateX(-50%)',
           zIndex: 10001,
+          transition: 'bottom 0.15s ease',
         }}>
           <div className="island" style={{
-            padding: '10px 20px',
+            padding: '10px 12px 10px 20px',
             display: 'flex',
             alignItems: 'center',
             gap: 10,
@@ -289,6 +321,26 @@ export default function UploadZone({ inputRef: externalInputRef, onTrackFiles, o
           }}>
             <Upload size={14} color="var(--accent)" style={{ animation: 'pulse 1s ease-in-out infinite' }} />
             {t('tracks.processing_progress', { current: queueProgress.current, total: queueProgress.total })}
+            <button
+              onClick={handleCancelQueue}
+              title={t('tracks.cancel_processing')}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: 22,
+                height: 22,
+                padding: 0,
+                marginLeft: 4,
+                borderRadius: 6,
+                border: 'none',
+                background: 'none',
+                color: 'var(--text-secondary)',
+                cursor: 'pointer',
+              }}
+            >
+              <X size={14} />
+            </button>
           </div>
         </div>
       )}

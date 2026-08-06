@@ -221,6 +221,24 @@ const useMapStore = create((set, get) => ({
       },
     })),
 
+  // Right-click in TrackCreator — inserts at an arbitrary position instead
+  // of always appending at the end (see addWaypoint). Undo still only pops
+  // the last waypoint (simple append-only history, unchanged) rather than
+  // specifically reverting an insert — a minor inconsistency accepted for
+  // not having to make the undo stack position-aware.
+  insertWaypoint: (index, latlng) =>
+    set((s) => {
+      const waypoints = [...s.trackCreatorState.waypoints];
+      waypoints.splice(index, 0, latlng);
+      return {
+        trackCreatorState: {
+          ...s.trackCreatorState,
+          waypoints,
+          redoStack: [],
+        },
+      };
+    }),
+
   // QA#8: dragging an existing waypoint to reposition it (Manual mode) —
   // route recompute for Auto mode is already keyed off `waypoints` identity
   // via TrackCreator's fetch-route effect, so clearing routePoints here

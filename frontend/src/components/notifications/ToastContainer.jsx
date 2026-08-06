@@ -4,16 +4,22 @@ import useToastStore from '../../store/toastStore.js';
 import useAppStore from '../../store/appStore.js';
 import { notify } from '../../utils/notify.js';
 
-// 76 (not 16) on top positions clears TopIsland (centered, ~64px tall +
-// margin) even on narrower viewports; bottom positions use a plain 16 —
-// picking a bottom corner is the user's own choice (see TopIsland's
-// notification-position setting), so no special-casing for BottomIsland here.
-const POSITION_STYLE = {
-  'top-right': { top: 76, right: 16 },
-  'top-left': { top: 76, left: 16 },
-  'bottom-right': { bottom: 16, right: 16 },
-  'bottom-left': { bottom: 16, left: 16 },
-};
+// topOffset/bottomOffset come from App.jsx, dynamically tracking the real
+// bottom edge of TopIsland (+ the find-in-area/show-all button row just
+// below it) and BottomIsland (the chart panel), so toasts never sit under
+// either regardless of which corner the user picked or how tall those
+// islands currently are. Fallbacks below match the old hardcoded values,
+// for the (currently theoretical) case this renders before App.jsx's
+// layout effects have measured anything yet.
+function positionStyleFor(position, topOffset, bottomOffset) {
+  switch (position) {
+    case 'top-left': return { top: topOffset ?? 76, left: 16 };
+    case 'bottom-right': return { bottom: bottomOffset ?? 16, right: 16 };
+    case 'bottom-left': return { bottom: bottomOffset ?? 16, left: 16 };
+    case 'top-right':
+    default: return { top: topOffset ?? 76, right: 16 };
+  }
+}
 
 const ICON_BY_TYPE = {
   success: CheckCircle2,
@@ -127,7 +133,7 @@ function ToastItem({ toast }) {
   );
 }
 
-export default function ToastContainer() {
+export default function ToastContainer({ topOffset, bottomOffset }) {
   const toasts = useToastStore((s) => s.toasts);
   const toastPosition = useAppStore((s) => s.toastPosition);
 
@@ -145,7 +151,7 @@ export default function ToastContainer() {
         flexDirection: 'column',
         gap: 'var(--space-2)',
         pointerEvents: 'none',
-        ...(POSITION_STYLE[toastPosition] || POSITION_STYLE['top-right']),
+        ...positionStyleFor(toastPosition, topOffset, bottomOffset),
       }}
     >
       {toasts.map((toast) => (

@@ -54,10 +54,14 @@ function MapClickHandler() {
 // POIContextMenu (copy coords / create POI here / cancel) opens from two
 // entry points that both land on the same menu: a plain right-click
 // anywhere on the map, and a left-click while POI creation mode is on
-// (POITab's "+ Create" toggle).
-function POIContextMenuHandler({ onCoordinatesMenu, poiCreationMode }) {
+// (POITab's "+ Create" toggle). Right-click is skipped entirely while the
+// track creator is active — TrackCreator has its own contextmenu handler
+// there (insert a mid-route waypoint), and the two shouldn't both react to
+// the same right-click.
+function POIContextMenuHandler({ onCoordinatesMenu, poiCreationMode, trackCreatorActive }) {
   useMapEvents({
     contextmenu: (e) => {
+      if (trackCreatorActive) return;
       e.originalEvent.preventDefault();
       onCoordinatesMenu(e.latlng.lat, e.latlng.lng, e.originalEvent.clientX, e.originalEvent.clientY);
     },
@@ -205,6 +209,7 @@ function MapLayers({ onPOIClick }) {
 
 export default function MapContainer() {
   const poiCreationMode = useMapStore((s) => s.poiCreationMode);
+  const trackCreatorActive = useMapStore((s) => s.showTrackCreator);
   const [coordsMenu, setCoordsMenu] = useState(null);
   const [creatingPOI, setCreatingPOI] = useState(null);
   const [detailsPOI, setDetailsPOI] = useState(null);
@@ -249,6 +254,7 @@ export default function MapContainer() {
         <POIContextMenuHandler
           onCoordinatesMenu={(lat, lon, x, y) => setCoordsMenu({ lat, lon, x, y })}
           poiCreationMode={poiCreationMode}
+          trackCreatorActive={trackCreatorActive}
         />
       </LeafletMap>
 

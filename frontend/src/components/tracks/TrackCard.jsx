@@ -344,49 +344,56 @@ export default React.memo(function TrackCard({ track, isSelected, onClick }) {
         </div>
       </div>
 
-      {/* Row 2: meta chips + action buttons (only when info is shown) */}
+      {/* Row 2: meta chips + rename/download/delete (only when info is shown) */}
       {shouldShowTrackInfo() && (
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--space-2)' }}>
-          <div style={{ display: 'flex', gap: 'var(--space-2)', flexWrap: 'wrap', minWidth: 0 }}>
-            {track.recorded_at && (
-              <span style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-1)', fontSize: 'var(--text-sm)', color: 'var(--text-secondary)' }}>
-                <Calendar size={11} /> {formatDate(track.recorded_at)}
-              </span>
-            )}
-            {track.distance_km !== undefined && (
-              <span style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-1)', fontSize: 'var(--text-sm)', color: 'var(--text-secondary)' }}>
-                <Route size={11} /> {distanceLabel(track.distance_km, unitSystem)}
-              </span>
-            )}
-            {track.speed_avg !== undefined && (
-              <span style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-1)', fontSize: 'var(--text-sm)', color: 'var(--text-secondary)' }}>
-                <Gauge size={11} /> {speedLabel(track.speed_avg, unitSystem)}
-              </span>
-            )}
-          </div>
+        <div>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--space-2)' }}>
+            <div style={{ display: 'flex', gap: 'var(--space-2)', flexWrap: 'wrap', minWidth: 0 }}>
+              {track.recorded_at && (
+                <span style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-1)', fontSize: 'var(--text-sm)', color: 'var(--text-secondary)', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                  <Calendar size={11} /> {formatDate(track.recorded_at)}
+                </span>
+              )}
+              {track.distance_km !== undefined && (
+                <span style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-1)', fontSize: 'var(--text-sm)', color: 'var(--text-secondary)', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                  <Route size={11} /> {distanceLabel(track.distance_km, unitSystem)}
+                </span>
+              )}
+              {track.speed_avg !== undefined && (
+                <span style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-1)', fontSize: 'var(--text-sm)', color: 'var(--text-secondary)', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                  <Gauge size={11} /> {speedLabel(track.speed_avg, unitSystem)}
+                </span>
+              )}
+            </div>
 
-          {/* Action buttons: [share], rename, download, delete */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-1)', flexShrink: 0 }}>
-            {published && (
-              <>
-                <Button iconOnly variant="ghost" onClick={handleCopyLink} title={t('card.copy_link')}>
-                  <Link2 size={14} />
+            {/* Action buttons: rename/download/delete, with share buttons
+                (if published) centered directly below them — centered
+                relative to this button cluster itself, not the whole card,
+                so they land right under rename/download/delete instead of
+                the card's midpoint. */}
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, flexShrink: 0 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-1)' }}>
+                <Button iconOnly variant="ghost" onClick={handleOpenRenameModal} title={t('card.rename')}>
+                  <Pencil size={14} />
                 </Button>
-                <Button iconOnly variant="ghost" onClick={handleRotateLink} title={t('card.rotate_link')}>
-                  <RefreshCw size={14} />
+                <Button iconOnly variant="ghost" onClick={handleDownload} title={t('card.download')}>
+                  <Download size={14} />
                 </Button>
-                <div style={{ width: 1, alignSelf: 'stretch', background: 'var(--border)', margin: '0 2px' }} />
-              </>
-            )}
-            <Button iconOnly variant="ghost" onClick={handleOpenRenameModal} title={t('card.rename')}>
-              <Pencil size={14} />
-            </Button>
-            <Button iconOnly variant="ghost" onClick={handleDownload} title={t('card.download')}>
-              <Download size={14} />
-            </Button>
-            <Button iconOnly variant="ghost" onClick={handleOpenDeleteModal} title={t('card.delete')}>
-              <Trash2 size={14} />
-            </Button>
+                <Button iconOnly variant="ghost" onClick={handleOpenDeleteModal} title={t('card.delete')}>
+                  <Trash2 size={14} />
+                </Button>
+              </div>
+              {published && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-1)' }}>
+                  <Button iconOnly variant="ghost" onClick={handleCopyLink} title={t('card.copy_link')}>
+                    <Link2 size={14} />
+                  </Button>
+                  <Button iconOnly variant="ghost" onClick={handleRotateLink} title={t('card.rotate_link')}>
+                    <RefreshCw size={14} />
+                  </Button>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}
@@ -394,35 +401,28 @@ export default React.memo(function TrackCard({ track, isSelected, onClick }) {
       {expanded && (
         <div style={{ paddingTop: 12, borderTop: '1px solid var(--border)' }}>
           {!shouldShowTrackInfo() && (
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 'var(--space-1)',
-              marginBottom: 'var(--space-3)',
-              paddingBottom: 'var(--space-3)',
-              borderBottom: '1px solid var(--border)',
-            }}>
+            <div style={{ marginBottom: 'var(--space-3)', paddingBottom: 'var(--space-3)', borderBottom: '1px solid var(--border)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 'var(--space-1)' }}>
+                <Button iconOnly variant="ghost" onClick={handleOpenRenameModal} title={t('card.rename')}>
+                  <Pencil size={14} />
+                </Button>
+                <Button iconOnly variant="ghost" onClick={handleDownload} title={t('card.download')}>
+                  <Download size={14} />
+                </Button>
+                <Button iconOnly variant="ghost" onClick={handleOpenDeleteModal} title={t('card.delete')}>
+                  <Trash2 size={14} />
+                </Button>
+              </div>
               {published && (
-                <>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 'var(--space-1)', marginTop: 2 }}>
                   <Button iconOnly variant="ghost" onClick={handleCopyLink} title={t('card.copy_link')}>
                     <Link2 size={14} />
                   </Button>
                   <Button iconOnly variant="ghost" onClick={handleRotateLink} title={t('card.rotate_link')}>
                     <RefreshCw size={14} />
                   </Button>
-                  <div style={{ width: 1, alignSelf: 'stretch', background: 'var(--border)', margin: '0 2px' }} />
-                </>
+                </div>
               )}
-              <Button iconOnly variant="ghost" onClick={handleOpenRenameModal} title={t('card.rename')}>
-                <Pencil size={14} />
-              </Button>
-              <Button iconOnly variant="ghost" onClick={handleDownload} title={t('card.download')}>
-                <Download size={14} />
-              </Button>
-              <Button iconOnly variant="ghost" onClick={handleOpenDeleteModal} title={t('card.delete')}>
-                <Trash2 size={14} />
-              </Button>
             </div>
           )}
 
