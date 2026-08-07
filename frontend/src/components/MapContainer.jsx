@@ -126,7 +126,16 @@ function useVisibleTracks() {
     effectiveIds.forEach((id) => {
       const detail = trackDetailCache[id];
       const summary = tracks.find((t) => t.id === id);
-      if (detail) result.push(detail);
+      // Merge, don't pick one: `detail` from /geometries is just
+      // {id, normalized_points, partial:true} — name/color/distance/etc
+      // only exist on `summary` (from the track list). Picking `detail`
+      // alone used to render an "incomplete" record, which is what made
+      // ensureTrackDetail/toggleTrackVisibility think it had to fetch
+      // GET /{id} per track to "upgrade" it — but GET /{id} returns
+      // nothing beyond summary + normalized_points anyway (see
+      // TrackDetail model in tracks.py), so merging locally is enough.
+      if (detail && summary) result.push({ ...summary, ...detail });
+      else if (detail) result.push(detail);
       else if (summary) result.push(summary);
     });
     return result;

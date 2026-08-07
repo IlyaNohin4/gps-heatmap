@@ -81,25 +81,21 @@ const useMapStore = create((set, get) => ({
       return { hiddenLists: next };
     }),
 
+  // No per-track fetch here on purpose (used to call getTrack(id) to
+  // "upgrade" a partial /geometries record) — GET /{id} returns nothing
+  // beyond summary fields (already in appStore.tracks) + normalized_points
+  // (already in trackDetailCache from loadAllGeometries), see
+  // useVisibleTracks' merge in MapContainer.jsx. With "Show all" toggling
+  // dozens of tracks at once, firing one XHR per track here meant dozens of
+  // staggered responses, each one forcing TrackLayer to tear down and
+  // rebuild every visible track's polylines/markers from scratch — the
+  // actual source of the map lag (see 2026-08-07 perf profile), not
+  // rendering cost itself.
   toggleTrackVisibility: (id) =>
     set((s) => {
       const next = new Set(s.visibleTrackIds);
-      if (next.has(id)) {
-        next.delete(id);
-      } else {
-        next.add(id);
-        // Lazy-load full track detail if not cached, or only a partial (bulk) record so far
-        const cached = s.trackDetailCache[id];
-        if (!cached || cached.partial) {
-          getTrack(id)
-            .then((data) => {
-              useMapStore.setState((prev) => ({
-                trackDetailCache: { ...prev.trackDetailCache, [id]: data },
-              }));
-            })
-            .catch(() => {});
-        }
-      }
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
       return { visibleTrackIds: next };
     }),
 

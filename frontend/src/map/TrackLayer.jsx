@@ -28,6 +28,16 @@ const TrackLayer = memo(function TrackLayer({ tracks, selectedTrackId, showStart
     if (!group) return;
     group.clearLayers();
 
+    // One shared L.canvas() renderer for every track line — under the
+    // default SVG renderer, each track's full-resolution point list (not
+    // aggregated down like HeatmapLayer/SpeedLayer's backend-merged
+    // chains) becomes a <path> whose `d` attribute is recomputed on every
+    // pan/zoom for every visible track at once. Cheap for a couple tracks,
+    // noticeably laggy with a few dozen+ all visible (e.g. after "Show
+    // all") — canvas redraws as one bitmap instead of touching each path
+    // element's DOM attributes individually.
+    const renderer = L.canvas();
+
     tracks.forEach((track, idx) => {
       const pts = track.normalized_points || [];
       if (!pts.length) return;
@@ -36,6 +46,7 @@ const TrackLayer = memo(function TrackLayer({ tracks, selectedTrackId, showStart
       const isSelected = track.id === selectedTrackId;
 
       const line = L.polyline(latlngs, {
+        renderer,
         color: isSelected ? '#007aff' : (track.color || colorForIndex(idx)),
         weight: isSelected ? 6 : 4,
         opacity: isSelected ? 1 : 0.7,
