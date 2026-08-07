@@ -34,6 +34,15 @@ function fetchKeyFor(waypoints, profile) {
   return JSON.stringify(waypoints.map((w) => [w.lat, w.lng])) + '|' + profile;
 }
 
+// True when `prefix` is exactly the leading waypoints of `all` (same length
+// or shorter, every point equal) — i.e. `all` is `prefix` plus zero or more
+// points appended at the end, with nothing removed, reordered, dragged, or
+// inserted before the end.
+function isWaypointPrefix(prefix, all) {
+  if (prefix.length === 0 || prefix.length > all.length) return false;
+  return prefix.every((w, i) => w.lat === all[i].lat && w.lng === all[i].lng);
+}
+
 // Squared distance from p to the segment a-b, in raw lat/lng units — only
 // used to compare candidate segments against each other (see the
 // contextmenu handler below), so the degree-space distortion that would
@@ -68,12 +77,21 @@ export default function TrackCreator() {
 
   const layerGroupRef = useRef(null);
   const markersRef = useRef([]);
-  const routeLineRef = useRef(null);
+  const routeLineRef = useRef([]);
   // Tracks the (waypoints, profile) pair the current routePoints came from,
   // so switching Manual -> Auto -> Manual -> Auto with unchanged waypoints
   // doesn't refetch from ORS or blank the drawn line in between — see the
   // fetch effect below.
   const lastFetchKeyRef = useRef(null);
+  // The actual waypoints array the last successful fetch was for, kept
+  // alongside lastFetchKeyRef — lets the render effect below tell "still
+  // the exact same route" apart from "same route so far, plus more points
+  // added since in Manual". Without this, clicking to add a waypoint after
+  // an Auto-mode fetch (routing an actual route, then switching to Manual
+  // to extend it by hand) discarded the whole ORS curve back to all-straight
+  // lines the moment the waypoint count changed, even though the original
+  // segment was still perfectly valid — see 2026-08-07 bug report.
+  const lastFetchWaypointsRef = useRef([]);
 
   const { waypoints, mode, profile, routing, error, routePoints } = trackCreatorState;
 
@@ -116,10 +134,11 @@ export default function TrackCreator() {
   useEffect(() => {
     if (!layerGroupRef.current) return;
 
-    if (routeLineRef.current) {
-      routeLineRef.current.remove();
-      routeLineRef.current = null;
-    }
+    routeLineRef.current.forEach((l) => l.remove());
+    routeLineRef.current = [];
+    const draw = (latlngs, opts) => {
+      routeLineRef.current.push(L.polyline(latlngs, opts).addTo(layerGroupRef.current));
+    };
 
     // In Manual mode, keep showing the road-following ORS curve from a
     // previous Auto-mode fetch if it's still valid for the current
@@ -133,21 +152,33 @@ export default function TrackCreator() {
     // a now-inaccurate stale curve.
     const routeIsFresh = routePoints.length >= 2 && fetchKeyFor(waypoints, profile) === lastFetchKeyRef.current;
 
+    const cachedWaypoints = lastFetchWaypointsRef.current;
+    // Same idea as routeIsFresh, but for "waypoints so far are unchanged,
+    // plus new ones added at the end since" — clicking to add a point in
+    // Manual mode after an Auto-mode fetch used to always fall into the
+    // routeIsFresh===false branch below and blank the ORS curve back to
+    // straight lines for the *entire* route, not just the new segment.
+    const routeExtended =
+      !routeIsFresh &&
+      mode === 'manual' &&
+      routePoints.length >= 2 &&
+      fetchKeyFor(cachedWaypoints, profile) === lastFetchKeyRef.current &&
+      isWaypointPrefix(cachedWaypoints, waypoints);
+
     if (mode === 'manual' && routeIsFresh) {
-      routeLineRef.current = L.polyline(routePoints, {
-        color: '#007aff',
-        weight: 4,
-      }).addTo(layerGroupRef.current);
+      draw(routePoints, { color: '#007aff', weight: 4 });
+    } else if (routeExtended) {
+      draw(routePoints, { color: '#007aff', weight: 4 });
+      // Straight dashed continuation from where the cached curve leaves
+      // off through whatever new points were clicked in since.
+      const extension = waypoints.slice(cachedWaypoints.length - 1).map((p) => [p.lat, p.lng]);
+      if (extension.length >= 2) {
+        draw(extension, { color: '#007aff', weight: 3, dashArray: '6 4' });
+      }
     } else if (mode === 'manual' && waypoints.length >= 2) {
-      routeLineRef.current = L.polyline(
-        waypoints.map((p) => [p.lat, p.lng]),
-        { color: '#007aff', weight: 3, dashArray: '6 4' }
-      ).addTo(layerGroupRef.current);
+      draw(waypoints.map((p) => [p.lat, p.lng]), { color: '#007aff', weight: 3, dashArray: '6 4' });
     } else if (mode === 'auto' && routePoints.length >= 2) {
-      routeLineRef.current = L.polyline(routePoints, {
-        color: '#007aff',
-        weight: 4,
-      }).addTo(layerGroupRef.current);
+      draw(routePoints, { color: '#007aff', weight: 4 });
     }
   }, [waypoints, routePoints, mode, profile]);
 
@@ -165,6 +196,7 @@ export default function TrackCreator() {
     if (waypoints.length < 2) {
       setTrackCreatorState({ routePoints: [], error: null, routing: false });
       lastFetchKeyRef.current = null;
+      lastFetchWaypointsRef.current = [];
       return;
     }
 
@@ -178,6 +210,7 @@ export default function TrackCreator() {
       .then((pts) => {
         if (!cancelled) {
           lastFetchKeyRef.current = key;
+          lastFetchWaypointsRef.current = waypoints;
           setTrackCreatorState({ routePoints: pts || [], routing: false });
         }
       })

@@ -178,7 +178,7 @@ function LeftIslandContent({ onUploadClick, loading, allTracksVisible, onToggleV
       zIndex: 1000,
       width: sidebarOpen ? 300 : 0,
       opacity: sidebarOpen ? 1 : 0,
-      maxHeight: 'calc(100vh - 320px)',
+      maxHeight: 'calc(100vh - 120px)',
       display: 'flex',
       flexDirection: 'column',
       overflow: 'hidden',
@@ -194,7 +194,7 @@ function LeftIslandContent({ onUploadClick, loading, allTracksVisible, onToggleV
         display: 'flex',
         flexDirection: 'column',
         height: '100%',
-        maxHeight: 'calc(100vh - 320px)',
+        maxHeight: 'calc(100vh - 120px)',
         padding: 0,
       }}>
         {/* Tabs */}

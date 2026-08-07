@@ -2,6 +2,8 @@ import { useEffect, useRef, memo } from 'react';
 import { useMap } from 'react-leaflet';
 import L from 'leaflet';
 import { fetchSpeedUsage } from '../api/tracks.js';
+import useAppStore from '../store/appStore.js';
+import useMapStore from '../store/mapStore.js';
 
 // Speed breakpoints with RGB colors
 const BREAKPOINTS = [
@@ -13,10 +15,25 @@ const BREAKPOINTS = [
   { kmh: 120, rgb: [255,  59,  48] }, // red
 ];
 
+const KMH_TO_MPH = 0.621371;
+
 function colorForBucket(bucket) {
   const tier = BREAKPOINTS[bucket] || BREAKPOINTS[BREAKPOINTS.length - 1];
   return `rgb(${tier.rgb.join(',')})`;
 }
+
+function speedLabel(kmh, unitSystem) {
+  return unitSystem === 'imperial'
+    ? `${(kmh * KMH_TO_MPH).toFixed(1)} mph`
+    : `${kmh.toFixed(1)} km/h`;
+}
+
+// Hover hit radius in *screen pixels*, not real-world meters — a fixed
+// meters threshold made the popup effectively unhittable at anything but
+// close-in zoom (25m is under a pixel wide when zoomed out, so the mouse
+// could never land within it), and pointless-loose at close zoom. Pixel
+// distance is what the cursor is actually doing, at any zoom level.
+const HOVER_PIXEL_RADIUS = 12;
 
 const LINE_WEIGHT = 4;
 
@@ -36,6 +53,25 @@ const LINE_WEIGHT = 4;
 const SpeedLayer = memo(function SpeedLayer({ tracksListVersion }) {
   const map = useMap();
   const layerRef = useRef(null);
+  const unitSystem = useAppStore((s) => s.unitSystem);
+  const trackDetailCache = useMapStore((s) => s.trackDetailCache);
+  // Flat {lat, lon, speed_kmh} list built from the real per-point track
+  // data (mapStore.trackDetailCache, loaded in bulk via /geometries at app
+  // start — see MapContainer's loadAllGeometries) — not the /speed-usage
+  // chains below, which are merged by speed *tier* across tracks for
+  // drawing and no longer carry an exact per-point value. Rebuilt only when
+  // the cache changes, not on every mousemove.
+  const pointsRef = useRef([]);
+
+  useEffect(() => {
+    const pts = [];
+    Object.values(trackDetailCache).forEach((track) => {
+      (track.normalized_points || []).forEach((p) => {
+        if (p.speed_kmh != null) pts.push(p);
+      });
+    });
+    pointsRef.current = pts;
+  }, [trackDetailCache]);
 
   useEffect(() => {
     let cancelled = false;
@@ -54,6 +90,9 @@ const SpeedLayer = memo(function SpeedLayer({ tracksListVersion }) {
           weight: LINE_WEIGHT,
           color: colorForBucket(chain.bucket),
           opacity: 0.85,
+          // Not interactive — hover is handled by the map-wide mousemove
+          // + grid lookup below, not per-chain hit-testing, so there's no
+          // need to pay canvas hit-test cost per polyline here.
           interactive: false,
         }).addTo(group);
       });
@@ -70,6 +109,60 @@ const SpeedLayer = memo(function SpeedLayer({ tracksListVersion }) {
   // HeatmapLayer.jsx's identical comment. This layer fetches its own
   // aggregated data from /speed-usage regardless of what's passed in.
   }, [tracksListVersion, map]);
+
+  // Hover popup — nearest real track point to the cursor, within
+  // HOVER_THRESHOLD_M, shows its exact speed_kmh.
+  useEffect(() => {
+    if (!map) return;
+
+    const tooltip = L.tooltip({ sticky: true, direction: 'top', offset: [0, -8] });
+    let shown = false;
+    let raf = null;
+
+    function findNearest(cursorPx) {
+      const pts = pointsRef.current;
+      let best = null;
+      let bestDistSq = Infinity;
+      for (let i = 0; i < pts.length; i++) {
+        const p = pts[i];
+        const px = map.latLngToContainerPoint([p.lat, p.lon]);
+        const dx = px.x - cursorPx.x;
+        const dy = px.y - cursorPx.y;
+        const distSq = dx * dx + dy * dy;
+        if (distSq < bestDistSq) {
+          bestDistSq = distSq;
+          best = p;
+        }
+      }
+      return bestDistSq <= HOVER_PIXEL_RADIUS * HOVER_PIXEL_RADIUS ? best : null;
+    }
+
+    function handleMove(e) {
+      if (raf) return; // throttle to one lookup per animation frame
+      raf = requestAnimationFrame(() => {
+        raf = null;
+        const nearest = findNearest(map.latLngToContainerPoint(e.latlng));
+        if (nearest) {
+          tooltip.setContent(speedLabel(nearest.speed_kmh, unitSystem));
+          tooltip.setLatLng(e.latlng);
+          if (!shown) {
+            tooltip.addTo(map);
+            shown = true;
+          }
+        } else if (shown) {
+          map.removeLayer(tooltip);
+          shown = false;
+        }
+      });
+    }
+
+    map.on('mousemove', handleMove);
+    return () => {
+      map.off('mousemove', handleMove);
+      if (raf) cancelAnimationFrame(raf);
+      if (shown) map.removeLayer(tooltip);
+    };
+  }, [map, unitSystem]);
 
   return null;
 });

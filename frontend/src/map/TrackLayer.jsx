@@ -3,11 +3,16 @@ import { useMap } from 'react-leaflet';
 import L from 'leaflet';
 import { MAP_ANIMATIONS } from '../config/mapAnimations.js';
 import { escapeHtml } from '../utils/escapeHtml.js';
+import useAuthStore from '../store/authStore.js';
 
 const TRACK_COLORS = [
   '#007aff', '#34c759', '#ff9500', '#af52de',
   '#ff2d55', '#5856d6', '#00c7be', '#ffcc00',
 ];
+
+// Same as --accent in globals.css — used both for the selected-track
+// highlight and, when "randomize track colors" is off, for every track.
+const ACCENT_COLOR = '#007aff';
 
 function colorForIndex(i) {
   return TRACK_COLORS[i % TRACK_COLORS.length];
@@ -16,6 +21,11 @@ function colorForIndex(i) {
 const TrackLayer = memo(function TrackLayer({ tracks, selectedTrackId, showStartEndMarkers = true, onTrackClick }) {
   const map = useMap();
   const groupRef = useRef(null);
+  // Live, not baked into track.color at upload time (see track.py's
+  // User.randomize_track_colors comment) — toggling the setting recolors
+  // every track on the map immediately instead of only affecting tracks
+  // uploaded after the toggle.
+  const randomizeTrackColors = useAuthStore((s) => s.user?.randomize_track_colors === true);
 
   useEffect(() => {
     const group = L.layerGroup().addTo(map);
@@ -45,9 +55,13 @@ const TrackLayer = memo(function TrackLayer({ tracks, selectedTrackId, showStart
       const latlngs = pts.map((p) => [p.lat, p.lon]);
       const isSelected = track.id === selectedTrackId;
 
+      const color = isSelected
+        ? ACCENT_COLOR
+        : (randomizeTrackColors ? (track.color || colorForIndex(idx)) : ACCENT_COLOR);
+
       const line = L.polyline(latlngs, {
         renderer,
-        color: isSelected ? '#007aff' : (track.color || colorForIndex(idx)),
+        color,
         weight: isSelected ? 6 : 4,
         opacity: isSelected ? 1 : 0.7,
       });
@@ -86,7 +100,7 @@ const TrackLayer = memo(function TrackLayer({ tracks, selectedTrackId, showStart
         L.marker([pts[pts.length - 1].lat, pts[pts.length - 1].lon], { icon: endIcon }).addTo(group);
       }
     });
-  }, [tracks, selectedTrackId, map, showStartEndMarkers, onTrackClick]);
+  }, [tracks, selectedTrackId, map, showStartEndMarkers, onTrackClick, randomizeTrackColors]);
 
   return null;
 });

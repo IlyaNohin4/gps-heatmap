@@ -142,10 +142,12 @@ function MainPage() {
     return () => observer.disconnect();
   }, []);
 
-  // Speed legend sits bottom-left, but BottomIsland (the chart panel) spans
+  // Speed legend sits bottom-right, but BottomIsland (the chart panel) spans
   // nearly full width on narrow viewports and grows upward when expanded —
   // without this it silently overlaps/clips the legend (found via manual
-  // QA on mobile/tablet widths, see POLISH.md).
+  // QA on mobile/tablet widths, see POLISH.md). Not gated on which side of
+  // the screen BottomIsland's rect falls on (unlike the old bottom-left
+  // check) — "nearly full width" means it can reach the right edge too.
   useLayoutEffect(() => {
     const el = bottomIslandRef.current;
     if (!el || !selectedTrackId) {
@@ -154,7 +156,7 @@ function MainPage() {
     }
     const observer = new ResizeObserver(() => {
       const rect = el.getBoundingClientRect();
-      const overlapsLegend = rect.top < window.innerHeight - 16 && rect.left < 200;
+      const overlapsLegend = rect.top < window.innerHeight - 16;
       setLegendBottom(overlapsLegend ? window.innerHeight - rect.top + 8 : 16);
     });
     observer.observe(el);
@@ -311,9 +313,9 @@ function MainPage() {
       <RightIsland />
       {selectedTrackId && <BottomIsland ref={bottomIslandRef} />}
       <LoadingIndicator isLoading={tracksLoading} />
-      {/* Speed legend — left bottom corner */}
+      {/* Speed legend — right bottom corner */}
       {showSpeed && (
-        <div className="island" style={{ position: 'fixed', left: 16, bottom: legendBottom, padding: '8px 12px', minWidth: 120, zIndex: 900, transition: 'bottom 0.15s ease' }}>
+        <div className="island" style={{ position: 'fixed', right: 16, bottom: legendBottom, padding: '8px 12px', minWidth: 120, zIndex: 900, transition: 'bottom 0.15s ease' }}>
           <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: 6 }}>{t('map.speed_legend')}</div>
           {SPEED_LEGEND.map(({ labelKm, labelMi, color }) => (
             <div key={labelKm} style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}>

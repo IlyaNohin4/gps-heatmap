@@ -1,7 +1,6 @@
-import React, { useEffect, useRef } from 'react';
-import L from 'leaflet';
+import React, { useRef } from 'react';
 import {
-  Plus, Minus, Search, Locate, LocateFixed, Layers, Info, X,
+  Plus, Minus, Search, Navigation, Layers, Info, X,
   Flame, Gauge, ChevronRight,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
@@ -50,39 +49,16 @@ export default function RightIsland() {
   function zoomIn() { mapInstance?.zoomIn(); }
   function zoomOut() { mapInstance?.zoomOut(); }
 
-  // LocateFixed only while the map is still centered on the located point —
-  // pan/zoom away from it and the icon reverts to plain Locate, same idea
-  // as Apple/Google Maps' "recenter" button.
-  const [located, setLocated] = React.useState(false);
-  const locatedPosRef = useRef(null);
-  const DRIFT_THRESHOLD_M = 50;
-
   function geolocate() {
     if (!navigator.geolocation) return;
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         const latlng = [pos.coords.latitude, pos.coords.longitude];
         mapInstance?.flyTo(latlng, 14, MAP_ANIMATIONS.geolocation);
-        locatedPosRef.current = latlng;
-        setLocated(true);
       },
       () => notify.error(i18n.t('errors.geolocation_denied'))
     );
   }
-
-  useEffect(() => {
-    if (!mapInstance) return;
-    const checkDrift = () => {
-      if (!locatedPosRef.current) return;
-      const dist = mapInstance.getCenter().distanceTo(L.latLng(locatedPosRef.current));
-      if (dist > DRIFT_THRESHOLD_M) {
-        locatedPosRef.current = null;
-        setLocated(false);
-      }
-    };
-    mapInstance.on('moveend', checkDrift);
-    return () => mapInstance.off('moveend', checkDrift);
-  }, [mapInstance]);
 
   async function searchCity(q) {
     // 1-2 characters match almost every place name and just spam
@@ -134,7 +110,7 @@ export default function RightIsland() {
           <Search size={16} />
         </Button>
         <Button variant="ghost" iconOnly onClick={geolocate} title={t('map.my_location')}>
-          {located ? <LocateFixed size={16} /> : <Locate size={16} />}
+          <Navigation size={16} />
         </Button>
         {divider}
         <Button variant="ghost" iconOnly active={layersOpen} onClick={() => togglePanel('right:layers')} title={t('map.map_layers')}>
