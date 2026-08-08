@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef, useTransition } from 'react';
-import { Search, Filter, Plus, X, ChevronLeft, ChevronRight, MapPin, Route, Eye, EyeOff, Upload, Trash2, Download } from 'lucide-react';
+import { Search, Filter, Plus, X, ChevronLeft, ChevronRight, MapPin, Route, Eye, EyeOff, Upload, Trash2, Download, Loader } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { notify as toast } from '../../utils/notify.js';
 import Slider from 'rc-slider';
@@ -341,7 +341,30 @@ function LeftIslandContent({ onUploadClick, loading, allTracksVisible, onToggleV
               <button className="btn-secondary" onClick={handleRetry}>{t('errors.retry')}</button>
             </div>
           ) : loading || isLoading ? (
-            [1, 2, 3].map((i) => <SkeletonCard key={i} />)
+            <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
+              {[1, 2, 3].map((i) => <SkeletonCard key={i} />)}
+              <div style={{
+                position: 'absolute',
+                inset: 0,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}>
+                <div style={{
+                  width: 40,
+                  height: 40,
+                  background: '#ffffff',
+                  border: '1px solid var(--border)',
+                  borderRadius: 8,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+                }}>
+                  <Loader size={16} className="spin" />
+                </div>
+              </div>
+            </div>
           ) : items.length === 0 ? (
             <div style={{ textAlign: 'center', padding: 'var(--space-5) 0', color: 'var(--text-secondary)', fontSize: 'var(--text-sm)' }}>
               {total === 0 && !search.trim() && formatFilter === 'all' && speedRange[0] === 0 && speedRange[1] === 200 && publicFilter === 'all'

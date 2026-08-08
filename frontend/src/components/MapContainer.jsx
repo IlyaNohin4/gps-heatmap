@@ -148,7 +148,7 @@ function useVisibleTracks() {
   return { visibleTracks, selectedTrackId };
 }
 
-function MapLayers({ onPOIClick }) {
+function MapLayers({ onPOIClick, allTracksVisible }) {
   const {
     showSpeed, showHeatmap, showPOI, showStartEndMarkers, showTrackCreator, toggleTrackCreator,
     trackCreatorState,
@@ -191,15 +191,23 @@ function MapLayers({ onPOIClick }) {
           read the tracks array. visibleTracks is a fresh array every render
           (see useVisibleTracks), which used to make the layer's effect
           rebuild every chain's polyline on any unrelated re-render (see
-          HeatmapLayer.jsx's comment). */}
-      {showHeatmap && (
+          HeatmapLayer.jsx's comment).
+          Gated on allTracksVisible (LeftIsland's eye/eye-off "hide all
+          tracks" toggle) in addition to showHeatmap — this is a different,
+          narrower coupling than the visibleTrackIds/selectedTrackId one
+          that was deliberately removed from this layer (see
+          ARCHITECTURE.md's Heatmap section): the toggle button itself stays
+          clickable either way, only the map draw is suppressed, so turning
+          heatmap on while tracks are hidden doesn't look like tracks
+          reappeared behind your back. */}
+      {showHeatmap && allTracksVisible && (
         <HeatmapLayer tracksListVersion={tracksListVersion} />
       )}
 
       {/* Speed gradient segments — tracksListVersion, not visibleTracks: this
           layer fetches its own aggregated /speed-usage data now, same
-          reasoning as the heatmap above. */}
-      {showSpeed && (
+          reasoning as the heatmap above. Same allTracksVisible gate too. */}
+      {showSpeed && allTracksVisible && (
         <SpeedLayer tracksListVersion={tracksListVersion} />
       )}
 
@@ -216,7 +224,7 @@ function MapLayers({ onPOIClick }) {
   );
 }
 
-export default function MapContainer() {
+export default function MapContainer({ allTracksVisible = true }) {
   const poiCreationMode = useMapStore((s) => s.poiCreationMode);
   const trackCreatorActive = useMapStore((s) => s.showTrackCreator);
   const [coordsMenu, setCoordsMenu] = useState(null);
@@ -255,6 +263,7 @@ export default function MapContainer() {
         attributionControl={false}
       >
         <MapLayers
+          allTracksVisible={allTracksVisible}
           onPOIClick={(poi, originalEvent) => {
             setDetailsPOI(poi);
             setDetailsPOIPosition(originalEvent ? { x: originalEvent.clientX, y: originalEvent.clientY } : null);

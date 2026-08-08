@@ -262,7 +262,7 @@ export default forwardRef(function BottomIsland(_props, ref) {
                   iconOnly
                   size="sm"
                   onClick={handleZoomToTrack}
-                  title={t('card.zoom_to_track') || 'Zoom to track'}
+                  title={t('chart.zoom_to_track')}
                 >
                   <ZoomIn size={16} />
                 </Button>
@@ -271,7 +271,7 @@ export default forwardRef(function BottomIsland(_props, ref) {
                   iconOnly
                   size="sm"
                   onClick={handleDeselectTrack}
-                  title={t('card.deselect') || 'Deselect track'}
+                  title={t('chart.deselect')}
                 >
                   <X size={16} />
                 </Button>

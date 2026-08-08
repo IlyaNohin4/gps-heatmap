@@ -20,7 +20,6 @@ import LeftIsland from './components/islands/LeftIsland.jsx';
 import RightIsland from './components/islands/RightIsland.jsx';
 import BottomIsland from './components/islands/BottomIsland.jsx';
 import { sniffKmlKind, isKml } from './utils/fileSniff.js';
-import LoadingIndicator from './components/LoadingIndicator.jsx';
 
 import { fetchTracks, uploadTrack } from './api/tracks.js';
 import { uploadPOI, fetchPOI } from './api/poi.js';
@@ -272,7 +271,7 @@ function MainPage() {
 
   return (
     <>
-      <MapContainer />
+      <MapContainer allTracksVisible={allTracksVisible} />
       <div ref={topIslandRef} style={{ position: 'fixed', top: 16, left: '50%', transform: 'translateX(-50%)', zIndex: 1000, animation: 'fadeIn 0.3s ease-out' }}>
         <TopIsland />
       </div>
@@ -312,7 +311,6 @@ function MainPage() {
       />
       <RightIsland />
       {selectedTrackId && <BottomIsland ref={bottomIslandRef} />}
-      <LoadingIndicator isLoading={tracksLoading} />
       {/* Speed legend — right bottom corner */}
       {showSpeed && (
         <div className="island" style={{ position: 'fixed', right: 16, bottom: legendBottom, padding: '8px 12px', minWidth: 120, zIndex: 900, transition: 'bottom 0.15s ease' }}>
