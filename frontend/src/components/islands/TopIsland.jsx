@@ -567,7 +567,16 @@ export default function TopIsland() {
             )}
 
             {isAuthenticated && user?.is_admin && (
-              <div style={{ borderTop: '1px solid var(--border)' }}>
+              // marginBottom: -18 cancels out the gear panel wrapper's own
+              // paddingBottom (var(--space-4), 16px) plus this section's
+              // trailing space (12px collapsed / 12px expanded — button's
+              // own bottom padding, or AdminPanel's last card margin +
+              // its own bottom padding) down to a net 10px at the very
+              // bottom of the island, instead of the ~28px every other
+              // "last tab" gets from the wrapper alone. Scoped to this one
+              // section (not the shared wrapper) so UI/Account/Stats keep
+              // their existing bottom spacing.
+              <div style={{ borderTop: '1px solid var(--border)', marginBottom: -9, overflow: 'hidden' }}>
                 <button
                   onClick={() => setGearTab(gearTab === 'admin' ? null : 'admin')}
                   style={{ ...headerButtonStyle, width: '100%', justifyContent: 'space-between', padding: 'var(--space-3) 0' }}
@@ -577,11 +586,8 @@ export default function TopIsland() {
                   </span>
                   {gearTab === 'admin' ? <ChevronUp size={14} color="var(--text-secondary)" /> : <ChevronDown size={14} color="var(--text-secondary)" />}
                 </button>
+                {gearTab === 'admin' && <AdminPanel />}
               </div>
-            )}
-
-            {gearTab === 'admin' && isAuthenticated && user?.is_admin && (
-              <AdminPanel />
             )}
           </div>
         )}

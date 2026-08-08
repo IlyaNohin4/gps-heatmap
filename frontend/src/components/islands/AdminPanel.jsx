@@ -141,7 +141,7 @@ function UserRow({ user, onChanged, onDeleted }) {
   }
 
   return (
-    <Card style={{ marginBottom: 8, padding: 'var(--space-2) var(--space-3)' }}>
+    <Card style={{ padding: 'var(--space-2) var(--space-3)' }}>
       <button
         onClick={() => setExpanded((v) => !v)}
         style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'none', border: 'none', cursor: 'pointer', padding: 0, textAlign: 'left' }}
@@ -266,7 +266,7 @@ export default function AdminPanel() {
   }
 
   return (
-    <div style={{ paddingTop: 4, paddingBottom: 4 }}>
+    <div style={{ paddingTop: 4 }}>
       <div style={row}>
         <span style={{ fontSize: 'var(--text-sm)', color: 'var(--text)' }}>Open registration</span>
         <div style={chipGroup}>
@@ -307,14 +307,19 @@ export default function AdminPanel() {
       {users.length === 0 && (
         <div style={{ fontSize: 'var(--text-sm)', color: 'var(--text-secondary)' }}>No accounts found.</div>
       )}
-      {users.map((u) => (
-        <UserRow
-          key={u.id}
-          user={u}
-          onChanged={(updated) => setUsers((prev) => prev.map((x) => (x.id === updated.id ? updated : x)))}
-          onDeleted={(id) => setUsers((prev) => prev.filter((x) => x.id !== id))}
-        />
-      ))}
+      {/* gap, not each card's own marginBottom — so there's no trailing
+          margin after the last card inflating the space between it and
+          the island's bottom edge (see 2026-08-08 spacing pass). */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        {users.map((u) => (
+          <UserRow
+            key={u.id}
+            user={u}
+            onChanged={(updated) => setUsers((prev) => prev.map((x) => (x.id === updated.id ? updated : x)))}
+            onDeleted={(id) => setUsers((prev) => prev.filter((x) => x.id !== id))}
+          />
+        ))}
+      </div>
     </div>
   );
 }
