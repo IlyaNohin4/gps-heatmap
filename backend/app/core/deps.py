@@ -41,3 +41,12 @@ def get_current_user(
         if issued_at < changed_at:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token no longer valid")
     return user
+
+
+def get_current_admin_user(user: User = Depends(get_current_user)) -> User:
+    """Gate for the /api/admin/* routes — same auth as get_current_user, plus
+    is_admin. 403 (not 404) since the caller is authenticated, just not
+    authorized; matches the rest of the app's convention."""
+    if not user.is_admin:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required")
+    return user

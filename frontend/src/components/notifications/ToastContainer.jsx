@@ -1,25 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { CheckCircle2, XCircle, Info, AlertTriangle, X } from 'lucide-react';
 import useToastStore from '../../store/toastStore.js';
-import useAppStore from '../../store/appStore.js';
 import { notify } from '../../utils/notify.js';
-
-// topOffset/bottomOffset come from App.jsx, dynamically tracking the real
-// bottom edge of TopIsland (+ the find-in-area/show-all button row just
-// below it) and BottomIsland (the chart panel), so toasts never sit under
-// either regardless of which corner the user picked or how tall those
-// islands currently are. Fallbacks below match the old hardcoded values,
-// for the (currently theoretical) case this renders before App.jsx's
-// layout effects have measured anything yet.
-function positionStyleFor(position, topOffset, bottomOffset) {
-  switch (position) {
-    case 'top-left': return { top: topOffset ?? 76, left: 16 };
-    case 'bottom-right': return { bottom: bottomOffset ?? 16, right: 16 };
-    case 'bottom-left': return { bottom: bottomOffset ?? 16, left: 16 };
-    case 'top-right':
-    default: return { top: topOffset ?? 76, right: 16 };
-  }
-}
 
 const ICON_BY_TYPE = {
   success: CheckCircle2,
@@ -133,16 +115,17 @@ function ToastItem({ toast }) {
   );
 }
 
-export default function ToastContainer({ topOffset, bottomOffset }) {
+// Always bottom-right — used to be a user-configurable corner (TopIsland →
+// Notifications), dropped in favor of just this one fixed spot (see
+// 2026-08-08 discussion: not worth the extra setting).
+export default function ToastContainer({ bottomOffset }) {
   const toasts = useToastStore((s) => s.toasts);
-  const toastPosition = useAppStore((s) => s.toastPosition);
 
   if (toasts.length === 0) return null;
 
   return (
-    // Corner is a user setting (TopIsland → Display → Notifications).
-    // Unbounded height (stacks/grows toward the anchored edge) — a bounded,
-    // scrollable area was tried and reverted, this reads better.
+    // Unbounded height (stacks/grows upward) — a bounded, scrollable area
+    // was tried and reverted, this reads better.
     <div
       style={{
         position: 'fixed',
@@ -151,7 +134,8 @@ export default function ToastContainer({ topOffset, bottomOffset }) {
         flexDirection: 'column',
         gap: 'var(--space-2)',
         pointerEvents: 'none',
-        ...positionStyleFor(toastPosition, topOffset, bottomOffset),
+        bottom: bottomOffset ?? 16,
+        right: 16,
       }}
     >
       {toasts.map((toast) => (

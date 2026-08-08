@@ -52,7 +52,7 @@ const SPEED_LEGEND = [
 // ---- Main App Page ----
 function MainPage() {
   const { isAuthenticated, setUser } = useAuthStore();
-  const { setTracks, setTheme, setUnitSystem, setLanguage, setToastPosition, selectedTrackId, setSelectedTrackId, setSelectedTrack, unitSystem, tracks, bumpTracksListVersion } = useAppStore();
+  const { setTracks, setTheme, setUnitSystem, setLanguage, selectedTrackId, setSelectedTrackId, setSelectedTrack, unitSystem, tracks, bumpTracksListVersion } = useAppStore();
   const {
     mapInstance, showSpeed,
     visibleTrackIds, toggleTrackVisibility, setShowStartEndMarkers
@@ -79,7 +79,6 @@ function MainPage() {
         setLanguage(user.language);
         setUnitSystem(user.unit_distance === 'mi' ? 'imperial' : 'metric');
         setShowStartEndMarkers(user.show_start_end_markers);
-        setToastPosition(user.toast_position);
         i18n.changeLanguage(user.language);
         document.documentElement.dataset.theme = user.theme;
       })
@@ -333,7 +332,7 @@ function MainPage() {
         onPOIFiles={handlePOIFilesFromOverlay}
         queueProgressBottom={legendBottom}
       />
-      <ToastContainer topOffset={topIslandBottom + 40} bottomOffset={legendBottom} />
+      <ToastContainer bottomOffset={legendBottom} />
     </>
   );
 }

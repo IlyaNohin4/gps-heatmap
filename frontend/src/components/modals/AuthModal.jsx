@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { notify as toast } from '../../utils/notify.js';
 import { useTranslation } from 'react-i18next';
 import { Mail, Lock, Eye, EyeOff } from 'lucide-react';
 import useAuthStore from '../../store/authStore.js';
-import { login as apiLogin, register as apiRegister, forgotPassword } from '../../api/auth.js';
+import { login as apiLogin, register as apiRegister, forgotPassword, getRegistrationStatus } from '../../api/auth.js';
 import { apiErrorMessage } from '../../utils/apiError.js';
 import Modal from '../../ui/Modal.jsx';
 import Button from '../../ui/Button.jsx';
@@ -99,6 +99,21 @@ export default function AuthModal() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [forgotEmail, setForgotEmail] = useState('');
 
+  // Read once at mount — an invite link is a one-shot "you were sent this
+  // URL" thing, not something that should track further URL edits.
+  const [inviteToken] = useState(() => new URLSearchParams(window.location.search).get('invite'));
+  // null = not loaded yet (assume open, same as the pre-toggle default) so
+  // the Register tab doesn't flash a "disabled" state before this resolves.
+  const [registrationEnabled, setRegistrationEnabled] = useState(true);
+
+  useEffect(() => {
+    getRegistrationStatus()
+      .then((s) => setRegistrationEnabled(s.registration_enabled))
+      .catch(() => {}); // stay optimistic (true) — worst case the submit itself 403s
+  }, []);
+
+  const registerBlocked = !registrationEnabled && !inviteToken;
+
   if (isAuthenticated) return null;
 
   async function handleLogin(e) {
@@ -124,7 +139,7 @@ export default function AuthModal() {
     if (password.length < 8) return toast.error(t('validation.password_min_length'));
     setLoading(true);
     try {
-      const data = await apiRegister(email, password);
+      const data = await apiRegister(email, password, inviteToken);
       storeLogin(data.access_token, data.user);
       toast.success(t('auth.register_success'));
     } catch (err) {
@@ -208,6 +223,10 @@ export default function AuthModal() {
                 {loading ? 'Signing in…' : 'Sign in'}
               </Button>
             </form>
+          ) : registerBlocked ? (
+            <div style={{ ...styles.subtitle, marginBottom: 0, textAlign: 'center', padding: 'var(--space-4) 0' }}>
+              {t('auth.registration_disabled')}
+            </div>
           ) : (
             <form onSubmit={handleRegister}>
               <div style={styles.field}>

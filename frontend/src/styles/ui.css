@@ -210,7 +210,11 @@
   transition: background 0.15s;
 }
 
+/* Matches .ui-btn--active (tabs) — was a solid accent fill + white text,
+   a different "selected" language from every tab in the app (Tracks/POI,
+   Login/Register, chart tabs, Speed mode/heatmap toggles). See 2026-08-08
+   design-consistency pass. */
 .ui-chip--active {
-  background: var(--accent);
-  color: #fff;
+  background: rgba(0, 122, 255, 0.1);
+  color: var(--accent);
 }

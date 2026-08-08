@@ -14,6 +14,8 @@ from app.core.database import get_db
 from app.core.deps import get_current_user
 from app.core.limiter import limiter
 from app.core.security import create_access_token, hash_password, verify_password
+from app.models.app_settings import AppSettings
+from app.models.invite_token import InviteToken
 from app.models.password_reset import PasswordReset
 from app.models.poi_category import DEFAULT_CATEGORIES, POICategory
 from app.models.poi_import import POIImport
@@ -37,6 +39,9 @@ def _validate_password_strength(v: str) -> str:
 class RegisterRequest(BaseModel):
     email: EmailStr
     password: str
+    # Required only when registration is globally disabled (see
+    # AppSettings.registration_enabled / app/api/admin.py's invite links).
+    invite_token: Optional[str] = None
 
     @field_validator("email")
     @classmethod
@@ -82,11 +87,39 @@ class TokenResponse(BaseModel):
     token_type: str = "bearer"
 
 
+class RegistrationStatusOut(BaseModel):
+    registration_enabled: bool
+
+
+@router.get("/registration-status", response_model=RegistrationStatusOut)
+def registration_status(db: Session = Depends(get_db)):
+    """Public (no auth) — lets the Register tab know up front whether it
+    needs to ask for an invite link, instead of the user finding out only
+    after submitting the form."""
+    row = db.get(AppSettings, 1)
+    return RegistrationStatusOut(registration_enabled=row.registration_enabled if row else True)
+
+
 @router.post("/register", response_model=TokenResponse, status_code=status.HTTP_201_CREATED)
 @limiter.limit("3/minute")
 def register(request: Request, body: RegisterRequest, db: Session = Depends(get_db)):
     if db.query(User).filter(User.email == body.email).first():
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Email already registered")
+
+    settings_row = db.get(AppSettings, 1)
+    invite = None
+    if settings_row is not None and not settings_row.registration_enabled:
+        if not body.invite_token:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Registration is currently disabled")
+        invite = db.query(InviteToken).filter(InviteToken.token == body.invite_token).first()
+        invite_valid = (
+            invite is not None
+            and not invite.revoked
+            and (invite.max_uses is None or invite.use_count < invite.max_uses)
+        )
+        if not invite_valid:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Invalid or expired invite link")
+
     user = User(email=body.email, password_hash=hash_password(body.password))
     db.add(user)
     try:
@@ -110,6 +143,8 @@ def register(request: Request, body: RegisterRequest, db: Session = Depends(get_
     # categories" show the same list from day one instead of diverging until
     # the user actually assigns one of the picker's suggestions to a POI.
     db.add_all(POICategory(user_id=user.id, name=name) for name in DEFAULT_CATEGORIES)
+    if invite is not None:
+        invite.use_count += 1
     db.commit()
     db.refresh(user)
 
@@ -239,6 +274,8 @@ class UserOut(BaseModel):
     show_start_end_markers: bool
     randomize_track_colors: bool
     toast_position: str
+    is_admin: bool
+    created_at: Optional[datetime] = None
 
     model_config = {"from_attributes": True}
 

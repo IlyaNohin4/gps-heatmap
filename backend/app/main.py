@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
-from app.api import auth, poi, routing, tasks, tracks
+from app.api import admin, auth, poi, routing, tasks, tracks
 from app.core.config import settings
 from app.core.limiter import limiter
 
@@ -63,6 +63,7 @@ async def add_security_headers(request, call_next):
 
 
 app.include_router(auth.router)
+app.include_router(admin.router)
 app.include_router(tracks.router)
 app.include_router(tasks.router)
 app.include_router(poi.router)

@@ -1,7 +1,16 @@
 import client from './client.js';
 
-export async function register(email, password) {
-  const { data } = await client.post('/api/auth/register', { email, password });
+export async function register(email, password, inviteToken) {
+  const { data } = await client.post('/api/auth/register', {
+    email,
+    password,
+    ...(inviteToken ? { invite_token: inviteToken } : {}),
+  });
+  return data;
+}
+
+export async function getRegistrationStatus() {
+  const { data } = await client.get('/api/auth/registration-status');
   return data;
 }
 

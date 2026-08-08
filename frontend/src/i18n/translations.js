@@ -3,7 +3,7 @@ const translations = {
   en: {
     // Settings panel
     settings: {
-      display: 'Display',
+      display: 'Preferences',
       account: 'Account',
       units: 'Units',
       metric: 'Metric',
@@ -16,7 +16,6 @@ const translations = {
       start_end_markers: 'Start/end markers',
       random_track_colors: 'Random track colors',
       notifications_enabled: 'Enable notifications',
-      notifications: 'Notifications',
       notif_top_left: 'Top left',
       notif_top_right: 'Top right',
       notif_bottom_left: 'Bottom left',
@@ -38,6 +37,18 @@ const translations = {
       password_change_failed: 'Failed to change password{{detail}}',
       save_failed: 'Failed to save setting',
       account_delete_failed: 'Failed to delete account',
+      reset_password: 'Reset password',
+      reset_password_sent: 'Password reset email sent',
+      tab_ui: 'UI',
+      title: 'Settings',
+      tab_account: 'Account',
+      tab_admin: 'Administration Panel',
+      tab_stats: 'Stats',
+      stat_joined: 'Joined',
+      stat_distance: 'Total distance',
+      stat_hours: 'Total hours',
+      stat_tracks: 'Tracks uploaded',
+
     },
     // Validation errors
     validation: {
@@ -252,6 +263,7 @@ const translations = {
       login_error: 'Login failed{{detail}}',
       register_success: 'Account created',
       register_error: 'Registration failed{{detail}}',
+      registration_disabled: 'Registration is currently invite-only. Ask the site owner for an invite link.',
       reset_email_sent: 'Reset link sent',
       reset_email_error: 'Reset failed{{detail}}',
       reset_password_title: 'Reset password',
@@ -296,7 +308,7 @@ const translations = {
 
   ru: {
     settings: {
-      display: 'Отображение',
+      display: 'Предпочтения',
       account: 'Аккаунт',
       units: 'Единицы',
       metric: 'Метрическая',
@@ -309,7 +321,6 @@ const translations = {
       start_end_markers: 'Метки старта/финиша',
       random_track_colors: 'Случайные цвета треков',
       notifications_enabled: 'Включить уведомления',
-      notifications: 'Уведомления',
       notif_top_left: 'Слева сверху',
       notif_top_right: 'Справа сверху',
       notif_bottom_left: 'Слева снизу',
@@ -331,6 +342,18 @@ const translations = {
       password_change_failed: 'Ошибка смены пароля{{detail}}',
       save_failed: 'Ошибка сохранения',
       account_delete_failed: 'Ошибка удаления аккаунта',
+      reset_password: 'Сбросить пароль',
+      reset_password_sent: 'Письмо для сброса пароля отправлено',
+      tab_ui: 'Интерфейс',
+      title: 'Настройки',
+      tab_account: 'Аккаунт',
+      tab_admin: 'Панель администратора',
+      tab_stats: 'Статистика',
+      stat_joined: 'Дата регистрации',
+      stat_distance: 'Всего пройдено',
+      stat_hours: 'Всего часов',
+      stat_tracks: 'Загружено треков',
+
     },
     validation: {
       fill_all_fields: 'Заполните все поля',
@@ -537,6 +560,7 @@ const translations = {
       login_error: 'Ошибка входа{{detail}}',
       register_success: 'Аккаунт создан',
       register_error: 'Ошибка регистрации{{detail}}',
+      registration_disabled: 'Регистрация сейчас только по приглашениям. Попросите ссылку у владельца сайта.',
       reset_email_sent: 'Ссылка отправлена',
       reset_email_error: 'Ошибка отправки{{detail}}',
       reset_password_title: 'Сброс пароля',
@@ -580,7 +604,7 @@ const translations = {
 
   uk: {
     settings: {
-      display: 'Відображення',
+      display: 'Параметри',
       account: 'Акаунт',
       units: 'Одиниці',
       metric: 'Метрична',
@@ -593,7 +617,6 @@ const translations = {
       start_end_markers: 'Мітки старту/фінішу',
       random_track_colors: 'Випадкові кольори треків',
       notifications_enabled: 'Увімкнути сповіщення',
-      notifications: 'Сповіщення',
       notif_top_left: 'Зліва зверху',
       notif_top_right: 'Справа зверху',
       notif_bottom_left: 'Зліва знизу',
@@ -615,6 +638,18 @@ const translations = {
       password_change_failed: 'Помилка зміни пароля{{detail}}',
       save_failed: 'Помилка збереження',
       account_delete_failed: 'Помилка видалення акаунта',
+      reset_password: 'Скинути пароль',
+      reset_password_sent: 'Лист для скидання пароля надіслано',
+      tab_ui: 'Інтерфейс',
+      title: 'Налаштування',
+      tab_account: 'Акаунт',
+      tab_admin: 'Панель адміністратора',
+      tab_stats: 'Статистика',
+      stat_joined: 'Дата реєстрації',
+      stat_distance: 'Всього пройдено',
+      stat_hours: 'Всього годин',
+      stat_tracks: 'Завантажено треків',
+
     },
     validation: {
       fill_all_fields: 'Заповніть усі поля',
@@ -820,6 +855,7 @@ const translations = {
       login_error: 'Помилка входу{{detail}}',
       register_success: 'Акаунт створено',
       register_error: 'Помилка реєстрації{{detail}}',
+      registration_disabled: 'Реєстрація зараз лише за запрошеннями. Попросіть посилання у власника сайту.',
       reset_email_sent: 'Посилання надіслано',
       reset_email_error: 'Помилка надіслання{{detail}}',
       reset_password_title: 'Скидання пароля',
@@ -863,7 +899,7 @@ const translations = {
 
   de: {
     settings: {
-      display: 'Anzeige',
+      display: 'Präferenzen',
       account: 'Konto',
       units: 'Einheiten',
       metric: 'Metrisch',
@@ -876,7 +912,6 @@ const translations = {
       start_end_markers: 'Start-/Endmarkierungen',
       random_track_colors: 'Zufällige Streckenfarben',
       notifications_enabled: 'Benachrichtigungen aktivieren',
-      notifications: 'Benachrichtigungen',
       notif_top_left: 'Oben links',
       notif_top_right: 'Oben rechts',
       notif_bottom_left: 'Unten links',
@@ -898,6 +933,18 @@ const translations = {
       password_change_failed: 'Passwortänderung fehlgeschlagen{{detail}}',
       save_failed: 'Speichern fehlgeschlagen',
       account_delete_failed: 'Konto konnte nicht gelöscht werden',
+      reset_password: 'Passwort zurücksetzen',
+      reset_password_sent: 'E-Mail zum Zurücksetzen des Passworts gesendet',
+      tab_ui: 'Oberfläche',
+      title: 'Einstellungen',
+      tab_account: 'Konto',
+      tab_admin: 'Admin-Bereich',
+      tab_stats: 'Statistik',
+      stat_joined: 'Registriert seit',
+      stat_distance: 'Gesamtstrecke',
+      stat_hours: 'Gesamtstunden',
+      stat_tracks: 'Hochgeladene Tracks',
+
     },
     validation: {
       fill_all_fields: 'Füllen Sie alle Felder aus',
@@ -1103,6 +1150,7 @@ const translations = {
       login_error: 'Anmeldung fehlgeschlagen{{detail}}',
       register_success: 'Konto erstellt',
       register_error: 'Registrierung fehlgeschlagen{{detail}}',
+      registration_disabled: 'Die Registrierung erfolgt derzeit nur auf Einladung. Bitte den Seitenbetreiber um einen Einladungslink.',
       reset_email_sent: 'Link gesendet',
       reset_email_error: 'Fehler beim Versenden{{detail}}',
       reset_password_title: 'Passwort zurücksetzen',
@@ -1146,7 +1194,7 @@ const translations = {
 
   es: {
     settings: {
-      display: 'Pantalla',
+      display: 'Preferencias',
       account: 'Cuenta',
       units: 'Unidades',
       metric: 'Métrico',
@@ -1159,7 +1207,6 @@ const translations = {
       start_end_markers: 'Marcadores de inicio/fin',
       random_track_colors: 'Colores aleatorios de tracks',
       notifications_enabled: 'Activar notificaciones',
-      notifications: 'Notificaciones',
       notif_top_left: 'Arriba izquierda',
       notif_top_right: 'Arriba derecha',
       notif_bottom_left: 'Abajo izquierda',
@@ -1181,6 +1228,18 @@ const translations = {
       password_change_failed: 'Error al cambiar contraseña{{detail}}',
       save_failed: 'Error al guardar',
       account_delete_failed: 'No se pudo eliminar la cuenta',
+      reset_password: 'Restablecer contraseña',
+      reset_password_sent: 'Correo de restablecimiento enviado',
+      tab_ui: 'Interfaz',
+      title: 'Configuración',
+      tab_account: 'Cuenta',
+      tab_admin: 'Panel de administración',
+      tab_stats: 'Estadísticas',
+      stat_joined: 'Miembro desde',
+      stat_distance: 'Distancia total',
+      stat_hours: 'Horas totales',
+      stat_tracks: 'Tracks subidos',
+
     },
     validation: {
       fill_all_fields: 'Rellene todos los campos',
@@ -1386,6 +1445,7 @@ const translations = {
       login_error: 'Error al iniciar sesión{{detail}}',
       register_success: 'Cuenta creada',
       register_error: 'Error en registro{{detail}}',
+      registration_disabled: 'El registro es actualmente solo por invitación. Pide un enlace al propietario del sitio.',
       reset_email_sent: 'Enlace enviado',
       reset_email_error: 'Error al enviar{{detail}}',
       reset_password_title: 'Restablecer contraseña',

@@ -353,7 +353,7 @@ function LeftIslandContent({ onUploadClick, loading, allTracksVisible, onToggleV
                 <div style={{
                   width: 40,
                   height: 40,
-                  background: '#ffffff',
+                  background: 'var(--surface)',
                   border: '1px solid var(--border)',
                   borderRadius: 8,
                   display: 'flex',

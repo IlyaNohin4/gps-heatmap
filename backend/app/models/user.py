@@ -32,3 +32,6 @@ class User(Base):
     # prefs) survives across devices/reloads without relying on local
     # persistence at all.
     toast_position = Column(String(12), nullable=False, server_default="top-right")
+    # Gates TopIsland's Administration Panel tab (stub for now). No
+    # self-serve promotion path — flipped manually in the DB.
+    is_admin = Column(Boolean, nullable=False, server_default="false")

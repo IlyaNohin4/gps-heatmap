@@ -1,10 +1,10 @@
 import { create } from 'zustand';
 
 // Nothing in this store is persisted to localStorage — theme/unitSystem/
-// language/toastPosition are all server-synced (getMe()/updatePrefs, see
-// App.jsx and TopIsland.jsx) and reset to these defaults on load until
-// that resolves, rather than caching a local copy. Everything else here is
-// session-only UI state by nature (selection, upload progress, etc).
+// language are all server-synced (getMe()/updatePrefs, see App.jsx and
+// TopIsland.jsx) and reset to these defaults on load until that resolves,
+// rather than caching a local copy. Everything else here is session-only
+// UI state by nature (selection, upload progress, etc).
 const useAppStore = create(
     (set, get) => ({
       theme: 'light',
@@ -27,12 +27,8 @@ const useAppStore = create(
       tracksListVersion: 0,
       poiListVersion: 0,
       expandedTrackInfo: 'partial', // 'off' | 'partial' | 'on'
-      // Which screen corner toast notifications stack in — server-synced
-      // like theme/unitSystem/language (see TopIsland.jsx's handler).
-      toastPosition: 'top-right', // 'top-right' | 'top-left' | 'bottom-right' | 'bottom-left'
 
       setTheme: (theme) => set({ theme }),
-      setToastPosition: (toastPosition) => set({ toastPosition }),
       setUnitSystem: (system) => set({ unitSystem: system }),
       setLanguage: (language) => set({ language }),
       setSelectedTrack: (id) => set({ selectedTrackId: id, activePanel: null }),
